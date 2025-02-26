@@ -1,5 +1,5 @@
 //
-//  FactoryIdentifier.swift
+//  FactoryKey.swift
 //  Astroject
 //
 //  Created by Porter McGary on 2/25/25.
@@ -8,17 +8,24 @@
 import Foundation
 
 struct FactoryKey {
-    let type: Any.Type
+    let productType: Any.Type
+    let name: String?
+    
+    init(productType: Any.Type, name: String? = nil) {
+        self.productType = productType
+        self.name = name
+    }
 }
 
 extension FactoryKey: Hashable {
     func hash(into hasher: inout Hasher) {
-        ObjectIdentifier(self.type).hash(into: &hasher)
+        ObjectIdentifier(self.productType).hash(into: &hasher)
+        self.name?.hash(into: &hasher)
     }
 }
 
 extension FactoryKey: Equatable {
-    static func == (lhs: FactoryIdentifier, rhs: FactoryIdentifier) -> Bool {
-        lhs.type == rhs.type
+    static func == (lhs: FactoryKey, rhs: FactoryKey) -> Bool {
+        lhs.productType == rhs.productType && lhs.name == rhs.name
     }
 }
