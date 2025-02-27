@@ -9,7 +9,10 @@ import Foundation
 
 // ✅ Registration
 // ✅ Resolution
-// TODO: InstanceStore
+// ✅ InstanceStore
+// TODO: Error Handling
+// TODO: Write Unit Tests
+// TODO: Is this robust and sufficient enough to support my needs?
 
 public class Container {
     var factories: ThreadSafeDictionary<ProductKey, any Registrable> = .init()
@@ -38,13 +41,13 @@ public class Container {
 extension Container: Resolver {
     public func resolve<Product>(_ productType: Product.Type, name: String?) -> Product? {
         let registration = registration(for: productType, with: name)
-        let product = registration?.factory.make(self)
+        let product = registration?.resolve()
         return product
     }
     
     public func resolveAsync<Product>(_ productType: Product.Type, name: String?) async -> Product? {
         let registration = registration(for: productType, with: name)
-        let product = await registration?.factory.makeAsync(self)
+        let product = await registration?.resolveAsync()
         return product
     }
     

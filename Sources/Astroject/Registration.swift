@@ -22,6 +22,40 @@ public class Registration<Product>: Registrable {
         self.container = container
     }
     
+    func resolve() -> Product? {
+        if let product = self.instance.get() {
+            return product
+        } else {
+            guard let container else { return nil }
+            let product: Product
+            switch factory {
+            case .async:
+                return nil
+            case .sync(let closure):
+                product = closure(container)
+            }
+            self.instance.set(product)
+            return product
+        }
+    }
+    
+    func resolveAsync() async -> Product? {
+        if let product = self.instance.get() {
+            return product
+        } else {
+            guard let container else { return nil }
+            let product: Product
+            switch factory {
+            case .async(let closure):
+                product = await closure(container)
+            case .sync(let closure):
+                product = closure(container)
+            }
+            self.instance.set(product)
+            return product
+        }
+    }
+    
     @discardableResult
     public func scope(_ instance: any Instance<Product>) -> Self {
         self.instance = instance
@@ -30,11 +64,16 @@ public class Registration<Product>: Registrable {
     
     @discardableResult
     public func singletonScope() -> Self {
-        scope(Singleton())
+        self.scope(Singleton())
     }
     
     @discardableResult
     public func weakScope() -> Self {
-        scope(Weak())
+        self.scope(Weak())
+    }
+    
+    @discardableResult
+    public func prototypeScope() -> Self {
+        self.scope(Prototype())
     }
 }
