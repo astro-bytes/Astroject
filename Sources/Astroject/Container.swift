@@ -12,22 +12,26 @@ import Foundation
 // TODO: InstanceStore
 
 public class Container {
-    var factories: ThreadSafeDictionary<FactoryKey, any FactoryRegistrable> = .init()
+    var factories: ThreadSafeDictionary<ProductKey, any Registrable> = .init()
     
     public init() {}
     
-    public func registerAsync<Product>(_ productType: Product.Type, name: String? = nil, factory block: @escaping (Resolver) async -> Product) {
-        let factoryKey = FactoryKey(productType: productType, name: name)
+    @discardableResult
+    public func registerAsync<Product>(_ productType: Product.Type, name: String? = nil, factory block: @escaping (Resolver) async -> Product) -> Registration<Product> {
+        let factoryKey = ProductKey(productType: productType, name: name)
         let factory = Factory.async(block)
-        let registration = FactoryRegistration(factory: factory)
+        let registration = Registration(factory: factory, container: self)
         factories.insert(registration, for: factoryKey)
+        return registration
     }
     
-    public func register<Product>(_ productType: Product.Type, name: String? = nil, factory block: @escaping (Resolver) -> Product) {
-        let factoryKey = FactoryKey(productType: productType, name: name)
+    @discardableResult
+    public func register<Product>(_ productType: Product.Type, name: String? = nil, factory block: @escaping (Resolver) -> Product) -> Registration<Product> {
+        let factoryKey = ProductKey(productType: productType, name: name)
         let factory = Factory.sync(block)
-        let registration = FactoryRegistration(factory: factory)
+        let registration = Registration(factory: factory, container: self)
         factories.insert(registration, for: factoryKey)
+        return registration
     }
 }
 
@@ -44,9 +48,9 @@ extension Container: Resolver {
         return product
     }
     
-    func registration<Product>(for productType: Product.Type, with name: String?) -> FactoryRegistration<Product>? {
-        let factoryKey = FactoryKey(productType: productType, name: name)
-        let registration = factories.getValue(for: factoryKey) as? FactoryRegistration<Product>
+    func registration<Product>(for productType: Product.Type, with name: String?) -> Registration<Product>? {
+        let factoryKey = ProductKey(productType: productType, name: name)
+        let registration = factories.getValue(for: factoryKey) as? Registration<Product>
         return registration
     }
 }
