@@ -6,8 +6,8 @@ import Testing
     container.register(Animal.self) { resolver in
         Cat(name: "john")
     }
-    let key = FactoryKey(productType: Animal.self)
-    let result = container.factories.getValue(for: key) as? FactoryRegistration<Animal>
+    let key = ProductKey(productType: Animal.self)
+    let result = container.factories.getValue(for: key) as? Registration<Animal>
     #expect("john" == result?.factory.make(container).name)
 }
 
@@ -16,8 +16,10 @@ import Testing
     container.register(Animal.self) { resolver in
         Dog(name: "john")
     }
-    let key = FactoryKey(productType: Animal.self)
-    let result = container.factories.getValue(for: key) as? FactoryRegistration<Animal>
+    .singletonScope()
+    
+    let key = ProductKey(productType: Animal.self)
+    let result = container.factories.getValue(for: key) as? Registration<Animal>
     #expect("john" == result?.factory.make(container).name)
 }
 
@@ -31,8 +33,8 @@ import Testing
         Dog(name: "peter")
     }
     
-    let key = FactoryKey(productType: Animal.self)
-    let result = container.factories.getValue(for: key) as? FactoryRegistration<Animal>
+    let key = ProductKey(productType: Animal.self)
+    let result = container.factories.getValue(for: key) as? Registration<Animal>
     #expect("peter" == result?.factory.make(container).name)
 }
 
@@ -41,8 +43,8 @@ import Testing
     container.register(Animal.self) { resolver in
         Fish(name: "joe")
     }
-    let key = FactoryKey(productType: Animal.self)
-    let result = container.factories.getValue(for: key) as? FactoryRegistration<Animal>
+    let key = ProductKey(productType: Animal.self)
+    let result = container.factories.getValue(for: key) as? Registration<Animal>
     let product = result?.factory.make(container)
     Task { @MainActor in
         #expect("joe" == product?.name)
@@ -54,8 +56,8 @@ import Testing
     container.registerAsync(Animal.self) { resolver in
         await Pig(name: "joe")
     }
-    let key = FactoryKey(productType: Animal.self)
-    let result = container.factories.getValue(for: key) as? FactoryRegistration<Animal>
+    let key = ProductKey(productType: Animal.self)
+    let result = container.factories.getValue(for: key) as? Registration<Animal>
     let animal = await result?.factory.makeAsync(container)
     await MainActor.run {
         #expect("joe" == animal?.name)
