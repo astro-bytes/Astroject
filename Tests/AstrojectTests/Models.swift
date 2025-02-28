@@ -1,17 +1,33 @@
-//
-//  File.swift
-//  Astroject
-//
-//  Created by Porter McGary on 2/26/25.
-//
-
 import Foundation
 
 protocol Animal {
     var name: String { get }
 }
 
-struct Cat: Animal {
+struct Home: Equatable {
+    var cat: Cat
+    var dog: Dog
+    
+    init(cat: Cat, dog: Dog) {
+        self.cat = cat
+        self.dog = dog
+    }
+}
+
+struct Zoo: Equatable {
+    static func == (lhs: Zoo, rhs: Zoo) -> Bool {
+        lhs.id == rhs.id
+    }
+    
+    let id: UUID = .init()
+    var animals: [Animal]
+    
+    init(animals: [Animal]) {
+        self.animals = animals
+    }
+}
+
+struct Cat: Animal, Equatable {
     var name: String = "Whiskers"
 }
 
@@ -55,5 +71,21 @@ class Pig: @preconcurrency Animal {
     
     init(name: String) {
         self.name = name
+    }
+}
+
+class ClassA {
+    weak var classB: ClassB?
+    
+    init(classB: ClassB?) {
+        self.classB = classB
+    }
+}
+
+class ClassB {
+    var classA: ClassA?
+    
+    init(classA: ClassA?) {
+        self.classA = classA
     }
 }

@@ -1,5 +1,5 @@
 //
-//  ProductKey.swift
+//  RegistrationKey.swift
 //  Astroject
 //
 //  Created by Porter McGary on 2/25/25.
@@ -7,25 +7,25 @@
 
 import Foundation
 
-struct ProductKey {
+struct RegistrationKey {
     let productType: Any.Type
     let name: String?
     
-    init(productType: Any.Type, name: String? = nil) {
+    init<Product>(productType: Product.Type, name: String? = nil) {
         self.productType = productType
         self.name = name
     }
 }
 
-extension ProductKey: Hashable {
+extension RegistrationKey: Hashable {
     func hash(into hasher: inout Hasher) {
         ObjectIdentifier(self.productType).hash(into: &hasher)
         self.name?.hash(into: &hasher)
     }
 }
 
-extension ProductKey: Equatable {
-    static func == (lhs: ProductKey, rhs: ProductKey) -> Bool {
+extension RegistrationKey: Equatable {
+    static func == (lhs: RegistrationKey, rhs: RegistrationKey) -> Bool {
         lhs.productType == rhs.productType && lhs.name == rhs.name
     }
 }

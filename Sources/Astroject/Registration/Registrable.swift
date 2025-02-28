@@ -12,4 +12,5 @@ protocol Registrable {
     
     var factory: Factory<Product> { get }
     var instance: any Instance<Product> { get }
+    var isOverridable: Bool { get }
 }

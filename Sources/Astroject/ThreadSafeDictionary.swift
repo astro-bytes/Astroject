@@ -7,9 +7,12 @@
 
 import Foundation
 
-class ThreadSafeDictionary<Key: Hashable, Value> {
-    private var queue: DispatchQueue = .init(label: "com.astrobytes.astroject")
+final class ThreadSafeDictionary<Key: Hashable, Value> {
+    private let queue: DispatchQueue = .init(label: "com.astrobytes.astroject.dictionary")
     private var dictionary: [Key: Value]
+    
+    var count: Int { dictionary.count }
+    var isEmpty: Bool { dictionary.isEmpty }
     
     init(from dictionary: [Key: Value]) {
         self.dictionary = dictionary
@@ -28,6 +31,12 @@ class ThreadSafeDictionary<Key: Hashable, Value> {
     func insert(_ value: Value, for key: Key) {
         queue.sync {
             dictionary[key] = value
+        }
+    }
+    
+    func contains(_ key: Key) -> Bool {
+        queue.sync {
+            dictionary.keys.contains(key)
         }
     }
     
