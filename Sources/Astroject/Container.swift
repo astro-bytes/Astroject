@@ -42,7 +42,7 @@ public class Container {
         name: String? = nil,
         overridable: Bool = true,
         factory block: @escaping (Resolver) async throws -> Product
-    ) throws -> Registration<Product> {
+    ) throws -> any Registrable<Product> {
         let key = RegistrationKey(productType: productType, name: name)
         let factory = Factory.async(block)
         let registration = Registration(factory: factory, isOverridable: overridable)
@@ -67,7 +67,7 @@ public class Container {
         name: String? = nil,
         overridable: Bool = true,
         factory block: @escaping (Resolver) throws -> Product
-    ) throws -> Registration<Product> {
+    ) throws -> any Registrable<Product> {
         let key = RegistrationKey(productType: productType, name: name)
         let factory = Factory.sync(block)
         let registration = Registration(factory: factory, isOverridable: overridable)

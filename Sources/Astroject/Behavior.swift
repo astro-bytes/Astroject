@@ -19,7 +19,7 @@ public protocol Behavior: Sendable {
     func didRegister<Product>(
         type: Product.Type,
         to container: Container,
-        as registration: Registration<Product>,
+        as registration: any Registrable<Product>,
         with name: String?
     )
 }

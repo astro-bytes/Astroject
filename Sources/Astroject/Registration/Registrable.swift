@@ -8,16 +8,46 @@
 import Foundation
 
 /// A protocol defining a registrable component that can be resolved by a `Container`.
-protocol Registrable {
+public protocol Registrable<Product> {
+    /// A closure type for actions to be performed after a product is resolved.
+    associatedtype Action
+    
     /// The type of product that this registrable component produces.
     associatedtype Product
     
-    /// The factory used to create instances of the product.
-    var factory: Factory<Product> { get }
+    /// Sets the instance management scope for the registration.
+    ///
+    /// - Parameter instance: The instance management strategy.
+    /// - Returns: The modified `Registration` instance.
+    @discardableResult
+    func `as`(_ instance: any Instance<Product>) -> Self
     
-    /// The instance management strategy for the product.
-    var instance: any Instance<Product> { get }
+    @discardableResult
+    func afterInit(perform action: Action) -> Self
+}
+
+public extension Registrable {
+    /// Sets the instance management scope to `Singleton`.
+    ///
+    /// - Returns: The modified `Registration` instance.
+    @discardableResult
+    func asSingleton() -> Self {
+        self.as(Singleton())
+    }
     
-    /// Indicates whether this registration can be overridden by another registration.
-    var isOverridable: Bool { get }
+    /// Sets the instance management scope to `Weak`.
+    ///
+    /// - Returns: The modified `Registration` instance.
+    @discardableResult
+    func asWeak() -> Self where Product: AnyObject {
+        self.as(Weak())
+    }
+    
+    /// Sets the instance management scope to `Prototype`.
+    ///
+    /// - Returns: The modified `Registration` instance.
+    @discardableResult
+    func asPrototype() -> Self {
+        self.as(Prototype())
+    }
 }

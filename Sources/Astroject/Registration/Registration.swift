@@ -8,9 +8,8 @@
 import Foundation
 
 /// Represents a registration of a product with a factory and instance management strategy.
-public class Registration<Product>: Registrable {
-    /// A closure type for actions to be performed after a product is resolved.
-    public typealias Action = (Resolver, Product) throws -> Void
+class Registration<Product>: Registrable {
+    typealias Action = (Resolver, Product) throws -> Void
     
     /// The factory used to create instances of the product.
     let factory: Factory<Product>
@@ -89,7 +88,7 @@ public class Registration<Product>: Registrable {
     ///   - container: The container used for dependency resolution.
     ///   - product: The resolved product instance.
     /// - Throws: `ResolutionError.underlyingError` if an error occurs during action execution.
-    private func runActions(_ container: Container, product: Product) throws {
+    func runActions(_ container: Container, product: Product) throws {
         do {
             try actions.forEach { try $0(container, product) }
         } catch {
@@ -102,33 +101,9 @@ public class Registration<Product>: Registrable {
     /// - Parameter instance: The instance management strategy.
     /// - Returns: The modified `Registration` instance.
     @discardableResult
-    public func scope(_ instance: any Instance<Product>) -> Self {
+    func `as`(_ instance: any Instance<Product>) -> Self {
         self.instance = instance
         return self
-    }
-    
-    /// Sets the instance management scope to `Singleton`.
-    ///
-    /// - Returns: The modified `Registration` instance.
-    @discardableResult
-    public func singletonScope() -> Self {
-        self.scope(Singleton())
-    }
-    
-    /// Sets the instance management scope to `Weak`.
-    ///
-    /// - Returns: The modified `Registration` instance.
-    @discardableResult
-    public func weakScope() -> Self where Product: AnyObject {
-        self.scope(Weak())
-    }
-    
-    /// Sets the instance management scope to `Prototype`.
-    ///
-    /// - Returns: The modified `Registration` instance.
-    @discardableResult
-    public func prototypeScope() -> Self {
-        self.scope(Prototype())
     }
     
     /// Adds a post-initialization action to the registration.
@@ -136,7 +111,7 @@ public class Registration<Product>: Registrable {
     /// - Parameter action: The action to be performed.
     /// - Returns: The modified `Registration` instance.
     @discardableResult
-    public func postInitAction(_ action: @escaping Action) -> Self {
+    func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)
         return self
     }
@@ -149,7 +124,7 @@ extension Registration: Equatable where Product: Equatable {
     ///   - lhs: The left-hand side registration.
     ///   - rhs: The right-hand side registration.
     /// - Returns: `true` if the registrations are equal, `false` otherwise.
-    public static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
+    static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
         lhs.instance.get() == rhs.instance.get() && lhs.isOverridable == rhs.isOverridable && lhs.factory == rhs.factory
     }
 }
