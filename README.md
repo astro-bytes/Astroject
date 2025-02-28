@@ -30,9 +30,9 @@ Add Astroject as a dependency to your `Package.swift` file:
 dependencies: [
     .package(url: "YOUR_GITHUB_REPO_URL", from: "1.0.0") // Replace with your repo URL and version
 ]
+```
 Then, import Astroject in your Swift files:
 ```swift
-Swift
 import Astroject
 ```
 
