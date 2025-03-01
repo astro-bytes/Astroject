@@ -10,6 +10,7 @@ Astroject is designed to simplify dependency management in your Swift projects. 
 
 ## API Documentation
 Coming Soon...
+[DocC]()
 
 ## Features
 - **Synchronous and Asynchronous Registrations:** Register dependencies with both synchronous and asynchronous factory closures.
@@ -68,7 +69,7 @@ let service: Service = try container.resolve(Service.self)
 service.doSomething()
 ```
 
-### Asynchronous Registration
+### Asynchronous Registration and Resolution
 Asynchronous registration primary supports any initializer that needs to run asynchronously. This tends to happen often with classes wrapped with @MainActor.
 
 ```swift
@@ -95,7 +96,7 @@ let asyncService: AsyncService = try await container.resolveAsync(AsyncService.s
 asyncService.doWork()
 ```
 
-### Named Registrations
+### Named Registrations and Resolution
 Additionally with Synchronous or Asynchronous Registrations you can provide a name attribute to ensure the registration is uniquely stored when storing the same type more than once.
 ```swift
 import Astroject
@@ -195,11 +196,12 @@ let container = Container()
     let instance1: MyClass = try container.resolve(MyClass.self) 
     
     // No output (same instance)
-    let instance2: MyClass = try container.resolve(MyClass.self) ```
+    let instance2: MyClass = try container.resolve(MyClass.self) 
+    ```
 - Weak - As long as you retain an instance to the object the instance remains in the container when asked for. If you have no references to the class then container will deallocate its reference.
     ```swift
     try container.register(MyClass.self) { _ in
-      MyClass()
+        MyClass()
     }
     .asWeak()
 
@@ -221,6 +223,7 @@ let container = Container()
     // Output: MyClass initialized
     let instance4: MyClass = try container.resolve(MyClass.self)
     ```
+
 #### Custom Scopes
 Additionally you can create your own Scopes through utilization of the `Instance` protocol and the `as` function on `any Registrable`.
 ```swift
@@ -232,14 +235,15 @@ class ExampleInstance: Instance {
 container.register(Int.self) { _ in 42 }.as(ExampleInstance())
 ```
 Convenience functions can also be created by extending `Registrable`
-```swift
-extension Registrable {
-  @discardableResult
-  func exampleInstance() -> Self {
-    self.as(ExampleInstance())
-  }
-}
-```
+
+    ```swift
+    extension Registrable {
+    @discardableResult
+    func exampleInstance() -> Self {
+        self.as(ExampleInstance())
+    }
+    }
+    ```
 
 If you need a combination of multiple scopes just create the scopes you need then add them to our `Composite` Instance object. `Composite` takes the first instance not nil from a list of `Instance` objects.
 ```swift
