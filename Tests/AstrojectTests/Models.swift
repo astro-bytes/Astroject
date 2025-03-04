@@ -1,10 +1,22 @@
 import Foundation
 
-protocol Animal {
+protocol Animal: Sendable {
     var name: String { get }
+    
+    func isEqual(to other: Animal) async -> Bool
 }
 
-struct Home: Equatable {
+extension Animal {
+    func isEqual(to other: Animal) async -> Bool {
+        if let other = other as? Self {
+            return other.name == self.name
+        } else {
+            return false
+        }
+    }
+}
+
+struct Home {
     var cat: Cat
     var dog: Dog
     
@@ -27,20 +39,14 @@ struct Zoo: Equatable {
     }
 }
 
-struct Cat: Animal, Equatable {
+struct Cat: Animal {
     var name: String = "Whiskers"
 }
 
-class Dog: Animal, Equatable {
-    static func == (lhs: Dog, rhs: Dog) -> Bool {
-        lhs.name == rhs.name
-    }
+actor Dog: Animal {
+    let name: String
     
-    var name: String = "Max"
-    
-    init() {}
-    
-    init(name: String) {
+    init(name: String = "Max") {
         self.name = name
     }
 }
@@ -50,11 +56,9 @@ final class Fish: Animal, Equatable {
         lhs.name == rhs.name
     }
     
-    var name: String = "Nemo"
+    let name: String
     
-    init() {}
-    
-    init(name: String) {
+    init(name: String = "Nemo") {
         self.name = name
     }
 }
@@ -64,17 +68,15 @@ actor Horse: @preconcurrency Animal {
 }
 
 @MainActor
-class Pig: @preconcurrency Animal {
-    var name: String = "Hamlet"
+class Pig: Animal {
+    let name: String
     
-    init() {}
-    
-    init(name: String) {
+    init(name: String = "Hamlet") {
         self.name = name
     }
 }
 
-class ClassA {
+actor ClassA: Sendable {
     weak var classB: ClassB?
     
     init(classB: ClassB?) {
@@ -82,7 +84,7 @@ class ClassA {
     }
 }
 
-class ClassB {
+actor ClassB: Sendable {
     var classA: ClassA?
     
     init(classA: ClassA?) {

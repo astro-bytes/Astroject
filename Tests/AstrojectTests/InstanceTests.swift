@@ -11,11 +11,11 @@ import Foundation
 
 @Suite("Instance")
 struct InstanceTests {
-    @Test func singleton() {
+    @Test func singleton() async {
         let instance = Singleton<Dog>()
         let dog = Dog()
-        instance.set(dog)
-        let result = instance.get()
+        await instance.set(dog)
+        let result = await instance.get()
         #expect(result != nil)
         #expect(result === dog)
     }
@@ -28,32 +28,38 @@ struct InstanceTests {
         #expect(result !== dog)
     }
     
-    @Test func weak() {
+    @Test func weak() async {
         let instance = Weak<Dog>()
         var dog: Dog? = Dog()
-        instance.set(dog!)
-        #expect(instance.get() != nil)
-        #expect(instance.get() === dog)
+        await instance.set(dog!)
+        let isNotNil = await instance.get() != nil
+        #expect(isNotNil)
+        let isObject = await instance.get() === dog
+        #expect(isObject)
         dog = nil
-        #expect(instance.get() == nil)
+        let isNil = await instance.get() == nil
+        #expect(isNil)
     }
     
-    @Test func composite() {
+    @Test func composite() async {
         let prototype: Prototype<Dog> = .init()
         let weak: Weak<Dog> = .init()
         let instance = Composite<Dog>(instances: [prototype, weak])
         let dog1 = Dog()
-        weak.set(dog1)
-        #expect(instance.get() === dog1)
+        await weak.set(dog1)
+        let isIdenticalObject = await instance.get() === dog1
+        #expect(isIdenticalObject)
         
         let dog2 = Dog()
         let singleton = Singleton<Dog>()
-        singleton.set(dog2)
+        await singleton.set(dog2)
         
         let composite2 = Composite<Dog>(instances: [prototype, weak, singleton])
-        #expect(composite2.get() === dog1)
+        let isIdenticalDog = await composite2.get() === dog1
+        #expect(isIdenticalDog)
         
-        weak.release()
-        #expect(composite2.get() === dog2)
+        await weak.release()
+        let isIdenticalDog3 = await composite2.get() === dog2
+        #expect(isIdenticalDog3)
     }
 }

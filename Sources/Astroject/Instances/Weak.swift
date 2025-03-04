@@ -8,7 +8,7 @@
 import Foundation
 
 /// A weak instance that holds a weak reference to the product.
-public class Weak<Product: AnyObject>: Instance {
+public actor Weak<Product: AnyObject & Sendable>: Instance {
     /// The weak reference to the product instance.
     weak var product: Product?
     

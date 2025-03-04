@@ -11,9 +11,13 @@ import Foundation
 public enum RegistrationError: LocalizedError {
     /// A registration is attempted with a ProductKey that already exists.
     case alreadyRegistered
+    case containerDeallocated
     
     public var errorDescription: String? {
         switch self {
+        case .containerDeallocated:
+            // TODO: Implement
+            ""
         case .alreadyRegistered:
             "A registration with the same ProductKey already exists."
         }
@@ -21,6 +25,9 @@ public enum RegistrationError: LocalizedError {
     
     public var failureReason: String? {
         switch self {
+        case .containerDeallocated:
+            // TODO: Implement
+            ""
         case .alreadyRegistered:
             "Attempting to register a dependency with a ProductKey that has already been used."
         }
@@ -28,6 +35,9 @@ public enum RegistrationError: LocalizedError {
     
     public var recoverySuggestion: String? {
         switch self {
+        case .containerDeallocated:
+            // TODO: Implement
+            ""
         case .alreadyRegistered:
             "Use a different ProductKey or remove the existing registration before registering a new one."
         }

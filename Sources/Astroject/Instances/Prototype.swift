@@ -8,7 +8,7 @@
 import Foundation
 
 /// A prototype instance that creates a new instance each time it's resolved.
-public class Prototype<Product>: Instance {
+public struct Prototype<Product: Sendable>: Instance {
     /// Initializes a new Prototype instance.
     public init() {}
     

@@ -2,11 +2,14 @@
 
 A lightweight and flexible dependency injection container for Swift.
 
+<!--![Github Actions](https://github.com/1ucas/Swinject/actions/workflows/Project%20Testing.yml/badge.svg?branch=master) -->
 [![Swift Version](https://img.shields.io/badge/Swift-5.5+-orange.svg)](https://swift.org)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS-lightgrey.svg)
+[![Swift Version](https://img.shields.io/badge/5.5-F16D39.svg?style=flat)](https://developer.apple.com/swift)
 
 ## Overview
-Astroject is designed to simplify dependency management in your Swift projects. It provides a clean and intuitive API for registering and resolving dependencies, supporting both synchronous and asynchronous factories, various instance scopes (singleton, prototype, weak), and extensible behaviors. Many ideas came from a Sister Library [Swinject](https://github.com/Swinject/Swinject)
+Astroject is designed to simplify dependency management in your Swift projects. It provides a clean and intuitive API for registering and resolving dependencies, supporting both synchronous and asynchronous factories, various instance scopes (singleton, prototype, weak), and extensible behaviors.
 
 ## API Documentation
 Coming Soon...
@@ -235,15 +238,14 @@ class ExampleInstance: Instance {
 container.register(Int.self) { _ in 42 }.as(ExampleInstance())
 ```
 Convenience functions can also be created by extending `Registrable`
-
-    ```swift
-    extension Registrable {
+```swift
+extension Registrable {
     @discardableResult
     func exampleInstance() -> Self {
         self.as(ExampleInstance())
     }
-    }
-    ```
+}
+```
 
 If you need a combination of multiple scopes just create the scopes you need then add them to our `Composite` Instance object. `Composite` takes the first instance not nil from a list of `Instance` objects.
 ```swift

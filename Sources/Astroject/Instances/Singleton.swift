@@ -8,7 +8,7 @@
 import Foundation
 
 /// A singleton instance that creates and stores a single instance of the product.
-public class Singleton<Product>: Instance {
+public actor Singleton<Product: Sendable>: Instance {
     /// The stored product instance.
     var product: Product?
     
