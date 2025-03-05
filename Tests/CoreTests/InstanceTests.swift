@@ -7,13 +7,13 @@
 
 import Testing
 import Foundation
-@testable import Astroject
+@testable import Core
 
 @Suite("Instance")
 struct InstanceTests {
     @Test func singleton() {
-        let instance = Singleton<Dog>()
-        let dog = Dog()
+        let instance = Singleton<ClassAnimal>()
+        let dog = ClassAnimal()
         instance.set(dog)
         let result = instance.get()
         #expect(result != nil)
@@ -21,16 +21,16 @@ struct InstanceTests {
     }
     
     @Test func prototype() {
-        let instance = Prototype<Dog>()
-        let dog = Dog()
+        let instance = Prototype<ClassAnimal>()
+        let dog = ClassAnimal()
         let result = instance.get()
         #expect(result == nil)
         #expect(result !== dog)
     }
     
     @Test func weak() {
-        let instance = Weak<Dog>()
-        var dog: Dog? = Dog()
+        let instance = Weak<ClassAnimal>()
+        var dog: ClassAnimal? = ClassAnimal()
         instance.set(dog!)
         #expect(instance.get() != nil)
         #expect(instance.get() === dog)
@@ -39,18 +39,18 @@ struct InstanceTests {
     }
     
     @Test func composite() {
-        let prototype: Prototype<Dog> = .init()
-        let weak: Weak<Dog> = .init()
-        let instance = Composite<Dog>(instances: [prototype, weak])
-        let dog1 = Dog()
+        let prototype: Prototype<ClassAnimal> = .init()
+        let weak: Weak<ClassAnimal> = .init()
+        let instance = Composite<ClassAnimal>(instances: [prototype, weak])
+        let dog1 = ClassAnimal()
         weak.set(dog1)
         #expect(instance.get() === dog1)
         
-        let dog2 = Dog()
-        let singleton = Singleton<Dog>()
+        let dog2 = ClassAnimal()
+        let singleton = Singleton<ClassAnimal>()
         singleton.set(dog2)
         
-        let composite2 = Composite<Dog>(instances: [prototype, weak, singleton])
+        let composite2 = Composite<ClassAnimal>(instances: [prototype, weak, singleton])
         #expect(composite2.get() === dog1)
         
         weak.release()

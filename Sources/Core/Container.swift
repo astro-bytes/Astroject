@@ -7,16 +7,8 @@
 
 import Foundation
 
-// ✅ Registration
-// ✅ Resolution
-// ✅ InstanceStore
-// ✅ Error Handling
-// ✅ Behaviors
-// ✅ Assemblies
-// TODO: Write Unit Tests
-
 /// A dependency injection container that manages registrations and resolves dependencies.
-public class Container {
+public final class Container {
     /// A thread-safe dictionary to store registrations.
     var registrations: ThreadSafeDictionary<RegistrationKey, any Registrable> = .init()
     /// A set to track keys currently being resolved to detect circular dependencies.
@@ -24,29 +16,28 @@ public class Container {
     /// A thread-safe array to store behaviors.
     var behaviors: ThreadSafeArray<Behavior> = .init()
     
-    /// Initializes a new `Container` instance.
+    /// Initializes a new `DIContainer` instance.
     public init() {}
     
-    /// Registers an asynchronous factory for a product type.
+    /// Registers a synchronous factory for a product type.
     ///
     /// - Parameters:
     ///   - productType: The type of the product to register.
     ///   - name: An optional name for the registration.
     ///   - overridable: Indicates whether the registration can be overridden (default is `true`).
-    ///   - block: The asynchronous factory closure.
+    ///   - factory: The synchronous factory closure.
     /// - Returns: The created `Registration` instance.
     /// - Throws: `RegistrationError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
-    public func registerAsync<Product>(
+    public func register<Product>(
         _ productType: Product.Type,
         name: String? = nil,
-        overridable: Bool = true,
-        factory block: @escaping (Resolver) async throws -> Product
+        isOverridable: Bool = true,
+        factory: Factory<Product>
     ) throws -> any Registrable<Product> {
         let key = RegistrationKey(productType: productType, name: name)
-        let factory = Factory.async(block)
-        let registration = Registration(factory: factory, isOverridable: overridable)
-        try assertRegistrationAllowed(productType, name: name, overridable: overridable)
+        let registration = Registration(factory: factory, isOverridable: isOverridable)
+        try assertRegistrationAllowed(productType, name: name, overridable: isOverridable)
         registrations.insert(registration, for: key)
         behaviors.forEach { $0.didRegister(type: productType, to: self, as: registration, with: name) }
         return registration
@@ -65,16 +56,11 @@ public class Container {
     public func register<Product>(
         _ productType: Product.Type,
         name: String? = nil,
-        overridable: Bool = true,
-        factory block: @escaping (Resolver) throws -> Product
+        isOverridable: Bool = false,
+        block: @escaping Factory<Product>.Block
     ) throws -> any Registrable<Product> {
-        let key = RegistrationKey(productType: productType, name: name)
-        let factory = Factory.sync(block)
-        let registration = Registration(factory: factory, isOverridable: overridable)
-        try assertRegistrationAllowed(productType, name: name, overridable: overridable)
-        registrations.insert(registration, for: key)
-        behaviors.forEach { $0.didRegister(type: productType, to: self, as: registration, with: name) }
-        return registration
+        let factory = Factory(block)
+        return try self.register(productType, name: name, isOverridable: isOverridable, factory: factory)
     }
     
     /// Checks if a product type is registered.
@@ -109,24 +95,10 @@ extension Container: Resolver {
     ///   - name: An optional name for the registration.
     /// - Returns: The resolved product instance.
     /// - Throws: `ResolutionError.noRegistrationFound` if no registration exists, or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
-    public func resolve<Product>(_ productType: Product.Type, name: String?) throws -> Product {
+    public func resolve<Product>(_ productType: Product.Type, name: String?) async throws -> Product {
         defer { removeRegistrationKey(for: productType, with: name) }
         let registration = try findRegistration(for: productType, with: name)
-        let product = try registration.resolve(self)
-        return product
-    }
-    
-    /// Resolves a product type asynchronously.
-    ///
-    /// - Parameters:
-    ///   - productType: The type of the product to resolve.
-    ///   - name: An optional name for the registration.
-    /// - Returns: The resolved product instance.
-    /// - Throws: `ResolutionError.noRegistrationFound` if no registration exists, or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
-    public func resolveAsync<Product>(_ productType: Product.Type, name: String?) async throws -> Product {
-        defer { removeRegistrationKey(for: productType, with: name) }
-        let registration = try findRegistration(for: productType, with: name)
-        let product = try await registration.resolveAsync(self)
+        let product = try await registration.resolve(self)
         return product
     }
 }

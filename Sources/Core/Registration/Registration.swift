@@ -38,44 +38,26 @@ class Registration<Product>: Registrable {
         self.instance = instance
     }
     
+    init(factory block: @escaping Factory<Product>.Block,
+         isOverridable: Bool,
+         instance: any Instance<Product> = Prototype<Product>()
+    ) {
+        let factory = Factory(block)
+        self.factory = factory
+        self.isOverridable = isOverridable
+        self.instance = instance
+    }
+    
     /// Resolves the product instance synchronously.
     ///
     /// - Parameter container: The container used for dependency resolution.
     /// - Returns: The resolved product instance.
     /// - Throws: `ResolutionError.asyncResolutionRequired` if an async factory is used, or `ResolutionError.underlyingError` if an error occurs during creation.
-    func resolve(_ container: Container) throws -> Product {
+    func resolve(_ container: Container) async throws -> Product {
         if let product = self.instance.get() {
             return product
         } else {
-            let product: Product
-            switch factory {
-            case .async:
-                throw ResolutionError.asyncResolutionRequired
-            case .sync(let closure):
-                product = try closure(container)
-            }
-            self.instance.set(product)
-            try runActions(container, product: product)
-            return product
-        }
-    }
-    
-    /// Resolves the product instance asynchronously.
-    ///
-    /// - Parameter container: The container used for dependency resolution.
-    /// - Returns: The resolved product instance.
-    /// - Throws: `ResolutionError.underlyingError` if an error occurs during creation.
-    func resolveAsync(_ container: Container) async throws -> Product {
-        if let product = self.instance.get() {
-            return product
-        } else {
-            let product: Product
-            switch factory {
-            case .async(let closure):
-                product = try await closure(container)
-            case .sync(let closure):
-                product = try closure(container)
-            }
+            let product: Product = try await factory(container)
             self.instance.set(product)
             try runActions(container, product: product)
             return product
