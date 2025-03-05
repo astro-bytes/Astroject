@@ -8,9 +8,9 @@
 import Foundation
 
 /// Represents errors that can occur during dependency registration.
-public enum RegistrationError: LocalizedError {
+public enum RegistrationError<Product>: LocalizedError {
     /// A registration is attempted with a ProductKey that already exists.
-    case alreadyRegistered
+    case alreadyRegistered(type: Product.Type, name: String? = nil)
     
     public var errorDescription: String? {
         switch self {
@@ -34,4 +34,11 @@ public enum RegistrationError: LocalizedError {
     }
 }
 
-extension RegistrationError: Equatable {}
+extension RegistrationError: Equatable where Product: Equatable {
+    public static func == (lhs: RegistrationError<Product>, rhs: RegistrationError<Product>) -> Bool {
+        switch (lhs, rhs) {
+        case (.alreadyRegistered(let lhsType, let lhsName), .alreadyRegistered(type: let rhsType, name: let rhsName)):
+            lhsType == rhsType && lhsName == rhsName
+        }
+    }
+}

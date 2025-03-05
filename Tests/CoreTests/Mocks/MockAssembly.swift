@@ -1,3 +1,12 @@
+//
+//  MockAssembly.swift
+//  Astroject
+//
+//  Created by Porter McGary on 3/4/25.
+//
+
+import Core
+
 // Mock Assembly for testing
 class MockAssembly: Assembly {
     var assembleCalled = false

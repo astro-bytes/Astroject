@@ -57,10 +57,14 @@ class Registration<Product>: Registrable {
         if let product = self.instance.get() {
             return product
         } else {
-            let product: Product = try await factory(container)
-            self.instance.set(product)
-            try runActions(container, product: product)
-            return product
+            do {
+                let product: Product = try await factory(container)
+                self.instance.set(product)
+                try runActions(container, product: product)
+                return product
+            } catch {
+                throw ResolutionError.underlyingError(error)
+            }
         }
     }
     

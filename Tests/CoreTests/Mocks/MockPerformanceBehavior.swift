@@ -1,3 +1,13 @@
+//
+//  MockPerformanceBehavior.swift
+//  Astroject
+//
+//  Created by Porter McGary on 3/4/25.
+//
+
+import Foundation
+import Core
+
 // Mock Behavior for performance testing
 class MockPerformanceBehavior: Behavior {
     func didRegister<Product>(
@@ -7,7 +17,7 @@ class MockPerformanceBehavior: Behavior {
         with name: String?
     ) {
         // Simulate some non-trivial work
-        for _ in 0..<100 {
+        for _ in 0..<1_000 {
             _ = sin(Double.random(in: 0..<1))
         }
     }

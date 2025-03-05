@@ -1,6 +1,6 @@
 //
 //  InstanceTests.swift
-//  Astroject
+//  CoreTests
 //
 //  Created by Porter McGary on 2/27/25.
 //

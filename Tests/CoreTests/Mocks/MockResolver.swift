@@ -1,3 +1,13 @@
+//
+//  MockResolver.swift
+//  Astroject
+//
+//  Created by Porter McGary on 3/4/25.
+//
+
+import Foundation
+import Core
+
 // Mock Resolver for testing
 class MockResolver: Resolver {
     let error = NSError(domain: "Test", code: 1)

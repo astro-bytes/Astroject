@@ -1,6 +1,6 @@
 //
 //  ThreadSafeDictionaryTests.swift
-//  AstrojectTests
+//  CoreTests
 //
 //  Created by Porter McGary on 3/4/25.
 //
@@ -70,7 +70,13 @@ struct ThreadSafeDictionaryTests {
         let dictionary = ThreadSafeDictionary<String, Int>()
         dictionary.insert(1, for: "one")
         dictionary.insert(2, for: "two")
-        let mapped = dictionary.map { $0.value * 2 }
+        
+        let mapped = dictionary.map {
+            $0.value * 2
+        }.sorted {
+            $0 < $1
+        }
+        
         #expect(mapped == [2, 4])
     }
     
@@ -96,7 +102,7 @@ struct ThreadSafeDictionaryTests {
         }
         
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<iterations {
+            for _ in 0..<iterations {
                 group.addTask {
                     _ = dictionary.getValue(for: Int.random(in: 0..<iterations))
                 }
@@ -104,7 +110,7 @@ struct ThreadSafeDictionaryTests {
         }
         
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<iterations {
+            for _ in 0..<iterations {
                 group.addTask {
                     _ = dictionary.contains(Int.random(in: 0..<iterations))
                 }

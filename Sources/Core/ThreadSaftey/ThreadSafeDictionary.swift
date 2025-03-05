@@ -8,7 +8,7 @@
 import Foundation
 
 /// A thread-safe dictionary that allows synchronized access to its key-value pairs.
-final class ThreadSafeDictionary<Key: Hashable, Value> {
+final class ThreadSafeDictionary<Key: Hashable, Value>: @unchecked Sendable {
     /// The dispatch queue used for synchronization.
     private let queue: DispatchQueue = .init(label: "com.astrobytes.astroject.dictionary")
     /// The internal dictionary that stores the key-value pairs.

@@ -8,9 +8,9 @@
 import Foundation
 
 /// A thread-safe array that allows concurrent reads and synchronized writes.
-final class ThreadSafeArray<Element: Sendable>: @unchecked Sendable {
+final class ThreadSafeArray<Element>: @unchecked Sendable {
     /// The dispatch queue used for synchronization.
-    private let queue: DispatchQueue = .init(label: "com.astrobytes.astroject.array", attributes: .concurrent)
+    private let queue: DispatchQueue = .init(label: "com.astrobytes.astroject.array")
     /// The internal array that stores the elements.
     private var array: [Element] = []
     
@@ -35,7 +35,7 @@ final class ThreadSafeArray<Element: Sendable>: @unchecked Sendable {
     ///
     /// - Parameter element: The element to append.
     func append(_ element: Element) {
-        self.queue.async(flags: .barrier) {
+        self.queue.sync {
             self.array.append(element)
         }
     }
@@ -46,8 +46,8 @@ final class ThreadSafeArray<Element: Sendable>: @unchecked Sendable {
     ///   - element: The element to insert.
     ///   - index: The index at which to insert the element.
     func insert(_ element: Element, at index: Int) {
-        self.queue.async(flags: .barrier) {
-            guard index <= self.array.count else { return }
+        self.queue.sync {
+            guard index <= self.array.count, index >= 0 else { return }
             self.array.insert(element, at: index)
         }
     }
@@ -56,8 +56,8 @@ final class ThreadSafeArray<Element: Sendable>: @unchecked Sendable {
     ///
     /// - Parameter index: The index of the element to remove.
     func remove(at index: Int) {
-        self.queue.async(flags: .barrier) {
-            guard index < self.array.count else { return }
+        self.queue.sync {
+            guard index < self.array.count, index >= 0 else { return }
             self.array.remove(at: index)
         }
     }
@@ -69,7 +69,7 @@ final class ThreadSafeArray<Element: Sendable>: @unchecked Sendable {
     func get(at index: Int) -> Element? {
         var result: Element?
         self.queue.sync {
-            guard index < self.array.count else { return }
+            guard index < self.array.count, index >= 0 else { return }
             result = self.array[index]
         }
         return result
@@ -106,8 +106,24 @@ final class ThreadSafeArray<Element: Sendable>: @unchecked Sendable {
     
     /// Removes all elements from the array.
     func removeAll() {
-        self.queue.async(flags: .barrier) {
+        self.queue.sync {
             self.array.removeAll()
+        }
+    }
+    
+    subscript(index: Int) -> Element? {
+        get {
+            return get(at: index)
+        }
+        
+        set {
+            queue.sync {
+                guard let newValue = newValue,
+                      index < self.array.count,
+                      index >= 0
+                else { return }
+                self.array[index] = newValue
+            }
         }
     }
 }

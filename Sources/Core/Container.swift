@@ -8,13 +8,12 @@
 import Foundation
 
 /// A dependency injection container that manages registrations and resolves dependencies.
-public final class Container {
+public final class Container: @unchecked Sendable {
     /// A thread-safe dictionary to store registrations.
     var registrations: ThreadSafeDictionary<RegistrationKey, any Registrable> = .init()
-    /// A set to track keys currently being resolved to detect circular dependencies.
-    var resolvingKeys: Set<RegistrationKey> = .init()
     /// A thread-safe array to store behaviors.
     var behaviors: ThreadSafeArray<Behavior> = .init()
+    var resolvingKeys: ThreadSafeSet<RegistrationKey> = .init()
     
     /// Initializes a new `DIContainer` instance.
     public init() {}
@@ -56,10 +55,30 @@ public final class Container {
     public func register<Product>(
         _ productType: Product.Type,
         name: String? = nil,
-        isOverridable: Bool = false,
+        isOverridable: Bool = true,
         block: @escaping Factory<Product>.Block
     ) throws -> any Registrable<Product> {
         let factory = Factory(block)
+        return try self.register(productType, name: name, isOverridable: isOverridable, factory: factory)
+    }
+    
+    /// Registers a synchronous factory for a product type.
+    ///
+    /// - Parameters:
+    ///   - productType: The type of the product to register.
+    ///   - name: An optional name for the registration.
+    ///   - overridable: Indicates whether the registration can be overridden (default is `true`).
+    ///   - block: The synchronous factory closure.
+    /// - Returns: The created `Registration` instance.
+    /// - Throws: `RegistrationError.alreadyRegistered` if a non-overridable registration already exists.
+    @discardableResult
+    public func register<Product>(
+        _ productType: Product.Type,
+        name: String? = nil,
+        isOverridable: Bool = true,
+        block: @escaping () async throws -> Product
+    ) throws -> any Registrable<Product> {
+        let factory = Factory { _ in try await block() }
         return try self.register(productType, name: name, isOverridable: isOverridable, factory: factory)
     }
     
@@ -97,9 +116,19 @@ extension Container: Resolver {
     /// - Throws: `ResolutionError.noRegistrationFound` if no registration exists, or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
     public func resolve<Product>(_ productType: Product.Type, name: String?) async throws -> Product {
         defer { removeRegistrationKey(for: productType, with: name) }
-        let registration = try findRegistration(for: productType, with: name)
-        let product = try await registration.resolve(self)
-        return product
+        do {
+            let registration = try findRegistration(for: productType, with: name)
+            let product = try await registration.resolve(self)
+            return product
+        } catch ResolutionError.underlyingError(let error) {
+            if let registrationError = error as? RegistrationError<Product> {
+                throw registrationError
+            } else {
+                throw error
+            }
+        } catch {
+            throw error
+        }
     }
 }
 
@@ -113,8 +142,7 @@ extension Container {
     /// - Throws: `ResolutionError.noRegistrationFound` if no registration exists, or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
     func findRegistration<Product>(for productType: Product.Type, with name: String?) throws -> Registration<Product> {
         let key = RegistrationKey(productType: productType, name: name)
-        let result = resolvingKeys.insert(key)
-        guard result.inserted else {
+        guard resolvingKeys.insert(key) else {
             resolvingKeys.removeAll()
             throw ResolutionError.circularDependencyDetected
         }
@@ -141,7 +169,7 @@ extension Container {
     ///   - name: An optional name associated with the registration.
     ///   - overridable: A boolean indicating if the new registration is overridable.
     /// - Throws: `RegistrationError.alreadyRegistered` if a non-overridable registration already exists.
-    private func assertRegistrationAllowed<Product>(_ productType: Product.Type, name: String?, overridable: Bool) throws {
+    func assertRegistrationAllowed<Product>(_ productType: Product.Type, name: String?, overridable: Bool) throws {
         // Construct a RegistrationKey to identify the registration.
         let key = RegistrationKey(productType: productType, name: name)
         
@@ -151,7 +179,7 @@ extension Container {
             // If not, it means we're trying to register something that conflicts with a non-overridable existing registration.
             guard existingRegistration.isOverridable, overridable else {
                 // Throw an error indicating that a registration already exists and cannot be overridden.
-                throw RegistrationError.alreadyRegistered
+                throw RegistrationError.alreadyRegistered(type: productType, name: name)
             }
         }
         // If no existing registration is found, or if both are overridable, the validation passes.

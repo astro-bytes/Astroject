@@ -8,7 +8,7 @@
 import Foundation
 
 /// Protocol for adding custom behavior to the `Container` during registration.
-public protocol Behavior: Sendable {
+public protocol Behavior {
     /// Called after a registration has been added to the `Container`.
     ///
     /// - Parameters:
