@@ -63,6 +63,8 @@ class Registration<Product>: Registrable {
                 self.instance.set(product)
                 try runActions(container, product: product)
                 return product
+            } catch let error as ResolutionError {
+                throw error
             } catch {
                 throw ResolutionError.underlyingError(error)
             }

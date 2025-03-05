@@ -117,19 +117,9 @@ extension Container: Resolver {
     /// or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
     public func resolve<Product>(_ productType: Product.Type, name: String?) async throws -> Product {
         defer { removeRegistrationKey(for: productType, with: name) }
-        do {
-            let registration = try findRegistration(for: productType, with: name)
-            let product = try await registration.resolve(self)
-            return product
-        } catch ResolutionError.underlyingError(let error) {
-            if let registrationError = error as? RegistrationError<Product> {
-                throw registrationError
-            } else {
-                throw error
-            }
-        } catch {
-            throw error
-        }
+        let registration = try findRegistration(for: productType, with: name)
+        let product = try await registration.resolve(self)
+        return product
     }
 }
 
