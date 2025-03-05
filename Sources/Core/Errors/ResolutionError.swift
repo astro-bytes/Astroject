@@ -43,7 +43,8 @@ public enum ResolutionError: LocalizedError {
         case .noRegistrationFound:
             "Use the `register` or `registerAsync` method to register the dependency."
         case .circularDependencyDetected:
-            "Break the circular dependency by introducing an abstraction or using a different dependency injection pattern or by using `postInitAction` to initialize cyclical dependencies." 
+            // swiftlint:disable:next line_length
+            "Break the circular dependency by introducing an abstraction or using a different dependency injection pattern or by using `postInitAction` to initialize cyclical dependencies."
         case .underlyingError:
             "Check the factory closure for errors and ensure that it's correctly implemented."
         }

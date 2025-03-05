@@ -52,7 +52,8 @@ class Registration<Product>: Registrable {
     ///
     /// - Parameter container: The container used for dependency resolution.
     /// - Returns: The resolved product instance.
-    /// - Throws: `ResolutionError.asyncResolutionRequired` if an async factory is used, or `ResolutionError.underlyingError` if an error occurs during creation.
+    /// - Throws: `ResolutionError.asyncResolutionRequired` if an async
+    ///   factory is used, or `ResolutionError.underlyingError` if an error occurs during creation.
     func resolve(_ container: Container) async throws -> Product {
         if let product = self.instance.get() {
             return product

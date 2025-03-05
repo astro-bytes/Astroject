@@ -11,7 +11,7 @@ import Foundation
 public class Assembler {
     /// The `Container` instance that dependencies are assembled into.
     let container: Container
-    
+
     /// A `Resolver` instance that provides access to the assembled dependencies.
     var resolver: Resolver { container }
     

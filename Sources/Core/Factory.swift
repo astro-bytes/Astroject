@@ -8,7 +8,7 @@
 import Foundation
 
 public struct Factory<Product>: Equatable {
-    public static func ==(lhs: Factory, rhs: Factory) -> Bool {
+    public static func == (lhs: Factory, rhs: Factory) -> Bool {
         lhs.id == rhs.id
     }
     

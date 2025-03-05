@@ -17,11 +17,14 @@ let package = Package(
         .library(name: "Astroject-Nexus", targets: ["Nexus"]),
         .library(name: "Astroject-Singularity", targets: ["Singularity"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/realm/SwiftLint.git", from: "0.58.2") // Add SwiftLint as a development dependency
+    ],
     targets: [
-        .target(name: "Core"),
-        .target(name: "Nexus", dependencies: ["Core"]),
-        .target(name: "Singularity", dependencies: ["Core"]),
-        
+        .target(name: "Core", plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
+        .target(name: "Nexus", dependencies: ["Core"], plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
+        .target(name: "Singularity", dependencies: ["Core"], plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
+
         .testTarget(name: "CoreTests", dependencies: ["Core"]),
         .testTarget(name: "NexusTests", dependencies: ["Nexus"]),
         .testTarget(name: "SingularityTests", dependencies: ["Singularity"]),

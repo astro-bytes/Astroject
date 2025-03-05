@@ -113,7 +113,8 @@ extension Container: Resolver {
     ///   - productType: The type of the product to resolve.
     ///   - name: An optional name for the registration.
     /// - Returns: The resolved product instance.
-    /// - Throws: `ResolutionError.noRegistrationFound` if no registration exists, or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
+    /// - Throws: `ResolutionError.noRegistrationFound` if no registration exists,
+    /// or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
     public func resolve<Product>(_ productType: Product.Type, name: String?) async throws -> Product {
         defer { removeRegistrationKey(for: productType, with: name) }
         do {
@@ -139,7 +140,8 @@ extension Container {
     ///   - productType: The type of the product to find.
     ///   - name: An optional name for the registration.
     /// - Returns: The found `Registration` instance.
-    /// - Throws: `ResolutionError.noRegistrationFound` if no registration exists, or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
+    /// - Throws: `ResolutionError.noRegistrationFound` if no registration
+    /// exists, or `ResolutionError.circularDependencyDetected` if a circular dependency is detected.
     func findRegistration<Product>(for productType: Product.Type, with name: String?) throws -> Registration<Product> {
         let key = RegistrationKey(productType: productType, name: name)
         guard resolvingKeys.insert(key) else {
@@ -175,8 +177,10 @@ extension Container {
         
         // Attempt to retrieve an existing registration using the key.
         if let existingRegistration = registrations.getValue(for: key) as? Registration<Product> {
-            // If an existing registration is found, check if it and the new registration are both overridable.
-            // If not, it means we're trying to register something that conflicts with a non-overridable existing registration.
+            // If an existing registration is found, check if it
+            // and the new registration are both overridable.
+            // If not, it means we're trying to register something that
+            // conflicts with a non-overridable existing registration.
             guard existingRegistration.isOverridable, overridable else {
                 // Throw an error indicating that a registration already exists and cannot be overridden.
                 throw RegistrationError.alreadyRegistered(type: productType, name: name)
