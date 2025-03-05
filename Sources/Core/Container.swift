@@ -181,6 +181,7 @@ extension Container {
         resolvingKeys.remove(key)
     }
     
+    // TODO: Make the insert into the dictionary atomic so that only one insert at a time can do it. This might mean moving some of the logic in this function to the ThreadSafeDictionary to help protect it. Does this also mean the same thing with the find registration?
     /// Validates if a registration already exists for the given product type and name,
     /// throwing an error if a non-overridable registration is found.
     ///
