@@ -7,17 +7,37 @@
 
 import Foundation
 
-/// Represents errors that can occur during dependency registration and resolution.
-public enum AstrojectError<Product>: LocalizedError {
-    /// A registration is attempted with a ProductKey that already exists.
-    case alreadyRegistered(type: Product.Type, name: String? = nil)
-    /// A dependency is requested but not registered.
+/// Represents errors that can occur during dependency registration and resolution
+/// within the Astroject dependency injection framework.
+///
+/// This enum consolidates various error scenarios, including issues related to
+/// dependency registration, resolution, and factory execution.
+/// It conforms to `LocalizedError` to provide user-friendly error descriptions,
+/// failure reasons, and recovery suggestions.
+public enum AstrojectError: LocalizedError {
+    /// A registration is attempted with a `RegistrationKey` that already exists.
+    ///
+    /// This case indicates that a dependency registration with the same type and
+    /// optional name has already been performed.
+    case alreadyRegistered(type: String, name: String? = nil)
+
+    /// A dependency is requested but no corresponding registration is found in the container.
+    ///
+    /// This case occurs when attempting to resolve a dependency that has not been registered.
     case noRegistrationFound
-    /// Circular dependency detected.
+
+    /// A circular dependency is detected during the resolution process.
+    ///
+    /// This case indicates that a chain of dependencies forms a loop, preventing successful resolution.
     case circularDependencyDetected
-    /// An error that occurred within the factory closure.
+
+    /// An error occurred within the factory closure during dependency resolution.
+    ///
+    /// This case wraps an underlying error that occurred while executing the factory
+    /// closure responsible for creating a dependency instance.
     case underlyingError(Error)
 
+    /// Provides a user-friendly description of the error.
     public var errorDescription: String? {
         switch self {
         case .alreadyRegistered:
@@ -31,6 +51,7 @@ public enum AstrojectError<Product>: LocalizedError {
         }
     }
 
+    /// Provides a reason for the error, explaining why it occurred.
     public var failureReason: String? {
         switch self {
         case .alreadyRegistered:
@@ -44,6 +65,7 @@ public enum AstrojectError<Product>: LocalizedError {
         }
     }
 
+    /// Provides a suggestion for recovering from the error.
     public var recoverySuggestion: String? {
         switch self {
         case .alreadyRegistered:
@@ -59,17 +81,30 @@ public enum AstrojectError<Product>: LocalizedError {
     }
 }
 
-extension AstrojectError: Equatable where Product: Equatable {
-    public static func == (lhs: AstrojectError<Product>, rhs: AstrojectError<Product>) -> Bool {
+/// Extends `AstrojectError` to conform to `Equatable` when the associated `Product` type is also `Equatable`.
+///
+/// This extension allows for easy comparison of `AstrojectError` instances based on their associated values.
+extension AstrojectError: Equatable {
+    /// Checks if two `AstrojectError` instances are equal.
+    ///
+    /// - Parameters:
+    ///   - lhs: The left-hand side `AstrojectError` instance.
+    ///   - rhs: The right-hand side `AstrojectError` instance.
+    /// - Returns: `true` if the errors are equal, `false` otherwise.
+    public static func == (lhs: AstrojectError, rhs: AstrojectError) -> Bool {
         switch (lhs, rhs) {
         case (.alreadyRegistered(let lhsType, let lhsName), .alreadyRegistered(let rhsType, let rhsName)):
+            // Compare the associated types and names for alreadyRegistered errors.
             return lhsType == rhsType && lhsName == rhsName
         case (.noRegistrationFound, .noRegistrationFound),
              (.circularDependencyDetected, .circularDependencyDetected):
+            // noRegistrationFound and circularDependencyDetected errors are equal if they are the same case.
             return true
         case (.underlyingError(let lhsError), .underlyingError(let rhsError)):
+            // Compare the descriptions of the underlying errors.
             return String(describing: lhsError) == String(describing: rhsError)
         default:
+            // All other cases are not equal.
             return false
         }
     }

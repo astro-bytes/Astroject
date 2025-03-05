@@ -5,7 +5,6 @@
 //  Created by Porter McGary on 3/4/25.
 //
 
-
 @MainActor
 class MainActorClassAnimal: @preconcurrency Animal {
     var name: String = "Hamlet"

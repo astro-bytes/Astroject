@@ -14,8 +14,10 @@ class MockResolver: Resolver {
     
     func resolve<Product>(_ productType: Product.Type, name: String?) async throws -> Product {
         if productType == Int.self {
+            // swiftlint:disable:next force_cast
             return 42 as! Product
         } else if productType == String.self {
+            // swiftlint:disable:next force_cast
             return "Test String" as! Product
         } else {
             throw error

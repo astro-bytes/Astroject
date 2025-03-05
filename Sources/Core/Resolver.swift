@@ -1,26 +1,37 @@
 //
-//  Resolver.swift
-//  Astroject
+// Resolver.swift
+// Astroject
 //
-//  Created by Porter McGary on 2/25/25.
+// Created by Porter McGary on 2/25/25.
 //
 
 import Foundation
 
 /// A protocol defining a resolver that can resolve dependencies.
+///
+/// The `Resolver` protocol is used to define the interface for resolving dependencies
+/// within a dependency injection container.
+/// Implementations of this protocol are responsible for providing instances of registered types.
 public protocol Resolver {
-    /// Resolves a product type synchronously.
+    /// Resolves a product type asynchronously.
+    ///
+    /// This function resolves a dependency of the specified `productType` without a specific name.
+    /// It uses the default registration for the given type.
     ///
     /// - Parameter productType: The type of the product to resolve.
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
     func resolve<Product>(_ productType: Product.Type) async throws -> Product
     
-    /// Resolves a product type synchronously with an optional name.
+    /// Resolves a product type asynchronously with an optional name.
+    ///
+    /// This function resolves a dependency of the specified `productType` with an optional `name`.
+    /// The `name` parameter allows resolving named registrations, which can be useful
+    /// when multiple registrations exist for the same type.
     ///
     /// - Parameters:
-    ///   - productType: The type of the product to resolve.
-    ///   - name: An optional name for the registration.
+    ///     - productType: The type of the product to resolve.
+    ///     - name: An optional name for the registration.
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
     func resolve<Product>(_ productType: Product.Type, name: String?) async throws -> Product
@@ -28,6 +39,9 @@ public protocol Resolver {
 
 public extension Resolver {
     /// Default implementation for resolving a product type without a name.
+    ///
+    /// This default implementation calls the `resolve(_:name:)` function with a `nil` name,
+    /// effectively resolving the default registration for the given `productType`.
     ///
     /// - Parameter productType: The type of the product to resolve.
     /// - Returns: The resolved product instance.

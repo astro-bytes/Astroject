@@ -9,6 +9,8 @@ import Foundation
 import Testing
 @testable import Core
 
+// swiftlint:disable identifier_name
+
 @Suite("ThreadSafeDictionary")
 struct ThreadSafeDictionaryTests {
     
@@ -120,3 +122,5 @@ struct ThreadSafeDictionaryTests {
         #expect(dictionary.count == iterations)
     }
 }
+
+// swiftlint:enable identifier_name
