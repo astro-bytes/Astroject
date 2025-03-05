@@ -76,6 +76,8 @@ class Registration<Product>: Registrable {
                 self.instance.set(product)
                 try runActions(container, product: product)
                 return product
+            } catch let error as AstrojectError {
+                throw error
             } catch {
                 throw AstrojectError.underlyingError(error)
             }
