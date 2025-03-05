@@ -8,6 +8,8 @@
 import XCTest
 @testable import Core
 
+// swiftlint:disable identifier_name
+
 class PerformanceTests: XCTestCase {
     let iterations = 1_000
     
@@ -17,7 +19,11 @@ class PerformanceTests: XCTestCase {
         
         measure {
             for i in 0..<iterations {
-                try! container.register(Int.self, name: "int\(i)") { i }
+                do {
+                    try container.register(Int.self, name: "int\(i)") { i }
+                } catch {
+                    XCTAssertNotNil(error, "\(error)")
+                }
             }
         }
     }
@@ -25,7 +31,7 @@ class PerformanceTests: XCTestCase {
     func testResolutionPerformance() async throws {
         let container = Container()
         let iterations = iterations
-        try! container.register(Int.self) { 42 }
+        try container.register(Int.self) { 42 }
         
         measure {
             let semaphore = DispatchSemaphore(value: 0)
@@ -33,7 +39,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try! await container.resolve(Int.self, name: nil)
+                        _ = try await container.resolve(Int.self, name: nil)
                     }
                     semaphore.signal()
                 }
@@ -46,9 +52,9 @@ class PerformanceTests: XCTestCase {
     func testComplexResolutionPerformance() async throws {
         let container = Container()
         let iterations = iterations
-        try! container.register(Int.self) { 42 }
-        try! container.register(String.self) { "test" }
-        try! container.register(Double.self) { resolver in
+        try container.register(Int.self) { 42 }
+        try container.register(String.self) { "test" }
+        try container.register(Double.self) { resolver in
             let intValue = try await resolver.resolve(Int.self, name: nil)
             let stringValue = try await resolver.resolve(String.self, name: nil)
             return Double(intValue) + Double(stringValue.count)
@@ -60,7 +66,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try! await container.resolve(Double.self, name: nil)
+                        _ = try await container.resolve(Double.self, name: nil)
                     }
                     semaphore.signal()
                 }
@@ -73,7 +79,7 @@ class PerformanceTests: XCTestCase {
     func testConcurrentResolutionPerformance() async throws {
         throw XCTSkip("Flakey Test, needs time to figure out a solution to make it reliable.")
         let container = Container()
-        try! container.register(Int.self) { 42 }
+        try container.register(Int.self) { 42 }
         let iterations = 100
         let concurrentTasks = 10
         
@@ -105,7 +111,11 @@ class PerformanceTests: XCTestCase {
         
         measure {
             for i in 0..<iterations {
-                try! container.register(Int.self, name: "int\(i)") { i }
+                do {
+                    try container.register(Int.self, name: "int\(i)") { i }
+                } catch {
+                    XCTAssertNotNil(error, "\(error)")
+                }
             }
         }
     }
@@ -160,3 +170,5 @@ class PerformanceTests: XCTestCase {
         }
     }
 }
+
+// swiftlint:enable identifier_name

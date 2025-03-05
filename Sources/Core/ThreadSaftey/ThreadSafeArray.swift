@@ -1,13 +1,16 @@
 //
-//  ThreadSafeArray.swift
-//  Astroject
+// ThreadSafeArray.swift
+// Astroject
 //
-//  Created by Porter McGary on 2/27/25.
+// Created by Porter McGary on 2/27/25.
 //
 
 import Foundation
 
 /// A thread-safe array that allows concurrent reads and synchronized writes.
+///
+/// The `ThreadSafeArray` class provides a thread-safe wrapper around a standard Swift array.
+/// It uses a dispatch queue to synchronize write operations, ensuring data consistency in concurrent environments.
 final class ThreadSafeArray<Element>: @unchecked Sendable {
     /// The dispatch queue used for synchronization.
     private let queue: DispatchQueue = .init(label: "com.astrobytes.astroject.array")
@@ -16,15 +19,15 @@ final class ThreadSafeArray<Element>: @unchecked Sendable {
     
     /// The number of elements in the array.
     var count: Int {
-        self.queue.sync {
-            self.array.count
+        return self.queue.sync {
+            return self.array.count
         }
     }
     
     /// Indicates whether the array is empty.
     var isEmpty: Bool {
-        self.queue.sync {
-            self.array.isEmpty
+        return self.queue.sync {
+            return self.array.isEmpty
         }
     }
     
@@ -43,8 +46,8 @@ final class ThreadSafeArray<Element>: @unchecked Sendable {
     /// Inserts an element at a specific index.
     ///
     /// - Parameters:
-    ///   - element: The element to insert.
-    ///   - index: The index at which to insert the element.
+    ///     - element: The element to insert.
+    ///     - index: The index at which to insert the element.
     func insert(_ element: Element, at index: Int) {
         self.queue.sync {
             guard index <= self.array.count, index >= 0 else { return }
@@ -89,7 +92,7 @@ final class ThreadSafeArray<Element>: @unchecked Sendable {
     /// - Parameter transform: The closure used to transform the elements.
     /// - Returns: An array of transformed elements.
     func map<T>(_ transform: @escaping (Element) throws -> T) rethrows -> [T] {
-        try self.queue.sync {
+        return try self.queue.sync {
             try self.array.map(transform)
         }
     }
@@ -99,7 +102,7 @@ final class ThreadSafeArray<Element>: @unchecked Sendable {
     /// - Parameter isIncluded: The closure used to filter the elements.
     /// - Returns: An array of filtered elements.
     func filter(_ isIncluded: @escaping (Element) throws -> Bool) rethrows -> [Element] {
-        try self.queue.sync {
+        return try self.queue.sync {
             try self.array.filter(isIncluded)
         }
     }
@@ -111,11 +114,14 @@ final class ThreadSafeArray<Element>: @unchecked Sendable {
         }
     }
     
+    /// Subscript access to the array elements.
+    ///
+    /// - Parameter index: The index of the element.
+    /// - Returns: The element at the specified index, or `nil` if the index is out of bounds.
     subscript(index: Int) -> Element? {
         get {
             return get(at: index)
         }
-        
         set {
             queue.sync {
                 guard let newValue = newValue,
@@ -134,8 +140,8 @@ extension ThreadSafeArray where Element: Equatable {
     /// - Parameter element: The element to check for.
     /// - Returns: `true` if the array contains the element, `false` otherwise.
     func contains(_ element: Element) -> Bool {
-        self.queue.sync {
-            self.array.contains(element)
+        return self.queue.sync {
+            return self.array.contains(element)
         }
     }
 }

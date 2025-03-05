@@ -1,13 +1,16 @@
 //
-//  ThreadSafeSet.swift
-//  Astroject
+// ThreadSafeSet.swift
+// Astroject
 //
-//  Created by Porter McGary on 3/4/25.
+// Created by Porter McGary on 3/4/25.
 //
 
 import Foundation
 
 /// A thread-safe set that allows synchronized access.
+///
+/// The `ThreadSafeSet` class provides a thread-safe wrapper around a standard Swift `Set`.
+/// It uses a dispatch queue to synchronize access to the set, ensuring data consistency in concurrent environments.
 final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     /// The dispatch queue used for synchronization.
     private let queue: DispatchQueue = .init(label: "com.astrobytes.astroject.set") // Serial queue
@@ -16,15 +19,15 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     
     /// The number of elements in the set.
     var count: Int {
-        self.queue.sync {
-            self.set.count
+        return self.queue.sync {
+            return self.set.count
         }
     }
     
     /// Indicates whether the set is empty.
     var isEmpty: Bool {
-        self.queue.sync {
-            self.set.isEmpty
+        return self.queue.sync {
+            return self.set.isEmpty
         }
     }
     
@@ -34,9 +37,10 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     /// Inserts an element into the set.
     ///
     /// - Parameter element: The element to insert.
+    /// - Returns: `true` if the element was inserted, `false` if it was already present.
     @discardableResult
     func insert(_ element: Element) -> Bool {
-        self.queue.sync {
+        return self.queue.sync {
             let (result, _) = self.set.insert(element)
             return result
         }
@@ -45,10 +49,11 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     /// Removes an element from the set.
     ///
     /// - Parameter element: The element to remove.
+    /// - Returns: The removed element, or `nil` if it was not found.
     @discardableResult
     func remove(_ element: Element) -> Element? {
-        self.queue.sync {
-            self.set.remove(element)
+        return self.queue.sync {
+            return self.set.remove(element)
         }
     }
     
@@ -57,8 +62,8 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     /// - Parameter element: The element to check for.
     /// - Returns: `true` if the set contains the element, `false` otherwise.
     func contains(_ element: Element) -> Bool {
-        self.queue.sync {
-            self.set.contains(element)
+        return self.queue.sync {
+            return self.set.contains(element)
         }
     }
     
@@ -76,7 +81,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     /// - Parameter transform: The closure used to transform the elements.
     /// - Returns: A set of transformed elements.
     func map<T: Hashable>(_ transform: @escaping (Element) throws -> T) rethrows -> Set<T> {
-        try self.queue.sync {
+        return try self.queue.sync {
             try Set(self.set.map(transform))
         }
     }
@@ -86,7 +91,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     /// - Parameter isIncluded: The closure used to filter the elements.
     /// - Returns: A set of filtered elements.
     func filter(_ isIncluded: @escaping (Element) throws -> Bool) rethrows -> Set<Element> {
-        try self.queue.sync {
+        return try self.queue.sync {
             try self.set.filter(isIncluded)
         }
     }

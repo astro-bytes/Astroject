@@ -1,34 +1,39 @@
 //
-//  Registration.swift
-//  Astroject
+// Registration.swift
+// Astroject
 //
-//  Created by Porter McGary on 2/25/25.
+// Created by Porter McGary on 2/25/25.
 //
 
 import Foundation
 
 /// Represents a registration of a product with a factory and instance management strategy.
+///
+/// The `Registration` class implements the `Registrable` protocol and manages the lifecycle of a registered product.
+/// It holds the factory used to create instances, the instance management strategy,
+/// and any post-initialization actions.
 class Registration<Product>: Registrable {
+    /// A closure type for actions to be performed after a product is resolved.
     typealias Action = (Resolver, Product) throws -> Void
     
     /// The factory used to create instances of the product.
     let factory: Factory<Product>
     
     /// An array of actions to be performed after a product is resolved.
-    var actions: [Action] = []
+    private var actions: [Action] = []
     
     /// The instance management strategy for the product.
-    var instance: any Instance<Product>
+    private(set) var instance: any Instance<Product>
     
     /// Indicates whether this registration can be overridden by another registration.
-    var isOverridable: Bool
+    let isOverridable: Bool
     
     /// Initializes a new `Registration` instance.
     ///
     /// - Parameters:
-    ///   - factory: The factory used to create instances of the product.
-    ///   - isOverridable: Indicates whether this registration can be overridden.
-    ///   - instance: The instance management strategy for the product (default is `Prototype`).
+    ///     - factory: The factory used to create instances of the product.
+    ///     - isOverridable: Indicates whether this registration can be overridden.
+    ///     - instance: The instance management strategy for the product (default is `Prototype`).
     init(factory: Factory<Product>,
          isOverridable: Bool,
          instance: any Instance<Product> = Prototype<Product>()
@@ -38,6 +43,12 @@ class Registration<Product>: Registrable {
         self.instance = instance
     }
     
+    /// Initializes a new `Registration` instance with a factory closure.
+    ///
+    /// - Parameters:
+    ///     - block: The factory closure used to create instances of the product.
+    ///     - isOverridable: Indicates whether this registration can be overridden.
+    ///     - instance: The instance management strategy for the product (default is `Prototype`).
     init(factory block: @escaping Factory<Product>.Block,
          isOverridable: Bool,
          instance: any Instance<Product> = Prototype<Product>()
@@ -48,11 +59,14 @@ class Registration<Product>: Registrable {
         self.instance = instance
     }
     
-    /// Resolves the product instance synchronously.
+    /// Resolves the product instance asynchronously.
+    ///
+    /// This function retrieves the product instance based on the instance management strategy.
+    /// If the instance is not yet created, it uses the factory to create it and runs any post-initialization actions.
     ///
     /// - Parameter container: The container used for dependency resolution.
     /// - Returns: The resolved product instance.
-    /// - Throws: `ResolutionError.asyncResolutionRequired` if an async factory is used, or `ResolutionError.underlyingError` if an error occurs during creation.
+    /// - Throws: `ResolutionError.underlyingError` if an error occurs during creation or post-initialization.
     func resolve(_ container: Container) async throws -> Product {
         if let product = self.instance.get() {
             return product
@@ -62,27 +76,34 @@ class Registration<Product>: Registrable {
                 self.instance.set(product)
                 try runActions(container, product: product)
                 return product
+            } catch let error as AstrojectError {
+                throw error
             } catch {
-                throw ResolutionError.underlyingError(error)
+                throw AstrojectError.underlyingError(error)
             }
         }
     }
     
     /// Runs the post-initialization actions.
     ///
+    /// This function executes the post-initialization actions associated with the registration.
+    ///
     /// - Parameters:
-    ///   - container: The container used for dependency resolution.
-    ///   - product: The resolved product instance.
+    ///     - container: The container used for dependency resolution.
+    ///     - product: The resolved product instance.
     /// - Throws: `ResolutionError.underlyingError` if an error occurs during action execution.
-    func runActions(_ container: Container, product: Product) throws {
+    private func runActions(_ container: Container, product: Product) throws {
         do {
             try actions.forEach { try $0(container, product) }
         } catch {
-            throw ResolutionError.underlyingError(error)
+            throw AstrojectError.underlyingError(error)
         }
     }
     
     /// Sets the instance management scope for the registration.
+    ///
+    /// This function allows configuring how the registered component's instances
+    /// are managed, such as singleton, prototype, or weak references.
     ///
     /// - Parameter instance: The instance management strategy.
     /// - Returns: The modified `Registration` instance.
@@ -93,6 +114,9 @@ class Registration<Product>: Registrable {
     }
     
     /// Adds a post-initialization action to the registration.
+    ///
+    /// This function allows configuring a post-initialization action that will be executed
+    /// after the product instance is created.
     ///
     /// - Parameter action: The action to be performed.
     /// - Returns: The modified `Registration` instance.
@@ -107,10 +131,12 @@ extension Registration: Equatable where Product: Equatable {
     /// Checks if two registrations are equal.
     ///
     /// - Parameters:
-    ///   - lhs: The left-hand side registration.
-    ///   - rhs: The right-hand side registration.
+    ///     - lhs: The left-hand side registration.
+    ///     - rhs: The right-hand side registration.
     /// - Returns: `true` if the registrations are equal, `false` otherwise.
     static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
-        lhs.instance.get() == rhs.instance.get() && lhs.isOverridable == rhs.isOverridable && lhs.factory == rhs.factory
+        return lhs.instance.get() == rhs.instance.get() &&
+        lhs.isOverridable == rhs.isOverridable &&
+        lhs.factory == rhs.factory
     }
 }

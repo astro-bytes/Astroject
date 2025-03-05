@@ -9,6 +9,8 @@ import Foundation
 import Testing
 @testable import Core
 
+// swiftlint:disable identifier_name
+
 @Suite("ThreadSafeArray")
 struct ThreadSafeArrayTests {
     @Test func emptyInitialization() {
@@ -131,7 +133,7 @@ struct ThreadSafeArrayTests {
         array[2] = 30 // Out of bounds, should do nothing
         #expect(array.count == 2)
         
-        array[-1] = 5; // Negative index, should do nothing
+        array[-1] = 5 // Negative index, should do nothing
         #expect(array[0] == 15)
     }
     
@@ -169,7 +171,7 @@ struct ThreadSafeArrayTests {
         let iterations = 1000
         
         // Concurrent Appends
-        await withTaskGroup(of: Void.self) { group in
+        await withTaskGroup(of: Void.self) { _ in
             for _ in 0..<iterations {
                 let operation = Int.random(in: 0..<5)
                 switch operation {
@@ -196,3 +198,5 @@ struct ThreadSafeArrayTests {
         #expect(array.count >= 0)
     }
 }
+
+// swiftlint:enable identifier_name
