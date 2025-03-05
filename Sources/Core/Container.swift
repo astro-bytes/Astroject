@@ -14,6 +14,7 @@ public final class Container: @unchecked Sendable {
     /// A thread-safe array to store behaviors.
     var behaviors: ThreadSafeArray<Behavior> = .init()
     /// A thread-safe set to track keys currently being resolved to detect circular dependencies.
+    // TODO: This also needs to have atomic limitations set to it. from within this class or within it's class
     var resolvingKeys: ThreadSafeSet<RegistrationKey> = .init()
     
     /// Initializes a new `Container` instance.
