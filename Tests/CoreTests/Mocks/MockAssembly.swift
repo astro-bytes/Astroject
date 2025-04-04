@@ -5,7 +5,7 @@
 //  Created by Porter McGary on 3/4/25.
 //
 
-import Core
+import AstrojectCore
 
 // Mock Assembly for testing
 class MockAssembly: Assembly {

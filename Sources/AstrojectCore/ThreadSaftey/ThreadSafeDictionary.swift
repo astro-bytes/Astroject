@@ -34,7 +34,7 @@ final class ThreadSafeDictionary<Key: Hashable, Value>: @unchecked Sendable {
     
     /// Initializes a new `ThreadSafeDictionary` instance with an initial dictionary.
     ///
-    /// - Parameter dictionary: The initial dictionary.
+    /// - parameter dictionary: The initial dictionary.
     init(from dictionary: [Key: Value]) {
         self.dictionary = dictionary
     }
@@ -46,7 +46,7 @@ final class ThreadSafeDictionary<Key: Hashable, Value>: @unchecked Sendable {
     
     /// Retrieves the value associated with a key.
     ///
-    /// - Parameter key: The key to retrieve the value for.
+    /// - parameter key: The key to retrieve the value for.
     /// - Returns: The value associated with the key, or `nil` if the key is not found.
     func getValue(for key: Key) -> Value? {
         return queue.sync {
@@ -56,9 +56,8 @@ final class ThreadSafeDictionary<Key: Hashable, Value>: @unchecked Sendable {
     
     /// Inserts or updates a key-value pair in the dictionary.
     ///
-    /// - Parameters:
-    ///     - value: The value to insert or update.
-    ///     - key: The key to associate with the value.
+    /// - parameter value: The value to insert or update.
+    /// - parameter key: The key to associate with the value.
     func insert(_ value: Value, for key: Key) {
         queue.sync {
             dictionary[key] = value
@@ -67,7 +66,7 @@ final class ThreadSafeDictionary<Key: Hashable, Value>: @unchecked Sendable {
     
     /// Checks if the dictionary contains a specific key.
     ///
-    /// - Parameter key: The key to check for.
+    /// - parameter key: The key to check for.
     /// - Returns: `true` if the dictionary contains the key, `false` otherwise.
     func contains(_ key: Key) -> Bool {
         return queue.sync {
@@ -77,7 +76,7 @@ final class ThreadSafeDictionary<Key: Hashable, Value>: @unchecked Sendable {
     
     /// Executes a closure for each key-value pair in the dictionary.
     ///
-    /// - Parameter block: The closure to execute for each key-value pair.
+    /// - parameter block: The closure to execute for each key-value pair.
     func forEach(_ block: ((key: Key, value: Value)) -> Void) {
         queue.sync {
             dictionary.forEach(block)
@@ -86,7 +85,7 @@ final class ThreadSafeDictionary<Key: Hashable, Value>: @unchecked Sendable {
     
     /// Transforms the key-value pairs of the dictionary using a closure.
     ///
-    /// - Parameter transform: The closure used to transform the key-value pairs.
+    /// - parameter transform: The closure used to transform the key-value pairs.
     /// - Returns: An array of transformed elements.
     func map<T>(_ transform: ((key: Key, value: Value)) throws -> T) rethrows -> [T] {
         return try queue.sync {

@@ -29,7 +29,7 @@ public protocol Instance<Product> {
     ///
     /// This function sets the instance of the product being managed by the `Instance` implementation.
     ///
-    /// - Parameter product: The product to set.
+    /// - parameter product: The product to set.
     func set(_ product: Product)
     
     /// Releases the managed product or performs any necessary cleanup.

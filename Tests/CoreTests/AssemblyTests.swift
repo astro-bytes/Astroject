@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import Core
+@testable import AstrojectCore
 
 @Suite("Assembly")
 struct AssemblyTests {

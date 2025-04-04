@@ -7,7 +7,7 @@
 
 import Foundation
 import Testing
-@testable import Core
+@testable import AstrojectCore
 
 @Suite("Behavior")
 struct BehaviorTests {

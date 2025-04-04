@@ -36,7 +36,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     
     /// Inserts an element into the set.
     ///
-    /// - Parameter element: The element to insert.
+    /// - parameter element: The element to insert.
     /// - Returns: `true` if the element was inserted, `false` if it was already present.
     @discardableResult
     func insert(_ element: Element) -> Bool {
@@ -48,7 +48,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     
     /// Removes an element from the set.
     ///
-    /// - Parameter element: The element to remove.
+    /// - parameter element: The element to remove.
     /// - Returns: The removed element, or `nil` if it was not found.
     @discardableResult
     func remove(_ element: Element) -> Element? {
@@ -59,7 +59,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     
     /// Checks if the set contains a specific element.
     ///
-    /// - Parameter element: The element to check for.
+    /// - parameter element: The element to check for.
     /// - Returns: `true` if the set contains the element, `false` otherwise.
     func contains(_ element: Element) -> Bool {
         return self.queue.sync {
@@ -69,7 +69,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     
     /// Executes a closure for each element in the set.
     ///
-    /// - Parameter body: The closure to execute for each element.
+    /// - parameter body: The closure to execute for each element.
     func forEach(_ body: @escaping (Element) -> Void) {
         self.queue.sync {
             self.set.forEach(body)
@@ -78,7 +78,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     
     /// Transforms the elements of the set using a closure.
     ///
-    /// - Parameter transform: The closure used to transform the elements.
+    /// - parameter transform: The closure used to transform the elements.
     /// - Returns: A set of transformed elements.
     func map<T: Hashable>(_ transform: @escaping (Element) throws -> T) rethrows -> Set<T> {
         return try self.queue.sync {
@@ -88,7 +88,7 @@ final class ThreadSafeSet<Element: Hashable>: @unchecked Sendable {
     
     /// Filters the elements of the set using a closure.
     ///
-    /// - Parameter isIncluded: The closure used to filter the elements.
+    /// - parameter isIncluded: The closure used to filter the elements.
     /// - Returns: A set of filtered elements.
     func filter(_ isIncluded: @escaping (Element) throws -> Bool) rethrows -> Set<Element> {
         return try self.queue.sync {

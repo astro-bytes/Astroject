@@ -87,9 +87,8 @@ public enum AstrojectError: LocalizedError {
 extension AstrojectError: Equatable {
     /// Checks if two `AstrojectError` instances are equal.
     ///
-    /// - Parameters:
-    ///   - lhs: The left-hand side `AstrojectError` instance.
-    ///   - rhs: The right-hand side `AstrojectError` instance.
+    /// - parameter lhs: The left-hand side `AstrojectError` instance.
+    /// - parameter rhs: The right-hand side `AstrojectError` instance.
     /// - Returns: `true` if the errors are equal, `false` otherwise.
     public static func == (lhs: AstrojectError, rhs: AstrojectError) -> Bool {
         switch (lhs, rhs) {

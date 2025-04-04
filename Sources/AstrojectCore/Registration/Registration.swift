@@ -17,7 +17,7 @@ class Registration<Product>: Registrable {
     typealias Action = (Resolver, Product) throws -> Void
     
     /// The factory used to create instances of the product.
-    let factory: Factory<Product>
+    let factory: Factory<Product, Resolver>
     
     /// An array of actions to be performed after a product is resolved.
     private var actions: [Action] = []
@@ -30,11 +30,10 @@ class Registration<Product>: Registrable {
     
     /// Initializes a new `Registration` instance.
     ///
-    /// - Parameters:
-    ///     - factory: The factory used to create instances of the product.
-    ///     - isOverridable: Indicates whether this registration can be overridden.
-    ///     - instance: The instance management strategy for the product (default is `Prototype`).
-    init(factory: Factory<Product>,
+    /// - parameter factory: The factory used to create instances of the product.
+    /// - parameter isOverridable: Indicates whether this registration can be overridden.
+    /// - parameter instance: The instance management strategy for the product (default is `Prototype`).
+    init(factory: Factory<Product, Resolver>,
          isOverridable: Bool,
          instance: any Instance<Product> = Prototype<Product>()
     ) {
@@ -45,11 +44,10 @@ class Registration<Product>: Registrable {
     
     /// Initializes a new `Registration` instance with a factory closure.
     ///
-    /// - Parameters:
-    ///     - block: The factory closure used to create instances of the product.
-    ///     - isOverridable: Indicates whether this registration can be overridden.
-    ///     - instance: The instance management strategy for the product (default is `Prototype`).
-    init(factory block: @escaping Factory<Product>.Block,
+    /// - parameter block: The factory closure used to create instances of the product.
+    /// - parameter isOverridable: Indicates whether this registration can be overridden.
+    /// - parameter instance: The instance management strategy for the product (default is `Prototype`).
+    init(factory block: @escaping Factory<Product, Resolver>.Block,
          isOverridable: Bool,
          instance: any Instance<Product> = Prototype<Product>()
     ) {
@@ -64,7 +62,7 @@ class Registration<Product>: Registrable {
     /// This function retrieves the product instance based on the instance management strategy.
     /// If the instance is not yet created, it uses the factory to create it and runs any post-initialization actions.
     ///
-    /// - Parameter container: The container used for dependency resolution.
+    /// - parameter container: The container used for dependency resolution.
     /// - Returns: The resolved product instance.
     /// - Throws: `ResolutionError.underlyingError` if an error occurs during creation or post-initialization.
     func resolve(_ container: Container) async throws -> Product {
@@ -88,9 +86,8 @@ class Registration<Product>: Registrable {
     ///
     /// This function executes the post-initialization actions associated with the registration.
     ///
-    /// - Parameters:
-    ///     - container: The container used for dependency resolution.
-    ///     - product: The resolved product instance.
+    /// - parameter container: The container used for dependency resolution.
+    /// - parameter product: The resolved product instance.
     /// - Throws: `ResolutionError.underlyingError` if an error occurs during action execution.
     private func runActions(_ container: Container, product: Product) throws {
         do {
@@ -105,7 +102,7 @@ class Registration<Product>: Registrable {
     /// This function allows configuring how the registered component's instances
     /// are managed, such as singleton, prototype, or weak references.
     ///
-    /// - Parameter instance: The instance management strategy.
+    /// - parameter instance: The instance management strategy.
     /// - Returns: The modified `Registration` instance.
     @discardableResult
     func `as`(_ instance: any Instance<Product>) -> Self {
@@ -118,7 +115,7 @@ class Registration<Product>: Registrable {
     /// This function allows configuring a post-initialization action that will be executed
     /// after the product instance is created.
     ///
-    /// - Parameter action: The action to be performed.
+    /// - parameter action: The action to be performed.
     /// - Returns: The modified `Registration` instance.
     @discardableResult
     func afterInit(perform action: @escaping Action) -> Self {
@@ -130,9 +127,8 @@ class Registration<Product>: Registrable {
 extension Registration: Equatable where Product: Equatable {
     /// Checks if two registrations are equal.
     ///
-    /// - Parameters:
-    ///     - lhs: The left-hand side registration.
-    ///     - rhs: The right-hand side registration.
+    /// - parameter lhs: The left-hand side registration.
+    /// - parameter rhs: The right-hand side registration.
     /// - Returns: `true` if the registrations are equal, `false` otherwise.
     static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
         return lhs.instance.get() == rhs.instance.get() &&

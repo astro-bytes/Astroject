@@ -25,7 +25,7 @@ public protocol Registrable<Product> {
     /// This function allows configuring how the registered component's instances are
     /// managed, such as singleton, prototype, or weak references.
     ///
-    /// - Parameter instance: The instance management strategy.
+    /// - parameter instance: The instance management strategy.
     /// - Returns: The modified `Registration` instance.
     @discardableResult
     func `as`(_ instance: any Instance<Product>) -> Self
@@ -35,7 +35,7 @@ public protocol Registrable<Product> {
     /// This function allows configuring a post-initialization action that will be
     /// executed after the product instance is created.
     ///
-    /// - Parameter action: The action to be performed.
+    /// - parameter action: The action to be performed.
     /// - Returns: The modified `Registration` instance.
     @discardableResult
     func afterInit(perform action: Action) -> Self

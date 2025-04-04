@@ -18,7 +18,7 @@ public protocol Assembly {
     /// This function is called by an `Assembler` to register dependencies in the given `Container`.
     /// Implementations should use the `Container` to register factories and other configuration.
     ///
-    /// - Parameter container: The `Container` instance to configure.
+    /// - parameter container: The `Container` instance to configure.
     func assemble(container: Container)
     
     /// Called after the assembly has been loaded into the `Container`.
@@ -27,7 +27,7 @@ public protocol Assembly {
     /// It allows performing any post-registration setup or configuration that requires access to
     /// the resolved dependencies.
     ///
-    /// - Parameter resolver: The `Resolver` instance providing access to the assembled dependencies.
+    /// - parameter resolver: The `Resolver` instance providing access to the assembled dependencies.
     func loaded(resolver: Resolver)
 }
 
@@ -37,6 +37,6 @@ public extension Assembly {
     /// This default implementation is provided for convenience, allowing assemblies
     /// that do not require post-registration setup to omit implementing the `loaded` function.
     ///
-    /// - Parameter resolver: The `Resolver` instance (unused in the default implementation).
+    /// - parameter resolver: The `Resolver` instance (unused in the default implementation).
     func loaded(resolver: Resolver) {}
 }

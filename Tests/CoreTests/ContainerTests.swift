@@ -7,14 +7,15 @@
 
 import Testing
 import Foundation
-@testable import Core
+@testable import AstrojectCore
 
 // swiftlint:disable identifier_name
 // swiftlint:disable force_cast
 
 @Suite("Container")
 struct ContainerTests {
-    @Test func isRegistered() throws {
+    @Test
+    func isRegistered() throws {
         let container = Container()
         try container.register(Int.self) { 42 }
         try container.register(String.self, name: "test") { "test" }
@@ -25,7 +26,8 @@ struct ContainerTests {
         #expect(!container.isRegistered(Int.self, with: "test"))
     }
     
-    @Test func addBehavior() throws {
+    @Test
+    func addBehavior() throws {
         let container = Container()
         let behavior1 = MockBehavior()
         let behavior2 = MockBehavior()
@@ -38,9 +40,10 @@ struct ContainerTests {
         #expect((container.behaviors[1] as? MockBehavior) === behavior2)
     }
     
-    @Test func findRegistration() throws {
+    @Test
+    func findRegistration() throws {
         let container = Container()
-        let factory = Factory<Int> { _ in 42 }
+        let factory = Factory { _ in 42 }
         try container.register(Int.self, factory: factory)
         
         let registration = try container.findRegistration(for: Int.self, with: nil)
@@ -51,9 +54,10 @@ struct ContainerTests {
         }
     }
     
-    @Test func findNamedRegistration() throws {
+    @Test
+    func findNamedRegistration() throws {
         let container = Container()
-        let factory = Factory<Int> { _ in 42 }
+        let factory = Factory { 42 }
         try container.register(Int.self, name: "test", factory: factory)
         
         let registration = try container.findRegistration(for: Int.self, with: "test")
@@ -64,19 +68,8 @@ struct ContainerTests {
         }
     }
     
-    @Test func removeRegistrationKey() throws {
-        let container = Container()
-        container.removeRegistrationKey(for: Int.self, with: nil)
-        #expect(container.resolvingKeys.isEmpty)
-    }
-    
-    @Test func removeNamedRegistrationKey() throws {
-        let container = Container()
-        container.removeRegistrationKey(for: Int.self, with: "test")
-        #expect(container.resolvingKeys.isEmpty)
-    }
-    
-    @Test func circularDependencyDetected() async throws {
+    @Test
+    func circularDependencyDetected() async throws {
         let container = Container()
         try container.register(CircularDependencyA.self) { resolver in
             let classB = try await resolver.resolve(CircularDependencyB.self)
@@ -93,9 +86,10 @@ struct ContainerTests {
         }
     }
     
-    @Test func assertRegistrationAllowed() throws {
+    @Test
+    func assertRegistrationAllowed() throws {
         let container = Container()
-        let factory = Factory<Int> { _ in 42 }
+        let factory = Factory { 42 }
         
         try container.register(Int.self, factory: factory)
         try container.register(Int.self, factory: factory) // Should succeed, as it's overridable
@@ -111,27 +105,30 @@ struct ContainerTests {
 extension ContainerTests {
     @Suite("Registration")
     struct RegistrationTests {
-        @Test func registration() throws {
+        @Test
+        func registration() throws {
             let container = Container()
-            let factory = Factory<Int> { _ in 42 }
+            let factory = Factory { _ in 42 }
             try container.register(Int.self, factory: factory)
             let expected = Registration(factory: factory, isOverridable: true)
             let key = RegistrationKey(productType: Int.self)
-            let registration = container.registrations.getValue(for: key) as! Registration<Int>
+            let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
         }
         
-        @Test func namedRegistration() throws {
+        @Test
+        func namedRegistration() throws {
             let container = Container()
             let factory = Factory { _ in 42 }
             try container.register(Int.self, name: "42", factory: factory)
             let expected = Registration(factory: factory, isOverridable: true)
             let key = RegistrationKey(productType: Int.self, name: "42")
-            let registration = container.registrations.getValue(for: key) as! Registration<Int>
+            let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
         }
         
-        @Test func noRegistrationFoundError() async throws {
+        @Test
+        func noRegistrationFoundError() async throws {
             let container = Container()
             
             await #expect(throws: AstrojectError.noRegistrationFound) {
@@ -155,7 +152,8 @@ extension ContainerTests {
             }
         }
         
-        @Test func registrationAlreadyExistsError() throws {
+        @Test
+        func registrationAlreadyExistsError() throws {
             let container = Container()
             
             #expect(throws: AstrojectError.alreadyRegistered(type: "\(Int.self)", name: nil)) {
@@ -169,7 +167,8 @@ extension ContainerTests {
             }
         }
         
-        @Test func clearRegistrations() throws {
+        @Test
+        func clearRegistrations() throws {
             let container = Container()
             try container.register(Double.self) { _ in 42 }
             
@@ -186,7 +185,8 @@ extension ContainerTests {
 extension ContainerTests {
     @Suite("Resolution")
     struct ResolutionTests {
-        @Test func resolution() async throws {
+        @Test
+        func resolution() async throws {
             let container = Container()
             try container.register(Int.self) { _ in 42 }
             let resolvedValue: Int = try await container.resolve(Int.self)
@@ -215,7 +215,8 @@ extension ContainerTests {
             #expect(home.dog == resolvedDog)
         }
         
-        @Test func namedResolution() async throws {
+        @Test
+        func namedResolution() async throws {
             let container = Container()
             try container.register(Int.self, name: "41") { _ in 41 }
             try container.register(Int.self, name: "42") { _ in 42 }
@@ -225,7 +226,29 @@ extension ContainerTests {
             #expect(resolved42 == 42)
         }
         
-        @Test func underlyingFactoryError() async throws {
+        @Test(.disabled("Needs Implemented first"))
+        func argumentResolution() async throws {
+            class MyObject {
+                let arg: String
+                init(arg: String) { self.arg = arg }
+            }
+            
+            let container = Container()
+            try container.register(MyObject.self, argument: String.self) { (_, arg) in
+                MyObject(arg: arg)
+            }
+            .asWeak()
+            
+            let first = try await container.resolve(MyObject.self, argument: "1")
+            let second = try await container.resolve(MyObject.self, argument: "2")
+            let third = try await container.resolve(MyObject.self, argument: "1")
+            
+            #expect(first !== second)
+            #expect(third === first)
+        }
+        
+        @Test
+        func underlyingFactoryError() async throws {
             let container = Container()
             let error = NSError(domain: "Test", code: 123)
             try container.register(Int.self) { _ in throw error }
@@ -240,7 +263,8 @@ extension ContainerTests {
 extension ContainerTests {
     @Suite("ThreadSafety")
     struct ThreadSafetyTests {
-        @Test func concurrentRegistration() async throws {
+        @Test
+        func concurrentRegistration() async throws {
             let container = Container()
             let iterations = 100
             
@@ -281,7 +305,7 @@ extension ContainerTests {
             }
         }
         
-        @Test(.disabled(.__line("Container is not thread safe yet")))
+        @Test
         func concurrentResolution() async throws {
             let container = Container()
             try container.register(Int.self) { 42 }
@@ -290,17 +314,15 @@ extension ContainerTests {
             await withTaskGroup(of: Void.self) { group in
                 for _ in 0..<iterations {
                     group.addTask {
-                        do {
-                            _ = try await container.resolve(Int.self)
-                        } catch {
-                            #expect(error == nil, "\(error)")
+                        await #expect(throws: Never.self) {
+                            try await container.resolve(Int.self)
                         }
                     }
                 }
             }
         }
         
-        @Test(.disabled(.__line("Container is not thread safe yet")))
+        @Test
         func concurrentRegistrationAndResolution() async throws {
             let container = Container()
             try container.register(Int.self) { 42 }
@@ -310,13 +332,12 @@ extension ContainerTests {
                 for i in 0..<iterations {
                     group.addTask {
                         if i % 2 == 0 {
-                            let result = try? container.register(String.self, name: "string\(i)") { "string\(i)" }
-                            #expect(result != nil)
+                            #expect(throws: Never.self) {
+                                _ = try container.register(String.self, name: "string\(i)") { "string\(i)" }
+                            }
                         } else {
-                            do {
+                            await #expect(throws: Never.self) {
                                 _ = try await container.resolve(Int.self)
-                            } catch {
-                                #expect(error == nil, "\(error)")
                             }
                         }
                     }
@@ -329,7 +350,8 @@ extension ContainerTests {
             }
         }
         
-        @Test func concurrentBehaviorAddition() async throws {
+        @Test
+        func concurrentBehaviorAddition() async throws {
             let container = Container()
             let iterations = 100
             
@@ -345,7 +367,8 @@ extension ContainerTests {
             #expect(container.behaviors.count == iterations)
         }
         
-        @Test func concurrentClear() async throws {
+        @Test
+        func concurrentClear() async throws {
             let container = Container()
             try container.register(Int.self) { 42 }
             let iterations = 100

@@ -7,24 +7,24 @@
 
 import Foundation
 import Testing
-@testable import Core
+@testable import AstrojectCore
 
 @Suite("Factory")
 struct FactoryTests {
     @Test func initialization() {
-        let factory = Factory<Int> { _ in 10 }
-        #expect(factory != Factory<Int> { _ in 20 }) // Ensure UUIDs are different
+        let factory = Factory { 10 }
+        #expect(factory != Factory { 20 }) // Ensure UUIDs are different
     }
     
     @Test func equality() {
-        let factory1 = Factory<Int> { _ in 10 }
-        let factory2 = Factory<Int> { _ in 10 }
+        let factory1 = Factory { 10 }
+        let factory2 = Factory { 10 }
         #expect(factory1 != factory2) // UUIDs are different, so not equal
     }
     
     @Test func functionCall() async throws {
         let resolver = MockResolver()
-        let factory = Factory<Int> { resolver in
+        let factory = Factory { resolver in
             try await resolver.resolve(Int.self, name: nil) + 5
         }
         
@@ -34,7 +34,7 @@ struct FactoryTests {
     
     @Test func callWithResolver() async throws {
         let resolver = MockResolver()
-        let factory = Factory<String> { resolver in
+        let factory = Factory { resolver in
             try await resolver.resolve(String.self, name: nil) + " Appended"
         }
         
@@ -44,7 +44,7 @@ struct FactoryTests {
     
     @Test func throwsError() async throws {
         let resolver = MockResolver()
-        let factory = Factory<Double> { resolver in
+        let factory = Factory { resolver in
             try await resolver.resolve(Double.self, name: nil)
         }
         

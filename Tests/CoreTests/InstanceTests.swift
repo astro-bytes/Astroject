@@ -7,7 +7,7 @@
 
 import Testing
 import Foundation
-@testable import Core
+@testable import AstrojectCore
 
 @Suite("Instance")
 struct InstanceTests {
@@ -36,24 +36,5 @@ struct InstanceTests {
         #expect(instance.get() === dog)
         dog = nil
         #expect(instance.get() == nil)
-    }
-    
-    @Test func composite() {
-        let prototype: Prototype<ClassAnimal> = .init()
-        let weak: Weak<ClassAnimal> = .init()
-        let instance = Composite<ClassAnimal>(instances: [prototype, weak])
-        let dog1 = ClassAnimal()
-        weak.set(dog1)
-        #expect(instance.get() === dog1)
-        
-        let dog2 = ClassAnimal()
-        let singleton = Singleton<ClassAnimal>()
-        singleton.set(dog2)
-        
-        let composite2 = Composite<ClassAnimal>(instances: [prototype, weak, singleton])
-        #expect(composite2.get() === dog1)
-        
-        weak.release()
-        #expect(composite2.get() === dog2)
     }
 }

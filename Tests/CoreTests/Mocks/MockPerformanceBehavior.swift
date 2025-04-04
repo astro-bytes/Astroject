@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Core
+import AstrojectCore
 
 // Mock Behavior for performance testing
 class MockPerformanceBehavior: Behavior {

@@ -18,30 +18,14 @@ public class Singleton<Product>: Instance {
     /// Initializes a new `Singleton` instance.
     public init() {}
     
-    /// Retrieves the stored product instance.
-    ///
-    /// This function returns the singleton instance of the product, if it has been set.
-    /// If the instance has not been set yet, it returns `nil`.
-    ///
-    /// - Returns: The stored product instance, or `nil` if not yet set.
     public func get() -> Product? {
-        return self.product
+        self.product
     }
     
-    /// Sets the product instance if it hasn't been set yet.
-    ///
-    /// This function sets the singleton instance of the product.
-    /// If the instance has already been set, it does nothing.
-    ///
-    /// - Parameter product: The product instance to set.
     public func set(_ product: Product) {
         guard self.product == nil else { return }
         self.product = product
     }
     
-    /// Does nothing, as the singleton instance is managed by the container.
-    ///
-    /// This function is a no-op because the singleton instance is managed by the container's lifecycle.
-    /// Releasing the instance is not necessary.
     public func release() {}
 }

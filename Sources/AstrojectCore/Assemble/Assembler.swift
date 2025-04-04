@@ -14,15 +14,15 @@ import Foundation
 public class Assembler {
     /// The `Container` instance that dependencies are assembled into.
     let container: Container
-
+    
     /// A `Resolver` instance that provides access to the assembled dependencies.
     /// This property returns the `Container` itself, as it conforms to the `Resolver` protocol.
     var resolver: Resolver { container }
     
     /// Initializes an `Assembler` with a given `Container`.
     ///
-    /// - Parameter container: The `Container` instance to assemble dependencies into.
-    init(container: Container) {
+    /// - parameter container: The `Container` instance to assemble dependencies into.
+    public init(container: Container) {
         self.container = container
     }
     
@@ -30,7 +30,7 @@ public class Assembler {
     ///
     /// This function applies the `assemble` and `loaded` methods of the provided `Assembly` instance.
     ///
-    /// - Parameter assembly: The `Assembly` instance to apply.
+    /// - parameter assembly: The `Assembly` instance to apply.
     public func apply(assembly: Assembly) {
         run(assemblies: [assembly])
     }
@@ -39,7 +39,7 @@ public class Assembler {
     ///
     /// This function applies the `assemble` and `loaded` methods of each `Assembly` instance in the provided array.
     ///
-    /// - Parameter assemblies: The array of `Assembly` instances to apply.
+    /// - parameter assemblies: The array of `Assembly` instances to apply.
     public func apply(assemblies: [Assembly]) {
         run(assemblies: assemblies)
     }
@@ -51,7 +51,7 @@ public class Assembler {
     /// The `assemble` method registers dependencies in the `Container`,
     /// and the `loaded` method performs any post-registration setup.
     ///
-    /// - Parameter assemblies: The array of `Assembly` instances to run.
+    /// - parameter assemblies: The array of `Assembly` instances to run.
     func run(assemblies: [Assembly]) {
         // Iterate through the assemblies and call the assemble method on each one to register the dependencies.
         assemblies.forEach { $0.assemble(container: container) }

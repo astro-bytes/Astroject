@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import Core
+@testable import AstrojectCore
 
 // swiftlint:disable identifier_name
 
@@ -77,7 +77,6 @@ class PerformanceTests: XCTestCase {
     }
     
     func testConcurrentResolutionPerformance() async throws {
-        throw XCTSkip("Flakey Test, needs time to figure out a solution to make it reliable.")
         let container = Container()
         try container.register(Int.self) { 42 }
         let iterations = 100

@@ -18,7 +18,7 @@ public protocol Resolver {
     /// This function resolves a dependency of the specified `productType` without a specific name.
     /// It uses the default registration for the given type.
     ///
-    /// - Parameter productType: The type of the product to resolve.
+    /// - parameter productType: The type of the product to resolve.
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
     func resolve<Product>(_ productType: Product.Type) async throws -> Product
@@ -29,12 +29,21 @@ public protocol Resolver {
     /// The `name` parameter allows resolving named registrations, which can be useful
     /// when multiple registrations exist for the same type.
     ///
-    /// - Parameters:
-    ///     - productType: The type of the product to resolve.
-    ///     - name: An optional name for the registration.
+    /// - parameter productType: The type of the product to resolve.
+    /// - parameter name: An optional name for the registration.
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
-    func resolve<Product>(_ productType: Product.Type, name: String?) async throws -> Product
+    func resolve<Product>(
+        _ productType: Product.Type,
+        name: String?
+    ) async throws -> Product
+    
+    // TODO: Comment
+    func resolve<Product, Argument: Hashable>(
+        _ productType: Product.Type,
+        name: String?,
+        argument: Argument
+    ) async throws -> Product
 }
 
 public extension Resolver {
@@ -43,10 +52,15 @@ public extension Resolver {
     /// This default implementation calls the `resolve(_:name:)` function with a `nil` name,
     /// effectively resolving the default registration for the given `productType`.
     ///
-    /// - Parameter productType: The type of the product to resolve.
+    /// - parameter productType: The type of the product to resolve.
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
     func resolve<Product>(_ productType: Product.Type) async throws -> Product {
         try await resolve(productType, name: nil)
+    }
+    
+    // TODO: Comment
+    func resolve<Product, Argument: Hashable>(_ productType: Product.Type, argument: Argument) async throws -> Product {
+        try await resolve(productType, name: nil, argument: argument)
     }
 }

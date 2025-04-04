@@ -7,7 +7,7 @@
 
 import Foundation
 import Testing
-@testable import Core
+@testable import AstrojectCore
 
 // swiftlint:disable identifier_name
 
