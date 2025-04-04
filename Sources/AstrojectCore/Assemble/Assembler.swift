@@ -14,7 +14,7 @@ import Foundation
 public class Assembler {
     /// The `Container` instance that dependencies are assembled into.
     let container: Container
-
+    
     /// A `Resolver` instance that provides access to the assembled dependencies.
     /// This property returns the `Container` itself, as it conforms to the `Resolver` protocol.
     var resolver: Resolver { container }
@@ -22,7 +22,7 @@ public class Assembler {
     /// Initializes an `Assembler` with a given `Container`.
     ///
     /// - Parameter container: The `Container` instance to assemble dependencies into.
-    init(container: Container) {
+    public init(container: Container) {
         self.container = container
     }
     
