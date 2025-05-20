@@ -430,7 +430,7 @@ extension Container {
         }
         // If no registration is found for the given key, throw an error.
         guard let registration else {
-            throw AstrojectError.noRegistrationFound
+            throw AstrojectError.noRegistrationFound(type: "\(productType)", name: name)
         }
         
         // Return the found registration.
@@ -460,7 +460,12 @@ extension Container {
         
         // If no registration is found, throw an error indicating that.
         guard let registration else {
-            throw AstrojectError.noRegistrationFound
+            let argumentType = type(of: argument)
+            let spacing = name == nil ? "" : " "
+            let nameAndArgument = name ?? "" + "\(spacing)argument of type: \(argumentType)"
+            throw AstrojectError.noRegistrationFound(
+                type: "\(productType)",
+                name: nameAndArgument)
         }
         
         // Return the found registration.

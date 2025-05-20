@@ -17,7 +17,7 @@ public enum AstrojectError: LocalizedError {
     /// A dependency is requested but no corresponding registration is found in the container.
     ///
     /// This case occurs when attempting to resolve a dependency that has not been registered.
-    case noRegistrationFound
+    case noRegistrationFound(type: String, name: String? = nil)
     
     /// A circular dependency is detected during the resolution process.
     ///
@@ -47,8 +47,12 @@ public enum AstrojectError: LocalizedError {
             } else {
                 return "A registration for type '\(type)' already exists."
             }
-        case .noRegistrationFound:
-            return "No registration found for the requested dependency."
+        case .noRegistrationFound(let type, let name):
+            if let name {
+                return "No registration found for dependency of '\(type)' with name '\(name)'."
+            } else {
+                return "No registration found for dependency of '\(type)'."
+            }
         case .circularDependencyDetected(let type, let name):
             if let name = name {
                 return "A circular dependency was detected while resolving type '\(type)' with name '\(name)'."
@@ -109,12 +113,13 @@ extension AstrojectError: Equatable {
     public static func == (lhs: AstrojectError, rhs: AstrojectError) -> Bool {
         switch (lhs, rhs) {
         case (.alreadyRegistered(let lhsType, let lhsName), .alreadyRegistered(let rhsType, let rhsName)),
+            (.noRegistrationFound(let lhsType, let lhsName),
+             .noRegistrationFound(let rhsType, let rhsName)),
             (.circularDependencyDetected(let lhsType, let lhsName),
              .circularDependencyDetected(let rhsType, let rhsName)):
             // Compare the associated types and names for alreadyRegistered and circularDependencyDetected errors.
             return lhsType == rhsType && lhsName == rhsName
-        case (.noRegistrationFound, .noRegistrationFound),
-            (.invalidInstance, .invalidInstance):
+        case (.invalidInstance, .invalidInstance):
             // noRegistrationFound and invalidInstance errors are equal if they are the same case.
             return true
         case (.underlyingError(let lhsError), .underlyingError(let rhsError)):

@@ -10,8 +10,9 @@ import Foundation
 
 // swiftlint:disable identifier_name
 // swiftlint:disable force_cast
-// swiftlint:disable function_body_length
-// swiftlint:disable type_body_length
+// swiftlint:disable type_name
+// swiftlint:disable nesting
+// swiftlint:disable line_length
 
 @Suite("Container")
 struct ContainerTests {
@@ -50,7 +51,7 @@ struct ContainerTests {
         let registration = try container.findRegistration(for: Int.self, with: nil)
         #expect(registration.factory == factory)
         
-        #expect(throws: AstrojectError.noRegistrationFound) {
+        #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: nil)) {
             _ = try container.findRegistration(for: Double.self, with: nil)
         }
     }
@@ -64,7 +65,7 @@ struct ContainerTests {
         let registration = try container.findRegistration(for: Int.self, with: "test")
         #expect(registration.factory == factory)
         
-        #expect(throws: AstrojectError.noRegistrationFound) {
+        #expect(throws: AstrojectError.noRegistrationFound(type: "\(Int.self)", name: "wrongName")) {
             _ = try container.findRegistration(for: Int.self, with: "wrongName")
         }
     }
@@ -144,23 +145,23 @@ extension ContainerTests {
         func noRegistrationFoundError() async throws {
             let container = Container()
             
-            await #expect(throws: AstrojectError.noRegistrationFound) {
+            await #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: nil)) {
                 try await container.resolve(Double.self)
             }
             
-            await #expect(throws: AstrojectError.noRegistrationFound) {
+            await #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: "42")) {
                 try await container.resolve(Double.self, name: "42")
             }
             
             try container.register(Double.self) { _ in 42 }
-            await #expect(throws: AstrojectError.noRegistrationFound) {
+            await #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: "42")) {
                 try await container.resolve(Double.self, name: "42")
             }
             
             container.clear()
             
             try container.register(Double.self, name: "42") { _ in 42 }
-            await #expect(throws: AstrojectError.noRegistrationFound) {
+            await #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: nil)) {
                 try await container.resolve(Double.self)
             }
         }
@@ -941,7 +942,6 @@ extension ContainerTests {
             #expect(Set(capturedGraphIDs).count == 1) // All the same!
         }
         
-        
         @Test("Concurrent Graph Resolution")
         func containerConcurrentGraphResolution() async throws {
             let container = Container()
@@ -969,3 +969,9 @@ extension ContainerTests {
         
     }
 }
+
+// swiftlint:enable identifier_name
+// swiftlint:enable force_cast
+// swiftlint:enable type_name
+// swiftlint:enable nesting
+// swiftlint:enable line_length

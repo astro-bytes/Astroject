@@ -25,8 +25,8 @@ let package = Package(
         .target(name: "Nexus", dependencies: ["AstrojectCore"], plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
         .target(name: "Singularity", dependencies: ["AstrojectCore"], plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
 
-        .testTarget(name: "CoreTests", dependencies: ["AstrojectCore"]),
-        .testTarget(name: "NexusTests", dependencies: ["Nexus"]),
-        .testTarget(name: "SingularityTests", dependencies: ["Singularity"]),
+        .testTarget(name: "CoreTests", dependencies: ["AstrojectCore"], plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
+        .testTarget(name: "NexusTests", dependencies: ["Nexus"], plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
+        .testTarget(name: "SingularityTests", dependencies: ["Singularity"], plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]),
     ]
 )
