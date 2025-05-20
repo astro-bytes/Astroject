@@ -6,7 +6,7 @@ A lightweight and flexible dependency injection container for Swift.
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Overview
-Astroject is designed to simplify dependency management in your Swift projects. It provides a clean and intuitive API for registering and resolving dependencies, supporting both synchronous and asynchronous factories, various instance scopes (singleton, prototype, weak), and extensible behaviors. Many ideas came from a Sister Library [Swinject](https://github.com/Swinject/Swinject)
+Astroject is designed to simplify dependency management in your Swift projects. It provides a clean and intuitive API for registering and resolving dependencies, supporting both synchronous and asynchronous factories, various instance scopes (singleton, transient, weak), and extensible behaviors. Many ideas came from a Sister Library [Swinject](https://github.com/Swinject/Swinject)
 
 ## API Documentation
 Coming Soon...
@@ -14,7 +14,7 @@ Coming Soon...
 
 ## Features
 - **Synchronous and Asynchronous Registrations:** Register dependencies with both synchronous and asynchronous factory closures.
-- **Instance Scopes:** Supports singleton, prototype, and weak instance scopes.
+- **Instance Scopes:** Supports singleton, transient, and weak instance scopes.
 - **Named Registrations:** Register dependencies with optional names for disambiguation.
 - **Circular Dependency Detection:** Prevents and reports circular dependency issues.
 - **Extensible Behaviors:** Add custom behaviors to the container's registration process.
@@ -173,17 +173,17 @@ class MyClass {
 
 let container = Container()
 ```
-- Prototype(default) - A new instance is generated through every resolve for that object.
+- Transient(default) - A new instance is generated through every resolve for that object.
     ```swift
-    try container.register(MyClass.self, name: "prototype") { _ in
+    try container.register(MyClass.self, name: "transient") { _ in
         MyClass()
     }
 
     // Output: MyClass initialized
-    let prototypeInstance1: MyClass = try container.resolve(MyClass.self, name: "prototype") 
+    let transientInstance1: MyClass = try container.resolve(MyClass.self, name: "transient") 
     
     // Output: MyClass initialized (new instance)
-    let prototypeInstance2: MyClass = try container.resolve(MyClass.self, name: "prototype") 
+    let transientInstance2: MyClass = try container.resolve(MyClass.self, name: "transient") 
     ```
 - Singleton - Instance maintained and kep throughout the life time of the container.
     ```swift

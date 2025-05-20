@@ -123,7 +123,7 @@ extension ContainerTests {
             let container = Container()
             let factory = Factory { 42 }
             try container.register(Int.self, factory: factory)
-            let expected = Registration(factory: factory, isOverridable: true, instance: Prototype())
+            let expected = Registration(factory: factory, isOverridable: true, instance: Transient())
             let key = RegistrationKey(productType: Int.self)
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
@@ -134,7 +134,7 @@ extension ContainerTests {
             let container = Container()
             let factory = Factory { 42 }
             try container.register(Int.self, name: "42", factory: factory)
-            let expected = Registration(factory: factory, isOverridable: true, instance: Prototype())
+            let expected = Registration(factory: factory, isOverridable: true, instance: Transient())
             let key = RegistrationKey(productType: Int.self, name: "42")
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
@@ -692,12 +692,18 @@ extension ContainerTests {
             let id = UUID()
         }
         
+        struct Object4 {
+            let id = UUID()
+        }
+        
         @Test("Singleton Instance")
         func containerSingletonInstance() async throws {
             let container = Container()
             
+            var count = 0
             try container.register(Object3.self) { _ in
-                Object3()
+                count += 1
+                return Object3()
             }
             .asSingleton()
             
@@ -705,29 +711,35 @@ extension ContainerTests {
             let two = try await container.resolve(Object3.self)
             
             #expect(one === two)
+            #expect(count == 1)
         }
         
-        @Test("Prototype Instance")
-        func containerPrototypeInstance() async throws {
+        @Test("Transient Instance")
+        func containerTransientInstance() async throws {
             let container = Container()
             
+            var count = 0
             try container.register(Object3.self) { _ in
-                Object3()
+                count += 1
+                return Object3()
             }
-            .asPrototype()
+            .asTransient()
             
             let one = try await container.resolve(Object3.self)
             let two = try await container.resolve(Object3.self)
             
             #expect(one !== two)
+            #expect(count == 2)
         }
         
         @Test("Weak Instance")
         func containerWeakInstance() async throws {
             let container = Container()
             
+            var count = 0
             try container.register(Object3.self) { _ in
-                Object3()
+                count += 1
+                return Object3()
             }
             .asWeak()
             
@@ -735,12 +747,14 @@ extension ContainerTests {
             var two: Object3? = try await container.resolve(Object3.self)
             
             #expect(one === two)
+            #expect(count == 1)
             
             let oneId = one!.id
             one = nil
             two = nil
             let three = try await container.resolve(Object3.self)
             #expect(three.id != oneId)
+            #expect(count == 2)
         }
         
         @Test("Graph Instance")
@@ -812,33 +826,33 @@ extension ContainerTests {
         func containerGraphInstanceComplexDependencies() async throws {
             let container = Container()
             
-            var object3Count = 0
-            var object2Count = 0
-            var object1Count = 0
-            var object0Count = 0
+            var singletonCount = 0
+            var graphCount = 0
+            var transientCount = 0
+            var weakCount = 0
             
             try container.register(Object3.self) { _ in
-                object3Count += 1
+                singletonCount += 1
                 return Object3()
             }
             .asSingleton()
             
             try container.register(Object2.self) { resolver in
-                object2Count += 1
+                graphCount += 1
                 let object3 = try await resolver.resolve(Object3.self)
                 return Object2(object3: object3)
             }
             
             try container.register(Object1.self) { resolver in
-                object1Count += 1
+                transientCount += 1
                 let object3 = try await resolver.resolve(Object3.self)
                 let object2 = try await resolver.resolve(Object2.self)
                 return Object1(object2: object2, object3: object3)
             }
-            .asPrototype()
+            .asTransient()
             
             try container.register(Object0.self) { resolver in
-                object0Count += 1
+                weakCount += 1
                 let object3 = try await resolver.resolve(Object3.self)
                 let object2 = try await resolver.resolve(Object2.self)
                 let object1 = try await resolver.resolve(Object1.self)
@@ -849,31 +863,109 @@ extension ContainerTests {
             
             var object0: Object0? = try await container.resolve(Object0.self)
             
-            #expect(object0Count == 1)
-            #expect(object1Count == 2)
-            #expect(object2Count == 1)
-            #expect(object3Count == 1)
+            #expect(weakCount == 1)
+            #expect(transientCount == 2)
+            #expect(graphCount == 1)
+            #expect(singletonCount == 1)
             
             var secondObject0: Object0? = try await container.resolve(Object0.self)
             
-            #expect(object0Count == 1)
-            #expect(object1Count == 4)
-            #expect(object2Count == 2)
-            #expect(object3Count == 1)
+            // There are no changes because the object was never resolved!
+            #expect(weakCount == 1)
+            #expect(transientCount == 2)
+            #expect(graphCount == 1)
+            #expect(singletonCount == 1)
             
             object0 = nil
             secondObject0 = nil
             
             _ = try await container.resolve(Object0.self)
             
-            #expect(object0Count == 2)
-            #expect(object1Count == 6)
-            #expect(object2Count == 3)
-            #expect(object3Count == 1)
+            #expect(weakCount == 2)
+            #expect(transientCount == 4)
+            #expect(graphCount == 2)
+            #expect(singletonCount == 1)
             
             // added to remove some warnings
             #expect(object0 == nil)
             #expect(secondObject0 == nil)
         }
+        
+        @Test("Context.current is unique per resolution tree")
+        func contextGraphIDUniquenessPerTree() async throws {
+            let container = Container()
+            var graphIDs: [UUID] = []
+            
+            // Register a simple type that captures the current graphID
+            try container.register(UUID.self) { _ in
+                let graphID = Context.current.graphID
+                graphIDs.append(graphID)
+                return graphID
+            }
+            
+            // First resolution
+            _ = try await container.resolve(UUID.self)
+            // Second resolution
+            _ = try await container.resolve(UUID.self)
+            // Third resolution
+            _ = try await container.resolve(UUID.self)
+            
+            // You should have 3 different graphIDs
+            #expect(graphIDs.count == 3)
+            #expect(Set(graphIDs).count == 3)
+        }
+        
+        @Test("Graph scope reuses the same context within one tree")
+        func graphScopeSharesSameContext() async throws {
+            let container = Container()
+            var capturedGraphIDs: [UUID] = []
+            
+            class O1 {}
+            class O2 {}
+            
+            try container.register(O2.self) { _ in
+                capturedGraphIDs.append(Context.current.graphID)
+                return O2()
+            }
+            
+            try container.register(O1.self) { resolver in
+                _ = try await resolver.resolve(O2.self)
+                _ = try await resolver.resolve(O2.self)
+                capturedGraphIDs.append(Context.current.graphID)
+                return O1()
+            }
+            
+            _ = try await container.resolve(O1.self)
+            
+            #expect(capturedGraphIDs.count == 2)
+            #expect(Set(capturedGraphIDs).count == 1) // All the same!
+        }
+        
+        
+        @Test("Concurrent Graph Resolution")
+        func containerConcurrentGraphResolution() async throws {
+            let container = Container()
+            let serialQueue = DispatchQueue(label: "test.concurrency.graph.instances")
+            var object3Count = 0
+            
+            try container.register(Object3.self) {
+                serialQueue.sync {
+                    object3Count += 1
+                }
+                return Object3()
+            }
+            
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                for _ in 0..<10 {
+                    group.addTask {
+                        _ = try await container.resolve(Object3.self)
+                    }
+                }
+                try await group.waitForAll()
+            }
+            
+            #expect(object3Count == 10)
+        }
+        
     }
 }

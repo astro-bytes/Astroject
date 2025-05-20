@@ -23,10 +23,10 @@ public final class Container: @unchecked Sendable {
     ///  A dictionary to store the dependency resolution graph for each thread.
     ///  This is used to detect circular dependencies.
     private(set) var resolvingGraphs: [ObjectIdentifier: [RegistrationKey]] = [:]
-
+    
     /// Initializes a new `Container` instance.
     public init() {}
-
+    
     /// Registers a synchronous factory for a product type.
     ///
     /// This method allows you to register a closure that will be executed synchronously to create
@@ -71,7 +71,7 @@ public final class Container: @unchecked Sendable {
         // Return the newly created registration.
         return registration
     }
-
+    
     /// Registers a synchronous factory for a product type that requires an argument during resolution.
     ///
     /// This method is similar to the argument-less `register` method but allows you to register a factory
@@ -120,7 +120,7 @@ public final class Container: @unchecked Sendable {
         // Return the created registration.
         return registration
     }
-
+    
     /// Checks if a product type is registered in the container.
     ///
     /// - parameter productType: The type of the product to check for.
@@ -135,7 +135,7 @@ public final class Container: @unchecked Sendable {
             registrations.keys.contains(key)
         }
     }
-
+    
     /// Clears all registrations from the container.
     ///
     /// This will remove all registered factories and instances, effectively resetting the container's
@@ -146,7 +146,7 @@ public final class Container: @unchecked Sendable {
             registrations.removeAll()
         }
     }
-
+    
     /// Adds a behavior to the container.
     ///
     /// Behaviors can observe and react to events within the container, such as when registrations
@@ -189,7 +189,7 @@ public extension Container {
             factory: Factory(block)
         )
     }
-
+    
     /// Registers an asynchronous factory for a product type using a closure.
     ///
     /// This method allows you to register a closure that will be executed asynchronously to create
@@ -248,7 +248,7 @@ public extension Container {
             factory: Factory(block)
         )
     }
-
+    
     /// Registers an asynchronous factory for a product type that requires an argument during resolution,
     /// using a closure.
     ///
@@ -284,30 +284,75 @@ public extension Container {
 
 // MARK: Conform to Resolver
 extension Container: Resolver {
-    /// Resolves a product type synchronously.
-    ///
-    /// This method retrieves and instantiates a registered product of the specified type.
-    ///
-    /// - parameter  productType: The type of the product to resolve.
-    /// - parameter name: An optional name of the registration to resolve. If `nil`, the default
-    ///  registration for the `productType` is resolved.
-    /// - Returns: An instance of the resolved `Product` type.
-    /// - Throws: `AstrojectError.noRegistrationFound` if no registration exists for the given
-    ///  `productType` and `name`.
-    /// - Throws: `AstrojectError.circularDependencyDetected` if the resolution of the dependency
-    ///  leads to a circular dependency.
     public func resolve<Product>(
+        _ type: Product.Type,
+        name: String?
+    ) async throws -> Product {
+        // Check current depth
+        let currentDepth = Context.current.depth
+        
+        if currentDepth == 0 {
+            // Top-level resolution: create fresh context with new graph ID
+            return try await Context.$current.withValue(Context.fresh()) {
+                try await internalResolve(type, name: name)
+            }
+        } else {
+            // Nested resolution: increment depth but keep same graphID
+            let nextContext = Context.current.next()
+            return try await Context.$current.withValue(nextContext) {
+                try await internalResolve(type, name: name)
+            }
+        }
+    }
+    
+    public func resolve<Product, Argument: Hashable>(
+        _ type: Product.Type,
+        name: String?,
+        argument: Argument
+    ) async throws -> Product {
+        // Check current depth
+        let currentDepth = Context.current.depth
+        
+        if currentDepth == 0 {
+            // Top-level resolution: create fresh context with new graph ID
+            return try await Context.$current.withValue(Context.fresh()) {
+                try await internalResolve(type, name: name, argument: argument)
+            }
+        } else {
+            // Nested resolution: increment depth but keep same graphID
+            let nextContext = Context.current.next()
+            return try await Context.$current.withValue(nextContext) {
+                try await internalResolve(type, name: name, argument: argument)
+            }
+        }
+    }
+}
+
+// MARK: Helper Functions
+extension Container {
+    /// Internal resolution method for products without arguments.
+    ///
+    /// This method handles the core logic for resolving a product, including
+    /// checking for circular dependencies and interacting with the `Context`.
+    ///
+    /// - Parameters:
+    ///   - productType: The type of the product to resolve.
+    ///   - name: An optional name for the registration.
+    /// - Returns: An instance of the resolved `Product`.
+    /// - Throws: `AstrojectError.circularDependencyDetected` if a circular dependency is found,
+    ///           or `AstrojectError.noRegistrationFound` if no suitable registration exists.
+    func internalResolve<Product>(
         _ productType: Product.Type,
         name: String?
     ) async throws -> Product {
         let key = RegistrationKey(productType: productType, name: name)
         var graph = getGraph()
-
+        
         // Check for circular dependency in THIS thread's stack
         if graph.contains(key) {
             throw AstrojectError.circularDependencyDetected(type: "\(productType)", name: name)
         }
-
+        
         // Push onto THIS thread's stack
         graph.append(key)
         updateGraph(graph)
@@ -323,32 +368,32 @@ extension Container: Resolver {
         // Return the resolved instance of the product.
         return product
     }
-
-    /// Resolves a product type synchronously, providing a required argument.
+    
+    /// Internal resolution method for products that require an argument.
     ///
-    /// This method is used to resolve products that were registered with a factory that requires an
-    /// argument of a specific type.
+    /// This method extends the resolution logic to handle factories that need
+    /// an additional argument for instantiation, including circular dependency detection.
     ///
-    /// - parameter productType: The type of the product to resolve.
-    /// - parameter name: An optional name of the registration to resolve.
-    /// - parameter argument: The argument required by the factory to create the product.
-    /// - Returns: An instance of the resolved `Product` type.
-    /// - Throws: `AstrojectError.noRegistrationFound` if no registration exists for the given
-    ///  `productType`, `name`, and the type of the `argument`.
-    /// - Throws: `AstrojectError.circularDependencyDetected` if the resolution leads to a circular dependency.
-    public func resolve<Product, Argument: Hashable>(
+    /// - Parameters:
+    ///   - productType: The type of the product to resolve.
+    ///   - name: An optional name for the registration.
+    ///   - argument: The argument required by the product's factory.
+    /// - Returns: An instance of the resolved `Product`.
+    /// - Throws: `AstrojectError.circularDependencyDetected` if a circular dependency is found,
+    ///           or `AstrojectError.noRegistrationFound` if no suitable registration exists.
+    func internalResolve<Product, Argument: Hashable>(
         _ productType: Product.Type,
         name: String?,
         argument: Argument
     ) async throws -> Product {
         let key = RegistrationKey(productType: productType, name: name, argumentType: Argument.self)
-
+        
         var graph = getGraph()
         // Check for circular dependency in THIS thread's stack
         if graph.contains(key) {
             throw AstrojectError.circularDependencyDetected(type: "\(productType)", name: name)
         }
-
+        
         // Push onto THIS thread's stack
         graph.append(key)
         updateGraph(graph)
@@ -357,7 +402,7 @@ extension Container: Resolver {
             graph.removeLast()
             updateGraph(graph)
         }
-
+        
         // Find the registration for the product type, name, and the type of the argument.
         let registration = try findRegistration(for: productType, with: name, argument: argument)
         // Resolve the product by calling the registration's resolve method with the resolver and the argument.
@@ -365,10 +410,7 @@ extension Container: Resolver {
         // Return the resolved product instance.
         return product
     }
-}
-
-// MARK: Helper Functions
-extension Container {
+    
     /// Finds a registration for a product type.
     ///
     /// - parameter productType: The type of the product to find the registration for.
@@ -390,11 +432,11 @@ extension Container {
         guard let registration else {
             throw AstrojectError.noRegistrationFound
         }
-
+        
         // Return the found registration.
         return registration
     }
-
+    
     /// Finds a registration for a product type that requires a specific argument.
     ///
     /// - parameter productType: The type of the product to find the registration for.
@@ -409,22 +451,22 @@ extension Container {
     ) throws -> RegistrationWithArgument<Product, Argument> {
         // Create the key used to find the registration, including the argument type.
         let key = RegistrationKey(productType: productType, name: name, argumentType: Argument.self)
-
+        
         // Access the registrations dictionary in a thread-safe manner.
         let registration = serialQueue.sync {
             // Attempt to cast the registration to the specific type that handles arguments.
             registrations[key] as? RegistrationWithArgument<Product, Argument>
         }
-
+        
         // If no registration is found, throw an error indicating that.
         guard let registration else {
             throw AstrojectError.noRegistrationFound
         }
-
+        
         // Return the found registration.
         return registration
     }
-
+    
     /// Validates if a registration already exists for the given product type and name,
     /// throwing an error if a non-overridable registration is found.
     ///
@@ -435,12 +477,12 @@ extension Container {
     func assertRegistrationAllowed<Product>(_ productType: Product.Type, name: String?, overridable: Bool) throws {
         // Construct a RegistrationKey to identify the registration.
         let key = RegistrationKey(productType: productType, name: name)
-
+        
         // Attempt to retrieve an existing registration using the key.
         let existingRegistration = serialQueue.sync {
             registrations[key] as? Registration<Product>
         }
-
+        
         // Check if an existing registration was found.
         if let existingRegistration {
             // If an existing registration is found, check if both the existing registration and
@@ -453,11 +495,11 @@ extension Container {
         }
         // If no existing registration is found, or if both are overridable, the validation passes.
     }
-
+    
     /// Retrieves the dependency resolution graph for the current thread.
     ///
     /// - Returns: The dependency resolution graph for the current thread.
-    private func getGraph() -> [RegistrationKey] {
+    func getGraph() -> [RegistrationKey] {
         let thread = Thread.current
         let threadIdentifier = ObjectIdentifier(thread)
         return serialQueue.sync {
@@ -470,11 +512,11 @@ extension Container {
             }
         }
     }
-
+    
     /// Updates the dependency resolution graph for the current thread.
     ///
     /// - parameter graph: The updated dependency resolution graph.
-    private func updateGraph(_ graph: [RegistrationKey]) {
+    func updateGraph(_ graph: [RegistrationKey]) {
         let thread = Thread.current
         let threadIdentifier = ObjectIdentifier(thread)
         serialQueue.sync {

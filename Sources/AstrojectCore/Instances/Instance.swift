@@ -17,38 +17,30 @@ public protocol Instance<Product> {
     /// The type of product that this instance manages.
     associatedtype Product
     
-    /// Retrieves the managed product, if available.
-    ///
-    /// This function returns the instance of the product being managed by the `Instance` implementation.
-    /// If the instance has not been set or has been released, it returns `nil`.
-    ///
-    /// - Returns: The managed product, or `nil` if not available.
-    func get(for identifier: Identifier) -> Product?
+    /// Retrieves a product instance from the instance manager based on the provided context.
+    /// - Parameter context: The `Context` object containing information pertinent to the instance's retrieval,
+    ///   such as a `graphID` for scoped instances.
+    /// - Returns: The `Product` instance if found, otherwise `nil`.
+    func get(for context: Context) -> Product?
     
-    /// Sets the managed product.
-    ///
-    /// This function sets the instance of the product being managed by the `Instance` implementation.
-    ///
-    /// - parameter product: The product to set.
-    func set(_ product: Product, for identifier: Identifier)
+    /// Stores or updates a product instance within the instance manager for a given context.
+    /// - Parameters:
+    ///   - product: The `Product` instance to be stored.
+    ///   - context: The `Context` object used to associate the product with a specific scope or identifier.
+    func set(_ product: Product, for context: Context)
     
-    /// Releases the managed product or performs any necessary cleanup.
-    ///
-    /// This function releases the managed product, performing any necessary cleanup or deallocation.
-    /// After calling this function, `get()` should return `nil`.
-    func release(for identifier: Identifier?)
+    /// Releases (removes) a product instance, or all instances, from the instance manager.
+    /// - Parameter context: An optional `Context` object. If provided, only the product associated
+    ///   with this context's `graphID` is released. If `nil`, all managed instances are released.
+    func release(for context: Context?)
 }
 
-extension Instance {
-    func get() -> Product? {
-        self.get(for: .init())
-    }
-    
-    func set(_ product: Product) {
-        self.set(product, for: .init())
-    }
-    
-    func release() {
+public extension Instance {
+    /// Releases all product instances currently managed by this instance manager.
+    ///
+    /// This is a convenience method that calls `release(for:)` with a `nil` context,
+    /// effectively clearing all stored instances.
+    func releaseAll() {
         self.release(for: nil)
     }
 }

@@ -22,7 +22,7 @@ public protocol Resolver {
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
     func resolve<Product>(_ productType: Product.Type) async throws -> Product
-
+    
     /// Resolves a product type asynchronously with an optional name.
     ///
     /// This function resolves a dependency of the specified `productType` with an optional `name`.
@@ -37,7 +37,7 @@ public protocol Resolver {
         _ productType: Product.Type,
         name: String?
     ) async throws -> Product
-
+    
     /// Resolves a product type asynchronously with an optional name and an argument.
     ///
     /// This function resolves a dependency of the specified `productType` with an optional `name` and an `argument`.
@@ -69,7 +69,7 @@ public extension Resolver {
     func resolve<Product>(_ productType: Product.Type) async throws -> Product {
         try await resolve(productType, name: nil)
     }
-
+    
     /// Default implementation for resolving a product type with an argument but without a name.
     ///
     /// This default implementation calls the `resolve(_:name:argument:)` function with a `nil` name,

@@ -16,8 +16,9 @@ struct InstanceTests {
         func singletonGetSet() {
             let instance = Singleton<ClassAnimal>()
             let dog = ClassAnimal()
-            instance.set(dog)
-            let result = instance.get()
+            let context = Context.fresh()
+            instance.set(dog, for: context)
+            let result = instance.get(for: context)
             #expect(result != nil)
             #expect(result === dog)
         }
@@ -26,31 +27,34 @@ struct InstanceTests {
         func singletonSameInstance() {
             let instance = Singleton<ClassAnimal>()
             let dog = ClassAnimal()
-            instance.set(dog)
-            let result1 = instance.get()
-            let result2 = instance.get()
+            let context = Context.fresh()
+            instance.set(dog, for: context)
+            let result1 = instance.get(for: context)
+            let result2 = instance.get(for: context)
             #expect(result1 === result2)
         }
     }
     
-    @Suite("Prototype")
-    struct PrototypeTests {
+    @Suite("Transient")
+    struct TransientTests {
         @Test("Get returns nil before set")
-        func prototypeGetNil() {
-            let instance = Prototype<ClassAnimal>()
-            let result = instance.get()
+        func transientGetNil() {
+            let instance = Transient<ClassAnimal>()
+            let context = Context.fresh()
+            let result = instance.get(for: context)
             #expect(result == nil)
         }
         
         @Test("Get returns different instances after set")
-        func prototypeDifferentInstances() {
-            let instance = Prototype<ClassAnimal>()
+        func transientDifferentInstances() {
+            let instance = Transient<ClassAnimal>()
+            let context = Context.fresh()
             let dog1 = ClassAnimal()
-            instance.set(dog1)
-            let result1 = instance.get()
+            instance.set(dog1, for: context)
+            let result1 = instance.get(for: context)
             let dog2 = ClassAnimal()
-            instance.set(dog2)
-            let result2 = instance.get()
+            instance.set(dog2, for: context)
+            let result2 = instance.get(for: context)
             #expect(result1 == nil)
             #expect(result2 == nil)
         }
@@ -61,23 +65,25 @@ struct InstanceTests {
         @Test("Get and Set")
         func weakGetSet() {
             let instance = Weak<ClassAnimal>()
+            let context = Context.fresh()
             var dog: ClassAnimal? = ClassAnimal()
-            instance.set(dog!)
-            var result = instance.get()
+            instance.set(dog!, for: context)
+            var result = instance.get(for: context)
             #expect(result != nil)
             #expect(result === dog)
             dog = nil
             result = nil
-            #expect(instance.get() == nil)
+            #expect(instance.get(for: context) == nil)
         }
         
         @Test("Instance becomes nil when original is deallocated")
         func weakBecomesNil() {
             let instance = Weak<ClassAnimal>()
+            let context = Context.fresh()
             var dog: ClassAnimal? = ClassAnimal()
-            instance.set(dog!)
+            instance.set(dog!, for: context)
             dog = nil
-            #expect(instance.get() == nil)
+            #expect(instance.get(for: context) == nil)
         }
     }
     
@@ -86,60 +92,60 @@ struct InstanceTests {
         @Test("Get and Set")
         func graphGetSet() {
             let graph = Graph<ClassAnimal>()
-            let identifier1 = Identifier()
+            let context1 = Context.fresh()
             let dog1 = ClassAnimal()
-            graph.set(dog1, for: identifier1)
-            let result1 = graph.get(for: identifier1)
+            graph.set(dog1, for: context1)
+            let result1 = graph.get(for: context1)
             #expect(result1 != nil)
             #expect(result1 === dog1)
             
-            let identifier2 = Identifier()
+            let context2 = Context.fresh()
             let dog2 = ClassAnimal()
-            graph.set(dog2, for: identifier2)
-            let result2 = graph.get(for: identifier2)
+            graph.set(dog2, for: context2)
+            let result2 = graph.get(for: context2)
             #expect(result2 != nil)
             #expect(result2 === dog2)
-            #expect(result1 !== result2) // Ensure different identifiers, different instances
+            #expect(result1 !== result2) // Ensure different contexts, different instances
         }
         
-        @Test("Get returns nil for unknown Identifier")
+        @Test("Get returns nil for unknown Context")
         func graphGetUnknownIdentifier() {
             let graph = Graph<ClassAnimal>()
-            let unknownIdentifier = Identifier()
-            let result = graph.get(for: unknownIdentifier)
+            let unknownContext = Context.fresh()
+            let result = graph.get(for: unknownContext)
             #expect(result == nil)
         }
         
         @Test("Release removes specific instance")
         func graphReleaseSpecific() {
             let graph = Graph<ClassAnimal>()
-            let identifier1 = Identifier()
-            let identifier2 = Identifier()
+            let context1 = Context.fresh()
+            let context2 = Context.fresh()
             let dog1 = ClassAnimal()
             let dog2 = ClassAnimal()
-            graph.set(dog1, for: identifier1)
-            graph.set(dog2, for: identifier2)
+            graph.set(dog1, for: context1)
+            graph.set(dog2, for: context2)
             
-            graph.release(for: identifier1)
+            graph.release(for: context1)
             
-            #expect(graph.get(for: identifier1) == nil)
-            #expect(graph.get(for: identifier2) === dog2)
+            #expect(graph.get(for: context1) == nil)
+            #expect(graph.get(for: context2) === dog2)
         }
         
         @Test("ReleaseAll removes all instances")
         func graphReleaseAll() {
             let graph = Graph<ClassAnimal>()
-            let identifier1 = Identifier()
-            let identifier2 = Identifier()
+            let context1 = Context.fresh()
+            let context2 = Context.fresh()
             let dog1 = ClassAnimal()
             let dog2 = ClassAnimal()
-            graph.set(dog1, for: identifier1)
-            graph.set(dog2, for: identifier2)
+            graph.set(dog1, for: context1)
+            graph.set(dog2, for: context2)
             
-            graph.release()
+            graph.releaseAll()
             
-            #expect(graph.get(for: identifier1) == nil)
-            #expect(graph.get(for: identifier2) == nil)
+            #expect(graph.get(for: context1) == nil)
+            #expect(graph.get(for: context2) == nil)
         }
     }
 }

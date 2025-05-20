@@ -23,7 +23,7 @@ public protocol Registrable<Product> {
     /// Sets the instance management scope for the registration.
     ///
     /// This function allows configuring how the registered component's instances are
-    /// managed, such as singleton, prototype, or weak references.
+    /// managed, such as singleton, transient, or weak references.
     ///
     /// - parameter instance: The instance management strategy.
     /// - Returns: The modified `Registration` instance.
@@ -33,7 +33,7 @@ public protocol Registrable<Product> {
     /// Sets the instance management scope for the registration with an argument.
     ///
     /// This function allows configuring how the registered component's instances are
-    /// managed when the registration requires an argument, such as singleton, prototype,
+    /// managed when the registration requires an argument, such as singleton, transient,
     /// or weak references.
     ///
     /// - parameter instance: The instance management strategy.
@@ -94,18 +94,24 @@ public extension Registrable {
         return self.as(Weak())
     }
     
-    /// Sets the instance management scope to `Prototype`.
+    /// Sets the instance management scope to `Transient`.
     ///
-    /// This function sets the instance management scope to `Prototype`,
+    /// This function sets the instance management scope to `Transient`,
     /// creating a new instance of the product each time it is resolved.
     ///
     /// - Returns: The modified `Registration` instance.
     @discardableResult
-    func asPrototype() -> Self {
-        return self.as(Prototype())
+    func asTransient() -> Self {
+        return self.as(Transient())
     }
     
-    // TODO: Comment
+    /// Sets the instance management scope to `Graph`.
+    ///
+    /// This function sets the instance management scope to `Graph`,
+    /// allowing the instance to be managed within a specific graph or hierarchy,
+    /// enabling scoped instance management.
+    ///
+    /// - Returns: The modified `Registration` instance.
     @discardableResult
     func asGraph() -> Self {
         return self.as(Graph())

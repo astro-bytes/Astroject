@@ -32,7 +32,7 @@ class Registration<Product>: Registrable {
     ///
     /// - parameter factory: The factory used to create instances of the product.
     /// - parameter isOverridable: Indicates whether this registration can be overridden.
-    /// - parameter instance: The instance management strategy for the product (default is `Prototype`).
+    /// - parameter instance: The instance management strategy for the product.
     init(
         factory: Factory<Product, Resolver>,
         isOverridable: Bool,
@@ -47,7 +47,7 @@ class Registration<Product>: Registrable {
     ///
     /// - parameter block: The factory closure used to create instances of the product.
     /// - parameter isOverridable: Indicates whether this registration can be overridden.
-    /// - parameter instance: The instance management strategy for the product (default is `Prototype`).
+    /// - parameter instance: The instance management strategy for the product.
     convenience init(
         factory block: @escaping Factory<Product, Resolver>.Block,
         isOverridable: Bool,
@@ -61,12 +61,14 @@ class Registration<Product>: Registrable {
     }
     
     func resolve(_ container: Container) async throws -> Product {
-        if let product = self.instance.get() {
+        let context = Context.current
+        
+        if let product = instance.get(for: context) {
             return product
         } else {
             do {
                 let product: Product = try await factory(container)
-                self.instance.set(product)
+                instance.set(product, for: context)
                 try runActions(container, product: product)
                 return product
             } catch let error as AstrojectError {
@@ -105,7 +107,8 @@ extension Registration: Equatable where Product: Equatable {
     /// - parameter rhs: The right-hand side registration.
     /// - Returns: `true` if the registrations are equal, `false` otherwise.
     static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
-        return lhs.instance.get() == rhs.instance.get() &&
+        let context = Context.current
+        return lhs.instance.get(for: context) == rhs.instance.get(for: context) &&
         lhs.isOverridable == rhs.isOverridable &&
         lhs.factory == rhs.factory
     }

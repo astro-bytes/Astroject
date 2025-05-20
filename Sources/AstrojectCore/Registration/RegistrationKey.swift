@@ -20,7 +20,7 @@ struct RegistrationKey {
     /// This is used to differentiate between registrations of the same product type
     /// with different argument types.  If a registration does not take an argument, this will be `nil`.
     let argumentType: Any.Type?
-
+    
     /// Initializes a new `RegistrationKey` instance.
     ///
     /// - parameter productType: The type of the product being registered.

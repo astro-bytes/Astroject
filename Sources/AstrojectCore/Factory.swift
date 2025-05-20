@@ -29,7 +29,7 @@ public struct Factory<Product, Arguments>: Equatable {
     
     /// Executes the factory closure to create a product instance.
     ///
-    /// - parameter resolver: The `Resolver` used to resolve dependencies.
+    /// - parameter arguments: The `Argument` used in the block of code
     /// - Returns: The created product instance.
     /// - Throws: Any error thrown by the factory closure.
     func callAsFunction(_ arguments: Arguments) async throws -> Product {

@@ -1,23 +1,23 @@
 Feature: Instance Types
 This document outlines the requirements for the different instance management types used in the AstrojectCore dependency injection container. These instance types define how objects are created and managed within the container.
 
-1. Prototype
+1. Transient
 
 Description:
 
-A prototype instance creates a new instance of the registered type every time it is resolved. Each request for an instance results in a unique object.
+A transient instance creates a new instance of the registered type every time it is resolved. Each request for an instance results in a unique object.
 
 Requirements:
 
 Creation: A new instance of the registered type must be created on each resolution.
 
-Storage: The prototype instance should not store any created instances.
+Storage: The transient instance should not store any created instances.
 
-Lifecycle: The lifecycle of a prototype instance is entirely managed by the caller. The container does not manage its deallocation.
+Lifecycle: The lifecycle of a transient instance is entirely managed by the caller. The container does not manage its deallocation.
 
 Implementation:
 
-The Prototype class must implement the Instance protocol.
+The Transient class must implement the Instance protocol.
 
 The get() method should always return nil or create and return a new instance.
 
@@ -111,13 +111,13 @@ ARC should handle the deallocation of these instances.
 
 Interaction with Existing Behaviors:
 
-The existing instance behaviors (singleton, weak, and prototype) should override the new graph-specific behavior.  For example:
+The existing instance behaviors (singleton, weak, and transient) should override the new graph-specific behavior.  For example:
 
 If an object is registered as a singleton, only one instance of that object will ever be created, regardless of graph-specific resolution.
 
 If an object is registered as weak, it will behave as a weak reference, even within a graph.
 
-If an object is registered as prototype, a new instance will be created each time, even within the same graph.
+If an object is registered as transient, a new instance will be created each time, even within the same graph.
 
 Circular Dependencies:
 
@@ -144,7 +144,7 @@ Goal: Enhance the dependency injection container to manage object instances base
 
 Detailed Description:
 
-Currently, the container manages instances primarily based on the registered type and instance management strategy (singleton, prototype, weak). This feature introduces a new dimension to instance management, where the arguments provided during resolution are also considered.
+Currently, the container manages instances primarily based on the registered type and instance management strategy (singleton, transient, weak). This feature introduces a new dimension to instance management, where the arguments provided during resolution are also considered.
 
 Specific Requirements:
 
@@ -262,7 +262,7 @@ asSingleton(): Should set the instance to a Singleton instance.
 
 asWeak(): Should set the instance to a Weak instance.  Should only be available when Product is a class.
 
-asPrototype(): Should set the instance to a Prototype instance.
+asTransient(): Should set the instance to a Transient instance.
 
 2. Registration Class
 
@@ -359,7 +359,7 @@ When a type is resolved, the container should:
 
 Find the appropriate Registration or RegistrationWithArgument for the requested type.
 
-Use the stored Instance object to manage the lifecycle of the resolved instance (e.g., singleton, prototype).
+Use the stored Instance object to manage the lifecycle of the resolved instance (e.g., singleton, transient).
 
 Use the stored Factory to create a new instance if necessary.
 
@@ -411,7 +411,7 @@ Interaction with Other Components
 
 Registration: The resolution process relies on the registration mechanism to find the appropriate Registration or RegistrationWithArgument for a given type and name.
 
-Instance Management: The resolution process uses the Instance objects (Singleton, Prototype, Weak, etc.) associated with a registration to manage the lifecycle of the resolved instance.
+Instance Management: The resolution process uses the Instance objects (Singleton, Transient, Weak, etc.) associated with a registration to manage the lifecycle of the resolved instance.
 
 Factory: The resolution process uses the Factory associated with a registration to create new instances when necessary.
 
