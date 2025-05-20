@@ -85,6 +85,16 @@ struct InstanceTests {
             dog = nil
             #expect(instance.get(for: context) == nil)
         }
+        
+        @Test("Instance can hold structs")
+        func weakStruct() {
+            let instance = Weak<StructAnimal>()
+            let context = Context.fresh()
+            let animal = StructAnimal()
+            instance.set(animal, for: context)
+            instance.release(for: context)
+            #expect(instance.get(for: context) == nil)
+        }
     }
     
     @Suite("Graph")

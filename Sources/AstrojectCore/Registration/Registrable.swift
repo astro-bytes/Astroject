@@ -90,7 +90,7 @@ public extension Registrable {
     ///
     /// - Returns: The modified `Registration` instance.
     @discardableResult
-    func asWeak() -> Self where Product: AnyObject {
+    func asWeak() -> Self {
         return self.as(Weak())
     }
     

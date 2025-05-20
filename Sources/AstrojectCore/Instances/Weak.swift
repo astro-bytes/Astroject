@@ -12,9 +12,14 @@ import Foundation
 /// The `Weak` class implements the `Instance` protocol and represents a weak reference scope for dependency injection.
 /// It holds a weak reference to the product instance, allowing it to be deallocated when
 /// no longer strongly referenced elsewhere.
-class Weak<Product: AnyObject>: Instance {
+class Weak<Product>: Instance {
     /// The weak reference to the product instance.
-    weak var product: Product?
+    weak var object: AnyObject?
+    
+    var product: Product? {
+        get { object as? Product }
+        set { object = newValue as AnyObject }
+    }
     
     /// Initializes a new `Weak` instance.
     init() {}
