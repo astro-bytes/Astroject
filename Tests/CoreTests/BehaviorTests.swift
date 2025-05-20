@@ -12,7 +12,8 @@ import Testing
 @Suite("Behavior")
 struct BehaviorTests {
     
-    @Test func testBehaviorDidRegisterCalled() throws {
+    @Test("Ensure didRegister is Called")
+    func behaviorDidRegisterCalled() throws {
         let container = Container()
         let behavior = MockBehavior()
         container.add(behavior)
@@ -26,7 +27,8 @@ struct BehaviorTests {
         #expect(behavior.registeredName == nil)
     }
     
-    @Test func testBehaviorDidRegisterWithName() throws {
+    @Test("Ensure didRegisterWithName is Called")
+    func behaviorDidRegisterWithName() throws {
         let container = Container()
         let behavior = MockBehavior()
         container.add(behavior)
@@ -40,7 +42,8 @@ struct BehaviorTests {
         #expect(behavior.registeredName == "testString")
     }
     
-    @Test func testMultipleBehaviors() throws {
+    @Test("Testing Multiple Behaviors")
+    func multipleBehaviors() throws {
         let container = Container()
         let behavior1 = MockBehavior()
         let behavior2 = MockBehavior()
@@ -61,7 +64,8 @@ struct BehaviorTests {
         #expect(behavior2.registeredName == nil)
     }
     
-    @Test func testBehaviorWithDifferentRegistrations() throws {
+    @Test("Behaviors with Multiple Registrations")
+    func behaviorWithDifferentRegistrations() throws {
         let container = Container()
         let behavior = MockBehavior()
         container.add(behavior)

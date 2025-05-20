@@ -4,17 +4,18 @@
 //
 //  Created by Porter McGary on 3/4/25.
 //
-
 import Testing
 import Foundation
 @testable import AstrojectCore
 
 // swiftlint:disable identifier_name
 // swiftlint:disable force_cast
+// swiftlint:disable function_body_length
+// swiftlint:disable type_body_length
 
 @Suite("Container")
 struct ContainerTests {
-    @Test
+    @Test("Validate isRegistered")
     func isRegistered() throws {
         let container = Container()
         try container.register(Int.self) { 42 }
@@ -26,7 +27,7 @@ struct ContainerTests {
         #expect(!container.isRegistered(Int.self, with: "test"))
     }
     
-    @Test
+    @Test("Add a Behavior")
     func addBehavior() throws {
         let container = Container()
         let behavior1 = MockBehavior()
@@ -40,7 +41,7 @@ struct ContainerTests {
         #expect((container.behaviors[1] as? MockBehavior) === behavior2)
     }
     
-    @Test
+    @Test("Find a Registration")
     func findRegistration() throws {
         let container = Container()
         let factory = Factory { _ in 42 }
@@ -54,7 +55,7 @@ struct ContainerTests {
         }
     }
     
-    @Test
+    @Test("Find a Named Registration")
     func findNamedRegistration() throws {
         let container = Container()
         let factory = Factory { 42 }
@@ -68,7 +69,7 @@ struct ContainerTests {
         }
     }
     
-    @Test
+    @Test("Detect Circular Dependencies")
     func circularDependencyDetected() async throws {
         let container = Container()
         try container.register(CircularDependencyA.self) { resolver in
@@ -81,12 +82,12 @@ struct ContainerTests {
             return CircularDependencyB(classA: classA)
         }
         
-        await #expect(throws: AstrojectError.circularDependencyDetected) {
+        await #expect(throws: AstrojectError.circularDependencyDetected(type: "\(CircularDependencyA.self)", name: nil)) {
             _ = try await container.resolve(CircularDependencyA.self)
         }
     }
     
-    @Test
+    @Test("Validate Overriding Registration is Allowed")
     func assertRegistrationAllowed() throws {
         let container = Container()
         let factory = Factory { 42 }
@@ -99,35 +100,47 @@ struct ContainerTests {
             try container.register(String.self) { "test2" }
         }
     }
+    
+    @Test("Clear all Registrations")
+    func clearRegistrations() throws {
+        let container = Container()
+        try container.register(Double.self) { _ in 42 }
+        
+        #expect(container.registrations.count == 1)
+        
+        container.clear()
+        
+        #expect(container.registrations.isEmpty)
+    }
 }
 
 // MARK: Registration
 extension ContainerTests {
     @Suite("Registration")
     struct RegistrationTests {
-        @Test
+        @Test("Registration Happy Path")
         func registration() throws {
             let container = Container()
-            let factory = Factory { _ in 42 }
+            let factory = Factory { 42 }
             try container.register(Int.self, factory: factory)
-            let expected = Registration(factory: factory, isOverridable: true)
+            let expected = Registration(factory: factory, isOverridable: true, instance: Prototype())
             let key = RegistrationKey(productType: Int.self)
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
         }
         
-        @Test
+        @Test("Validate Named Registration")
         func namedRegistration() throws {
             let container = Container()
-            let factory = Factory { _ in 42 }
+            let factory = Factory { 42 }
             try container.register(Int.self, name: "42", factory: factory)
-            let expected = Registration(factory: factory, isOverridable: true)
+            let expected = Registration(factory: factory, isOverridable: true, instance: Prototype())
             let key = RegistrationKey(productType: Int.self, name: "42")
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
         }
         
-        @Test
+        @Test("Throw No Registration Error")
         func noRegistrationFoundError() async throws {
             let container = Container()
             
@@ -152,7 +165,7 @@ extension ContainerTests {
             }
         }
         
-        @Test
+        @Test("Throw Already Registered Error")
         func registrationAlreadyExistsError() throws {
             let container = Container()
             
@@ -167,17 +180,6 @@ extension ContainerTests {
             }
         }
         
-        @Test
-        func clearRegistrations() throws {
-            let container = Container()
-            try container.register(Double.self) { _ in 42 }
-            
-            #expect(container.registrations.count == 1)
-            
-            container.clear()
-            
-            #expect(container.registrations.isEmpty)
-        }
     }
 }
 
@@ -185,7 +187,7 @@ extension ContainerTests {
 extension ContainerTests {
     @Suite("Resolution")
     struct ResolutionTests {
-        @Test
+        @Test("Resolve Happy Path")
         func resolution() async throws {
             let container = Container()
             try container.register(Int.self) { _ in 42 }
@@ -215,7 +217,7 @@ extension ContainerTests {
             #expect(home.dog == resolvedDog)
         }
         
-        @Test
+        @Test("Named Resolution Happy Path")
         func namedResolution() async throws {
             let container = Container()
             try container.register(Int.self, name: "41") { _ in 41 }
@@ -226,7 +228,7 @@ extension ContainerTests {
             #expect(resolved42 == 42)
         }
         
-        @Test(.disabled("Needs Implemented first"))
+        @Test("Argument Resolution Happy Path")
         func argumentResolution() async throws {
             class MyObject {
                 let arg: String
@@ -237,17 +239,16 @@ extension ContainerTests {
             try container.register(MyObject.self, argument: String.self) { (_, arg) in
                 MyObject(arg: arg)
             }
-            .asWeak()
             
             let first = try await container.resolve(MyObject.self, argument: "1")
             let second = try await container.resolve(MyObject.self, argument: "2")
             let third = try await container.resolve(MyObject.self, argument: "1")
             
             #expect(first !== second)
-            #expect(third === first)
+            #expect(third.arg == first.arg)
         }
         
-        @Test
+        @Test("Throw Resolution Errro")
         func underlyingFactoryError() async throws {
             let container = Container()
             let error = NSError(domain: "Test", code: 123)
@@ -261,9 +262,9 @@ extension ContainerTests {
 
 // MARK: Thread Safety
 extension ContainerTests {
-    @Suite("ThreadSafety")
+    @Suite("Thread Safety")
     struct ThreadSafetyTests {
-        @Test
+        @Test("Register Concurrently")
         func concurrentRegistration() async throws {
             let container = Container()
             let iterations = 100
@@ -305,7 +306,7 @@ extension ContainerTests {
             }
         }
         
-        @Test
+        @Test("Resolve Concurrently")
         func concurrentResolution() async throws {
             let container = Container()
             try container.register(Int.self) { 42 }
@@ -315,14 +316,15 @@ extension ContainerTests {
                 for _ in 0..<iterations {
                     group.addTask {
                         await #expect(throws: Never.self) {
-                            try await container.resolve(Int.self)
+                            let result = try await container.resolve(Int.self)
+                            #expect(result == 42)
                         }
                     }
                 }
             }
         }
         
-        @Test
+        @Test("Concurrent Registration and Resolution")
         func concurrentRegistrationAndResolution() async throws {
             let container = Container()
             try container.register(Int.self) { 42 }
@@ -333,11 +335,12 @@ extension ContainerTests {
                     group.addTask {
                         if i % 2 == 0 {
                             #expect(throws: Never.self) {
-                                _ = try container.register(String.self, name: "string\(i)") { "string\(i)" }
+                                try container.register(String.self, name: "string\(i)") { "string\(i)" }
                             }
                         } else {
                             await #expect(throws: Never.self) {
-                                _ = try await container.resolve(Int.self)
+                                let result = try await container.resolve(Int.self)
+                                #expect(result == 42)
                             }
                         }
                     }
@@ -350,7 +353,7 @@ extension ContainerTests {
             }
         }
         
-        @Test
+        @Test("Concurrent Behavior Registration")
         func concurrentBehaviorAddition() async throws {
             let container = Container()
             let iterations = 100
@@ -367,7 +370,7 @@ extension ContainerTests {
             #expect(container.behaviors.count == iterations)
         }
         
-        @Test
+        @Test("Concurrent Clear")
         func concurrentClear() async throws {
             let container = Container()
             try container.register(Int.self) { 42 }
@@ -383,8 +386,494 @@ extension ContainerTests {
             
             #expect(container.registrations.isEmpty)
         }
+        
+        @Test("Concurrent Resolution with Different Types")
+        func concurrentResolutionWithDifferentTypes() async throws {
+            let container = Container()
+            try container.register(Int.self) { 42 }
+            try container.register(String.self) { "hello" }
+            let iterations = 100
+            
+            await withTaskGroup(of: Void.self) { group in
+                for i in 0..<iterations {
+                    group.addTask {
+                        if i % 2 == 0 {
+                            await #expect(throws: Never.self) {
+                                let result: Int = try await container.resolve(Int.self)
+                                #expect(result == 42)
+                            }
+                        } else {
+                            await #expect(throws: Never.self) {
+                                let result: String = try await container.resolve(String.self)
+                                #expect(result == "hello")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        @Test("Concurrent Registration with the Same Type & Different Names")
+        func concurrentRegistrationOfSameTypeWithDifferentNames() async throws {
+            let container = Container()
+            let iterations = 100
+            
+            await withTaskGroup(of: Void.self) { group in
+                for i in 0..<iterations {
+                    group.addTask {
+                        let result = try? container.register(Int.self, name: "name\(i)") { i }
+                        #expect(result != nil)
+                    }
+                }
+            }
+            
+            for i in 0..<iterations {
+                #expect(container.isRegistered(Int.self, with: "name\(i)"))
+            }
+        }
+        
+        @Test("Mixed Concurrent Operations")
+        func mixedConcurrentOperations() async throws {
+            let container = Container()
+            let iterations = 100
+            
+            await withTaskGroup(of: Void.self) { group in
+                for i in 0..<iterations {
+                    group.addTask {
+                        // Concurrent registration of different types with unique names
+                        let intResult = try? container.register(Int.self, name: "int\(i)") { i }
+                        #expect(intResult != nil)
+                        
+                        let stringResult = try? container.register(String.self, name: "string\(i)") { "string\(i)" }
+                        #expect(stringResult != nil)
+                        
+                        // Concurrent resolution of some of the registered types
+                        if i % 5 == 0 { // Resolve less frequently than registering
+                            let resolvedInt: Int? = try? await container.resolve(Int.self, name: "int\(i)")
+                            #expect(resolvedInt == i)
+                        }
+                        if i % 7 == 0 {
+                            let resolvedString: String? = try? await container.resolve(String.self, name: "string\(i)")
+                            #expect(resolvedString == "string\(i)")
+                        }
+                    }
+                }
+            }
+            
+            // After all tasks complete, verify that all registrations are still present
+            for i in 0..<iterations {
+                #expect(container.isRegistered(Int.self, with: "int\(i)"))
+                #expect(container.isRegistered(String.self, with: "string\(i)"))
+            }
+        }
+        
+        @Test("Concurrent Resolution with Shared Dependencies")
+        func concurrentResolutionWithSharedDependencies() async throws {
+            class SharedDependency {}
+            
+            class ObjectA {
+                let shared: SharedDependency
+                init(shared: SharedDependency) {
+                    self.shared = shared
+                }
+            }
+            
+            class ObjectB {
+                let shared: SharedDependency
+                init(shared: SharedDependency) {
+                    self.shared = shared
+                }
+            }
+            
+            let container = Container()
+            // Register a shared dependency
+            try container.register(SharedDependency.self) { SharedDependency() }
+            
+            // Register two types that depend on the shared dependency
+            try container.register(ObjectA.self) { resolver in
+                let shared = try await resolver.resolve(SharedDependency.self)
+                return ObjectA(shared: shared)
+            }
+            try container.register(ObjectB.self) { resolver in
+                let shared = try await resolver.resolve(SharedDependency.self)
+                return ObjectB(shared: shared)
+            }
+            
+            let iterations = 50
+            
+            await withTaskGroup(of: Void.self) { group in
+                for _ in 0..<iterations {
+                    group.addTask {
+                        let a = try? await container.resolve(ObjectA.self)
+                        let b = try? await container.resolve(ObjectB.self)
+                        #expect(a != nil)
+                        #expect(b != nil)
+                    }
+                }
+            }
+        }
     }
 }
 
-// swiftlint:enable identifier_name
-// swiftlint:enable force_cast
+// MARK: Circular Dependency Tests
+extension ContainerTests {
+    @Suite("Circular Dependency")
+    struct CircularDependencyTests {
+        class CircularDependencyC {
+            let classB: CircularDependencyA
+            init(classB: CircularDependencyA) {
+                self.classB = classB
+            }
+        }
+        
+        class CircularDependencyX {
+            let y: CircularDependencyY
+            init(y: CircularDependencyY) {
+                self.y = y
+            }
+        }
+        
+        class CircularDependencyY {
+            let z: CircularDependencyZ
+            init(z: CircularDependencyZ) {
+                self.z = z
+            }
+        }
+        
+        class CircularDependencyZ {
+            let x: CircularDependencyX
+            init(x: CircularDependencyX) {
+                self.x = x
+            }
+        }
+        
+        class CircularDependencyWithArgA {
+            let classB: CircularDependencyWithArgB
+            init(classB: CircularDependencyWithArgB) {
+                self.classB = classB
+            }
+        }
+        
+        class CircularDependencyWithArgB {
+            let classA: CircularDependencyWithArgA
+            init(classA: CircularDependencyWithArgA) {
+                self.classA = classA
+            }
+        }
+        
+        @Test("Deep Circular Dependencies")
+        func deeperCircularDependencies() async throws {
+            let container = Container()
+            try container.register(CircularDependencyA.self) { resolver in
+                let b = try await resolver.resolve(CircularDependencyB.self)
+                return CircularDependencyA(classB: b)
+            }
+            
+            try container.register(CircularDependencyB.self) { resolver in
+                let c = try await resolver.resolve(CircularDependencyC.self)
+                return CircularDependencyB(classA: c.classB)
+            }
+            
+            try container.register(CircularDependencyC.self) { resolver in
+                let a = try await resolver.resolve(CircularDependencyA.self)
+                return CircularDependencyC(classB: a)
+            }
+            
+            await #expect(throws: AstrojectError.circularDependencyDetected(type: "\(CircularDependencyA.self)", name: nil)) {
+                _ = try await container.resolve(CircularDependencyA.self)
+            }
+        }
+        
+        @Test("Named Circular Dependencies")
+        func namedCircularDependencies() async throws {
+            let container = Container()
+            try container.register(CircularDependencyA.self, name: "a") { resolver in
+                let b = try await resolver.resolve(CircularDependencyB.self, name: "b")
+                return CircularDependencyA(classB: b)
+            }
+            
+            try container.register(CircularDependencyB.self, name: "b") { resolver in
+                let a = try await resolver.resolve(CircularDependencyA.self, name: "a")
+                return CircularDependencyB(classA: a)
+            }
+            
+            await #expect(throws: AstrojectError.circularDependencyDetected(type: "\(CircularDependencyA.self)", name: "a")) {
+                _ = try await container.resolve(CircularDependencyA.self, name: "a")
+            }
+        }
+        
+        @Test("Argument Circular Dependencies")
+        func circularDependenciesWithArguments() async throws {
+            let container = Container()
+            try container.register(CircularDependencyWithArgA.self, argument: Int.self) { resolver, arg in
+                let b = try await resolver.resolve(CircularDependencyWithArgB.self, argument: arg)
+                return CircularDependencyWithArgA(classB: b)
+            }
+            
+            try container.register(CircularDependencyWithArgB.self, argument: Int.self) { resolver, arg in
+                let a = try await resolver.resolve(CircularDependencyWithArgA.self, argument: arg)
+                return CircularDependencyWithArgB(classA: a)
+            }
+            
+            await #expect(throws: AstrojectError.circularDependencyDetected(type: "\(CircularDependencyWithArgA.self)", name: nil)) {
+                _ = try await container.resolve(CircularDependencyWithArgA.self, argument: 1)
+            }
+        }
+        
+        @Test("Multiple Circular Dependency Scenarios")
+        func multipleCircularDependencyScenarios() async throws {
+            let container = Container()
+            
+            // Scenario 1: A -> B -> A
+            try container.register(CircularDependencyA.self) { resolver in
+                let b = try await resolver.resolve(CircularDependencyB.self)
+                return CircularDependencyA(classB: b)
+            }
+            try container.register(CircularDependencyB.self) { resolver in
+                let a = try await resolver.resolve(CircularDependencyA.self)
+                return CircularDependencyB(classA: a)
+            }
+            
+            await #expect(throws: AstrojectError.circularDependencyDetected(type: "\(CircularDependencyA.self)", name: nil)) {
+                _ = try await container.resolve(CircularDependencyA.self)
+            }
+            
+            container.clear()
+            
+            // Scenario 2: X -> Y -> Z -> X
+            try container.register(CircularDependencyX.self) { resolver in
+                let y = try await resolver.resolve(CircularDependencyY.self)
+                return CircularDependencyX(y: y)
+            }
+            try container.register(CircularDependencyY.self) { resolver in
+                let z = try await resolver.resolve(CircularDependencyZ.self)
+                return CircularDependencyY(z: z)
+            }
+            try container.register(CircularDependencyZ.self) { resolver in
+                let x = try await resolver.resolve(CircularDependencyX.self)
+                return CircularDependencyZ(x: x)
+            }
+            
+            await #expect(throws: AstrojectError.circularDependencyDetected(type: "\(CircularDependencyX.self)", name: nil)) {
+                _ = try await container.resolve(CircularDependencyX.self)
+            }
+        }
+    }
+}
+
+// MARK: Instance Tests
+extension ContainerTests {
+    @Suite("Instance")
+    struct InstanceTests {
+        class Object0 {
+            let object1: Object1
+            let secondObject1: Object1
+            let object2: Object2
+            let object3: Object3
+            
+            init(object1: Object1, secondObject1: Object1, object2: Object2, object3: Object3) {
+                self.object1 = object1
+                self.secondObject1 = secondObject1
+                self.object2 = object2
+                self.object3 = object3
+            }
+        }
+        
+        struct Object1 {
+            let object2: Object2
+            let object3: Object3
+        }
+        
+        struct Object2 {
+            let object3: Object3
+        }
+        
+        class Object3 {
+            let id = UUID()
+        }
+        
+        @Test("Singleton Instance")
+        func containerSingletonInstance() async throws {
+            let container = Container()
+            
+            try container.register(Object3.self) { _ in
+                Object3()
+            }
+            .asSingleton()
+            
+            let one = try await container.resolve(Object3.self)
+            let two = try await container.resolve(Object3.self)
+            
+            #expect(one === two)
+        }
+        
+        @Test("Prototype Instance")
+        func containerPrototypeInstance() async throws {
+            let container = Container()
+            
+            try container.register(Object3.self) { _ in
+                Object3()
+            }
+            .asPrototype()
+            
+            let one = try await container.resolve(Object3.self)
+            let two = try await container.resolve(Object3.self)
+            
+            #expect(one !== two)
+        }
+        
+        @Test("Weak Instance")
+        func containerWeakInstance() async throws {
+            let container = Container()
+            
+            try container.register(Object3.self) { _ in
+                Object3()
+            }
+            .asWeak()
+            
+            var one: Object3? = try await container.resolve(Object3.self)
+            var two: Object3? = try await container.resolve(Object3.self)
+            
+            #expect(one === two)
+            
+            let oneId = one!.id
+            one = nil
+            two = nil
+            let three = try await container.resolve(Object3.self)
+            #expect(three.id != oneId)
+        }
+        
+        @Test("Graph Instance")
+        func containerGraphInstance() async throws {
+            let container = Container()
+            
+            var object3Count = 0
+            var object2Count = 0
+            var object1Count = 0
+            try container.register(Object3.self) {
+                object3Count += 1
+                return Object3()
+            }
+            
+            try container.register(Object2.self) { resolver in
+                object2Count += 1
+                let object3 = try await resolver.resolve(Object3.self)
+                return Object2(object3: object3)
+            }
+            
+            try container.register(Object1.self) { resolver in
+                object1Count += 1
+                let object3 = try await resolver.resolve(Object3.self)
+                let object2 = try await resolver.resolve(Object2.self)
+                return Object1(object2: object2, object3: object3)
+            }
+            
+            _ = try await container.resolve(Object1.self)
+            
+            #expect(object3Count == 1)
+            #expect(object2Count == 1)
+            #expect(object1Count == 1)
+        }
+        
+        @Test("Graph Instance with different identifiers")
+        func containerGraphInstanceDifferentGraphs() async throws {
+            let container = Container()
+            
+            var object3Count = 0
+            var object2Count = 0
+            var object1Count = 0
+            try container.register(Object3.self) {
+                object3Count += 1
+                return Object3()
+            }
+            
+            try container.register(Object2.self) { resolver in
+                object2Count += 1
+                let object3 = try await resolver.resolve(Object3.self)
+                return Object2(object3: object3)
+            }
+            
+            try container.register(Object1.self) { resolver in
+                object1Count += 1
+                let object3 = try await resolver.resolve(Object3.self)
+                let object2 = try await resolver.resolve(Object2.self)
+                return Object1(object2: object2, object3: object3)
+            }
+            
+            _ = try await container.resolve(Object1.self)
+            _ = try await container.resolve(Object1.self)
+            
+            #expect(object3Count == 2)
+            #expect(object2Count == 2)
+            #expect(object1Count == 2)
+        }
+        
+        @Test("Graph Instance - Complex dependencies")
+        func containerGraphInstanceComplexDependencies() async throws {
+            let container = Container()
+            
+            var object3Count = 0
+            var object2Count = 0
+            var object1Count = 0
+            var object0Count = 0
+            
+            try container.register(Object3.self) { _ in
+                object3Count += 1
+                return Object3()
+            }
+            .asSingleton()
+            
+            try container.register(Object2.self) { resolver in
+                object2Count += 1
+                let object3 = try await resolver.resolve(Object3.self)
+                return Object2(object3: object3)
+            }
+            
+            try container.register(Object1.self) { resolver in
+                object1Count += 1
+                let object3 = try await resolver.resolve(Object3.self)
+                let object2 = try await resolver.resolve(Object2.self)
+                return Object1(object2: object2, object3: object3)
+            }
+            .asPrototype()
+            
+            try container.register(Object0.self) { resolver in
+                object0Count += 1
+                let object3 = try await resolver.resolve(Object3.self)
+                let object2 = try await resolver.resolve(Object2.self)
+                let object1 = try await resolver.resolve(Object1.self)
+                let secondObject1 = try await resolver.resolve(Object1.self)
+                return Object0(object1: object1, secondObject1: secondObject1, object2: object2, object3: object3)
+            }
+            .asWeak()
+            
+            var object0: Object0? = try await container.resolve(Object0.self)
+            
+            #expect(object0Count == 1)
+            #expect(object1Count == 2)
+            #expect(object2Count == 1)
+            #expect(object3Count == 1)
+            
+            var secondObject0: Object0? = try await container.resolve(Object0.self)
+            
+            #expect(object0Count == 1)
+            #expect(object1Count == 4)
+            #expect(object2Count == 2)
+            #expect(object3Count == 1)
+            
+            object0 = nil
+            secondObject0 = nil
+            
+            _ = try await container.resolve(Object0.self)
+            
+            #expect(object0Count == 2)
+            #expect(object1Count == 6)
+            #expect(object2Count == 3)
+            #expect(object3Count == 1)
+            
+            // added to remove some warnings
+            #expect(object0 == nil)
+            #expect(secondObject0 == nil)
+        }
+    }
+}

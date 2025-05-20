@@ -118,56 +118,6 @@ class PerformanceTests: XCTestCase {
             }
         }
     }
-    
-    func testThreadSafeDictionaryPerformance() async throws {
-        let dictionary = ThreadSafeDictionary<Int, Int>()
-        let iterations = 100
-        let concurrentTasks = 10
-        
-        measure {
-            Task {
-                await withTaskGroup(of: Void.self) { group in
-                    for i in 0..<iterations {
-                        for _ in 0..<concurrentTasks {
-                            group.addTask {
-                                if Int.random(in: 0..<2) == 0 {
-                                    dictionary.insert(i, for: i)
-                                } else {
-                                    _ = dictionary.getValue(for: Int.random(in: 0..<iterations))
-                                }
-                            }
-                        }
-                    }
-                    await group.waitForAll()
-                }
-            }
-        }
-    }
-    
-    func testThreadSafeArrayPerformance() async throws {
-        let array = ThreadSafeArray<Int>()
-        let iterations = 100
-        let concurrentTasks = 10
-        
-        measure {
-            Task {
-                await withTaskGroup(of: Void.self) { group in
-                    for i in 0..<iterations {
-                        for _ in 0..<concurrentTasks {
-                            group.addTask {
-                                if Int.random(in: 0..<2) == 0 {
-                                    array.append(i)
-                                } else if !array.isEmpty {
-                                    _ = array.get(at: Int.random(in: 0..<array.count))
-                                }
-                            }
-                        }
-                    }
-                    await group.waitForAll()
-                }
-            }
-        }
-    }
 }
 
 // swiftlint:enable identifier_name

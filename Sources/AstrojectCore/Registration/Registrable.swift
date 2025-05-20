@@ -30,6 +30,18 @@ public protocol Registrable<Product> {
     @discardableResult
     func `as`(_ instance: any Instance<Product>) -> Self
     
+    /// Sets the instance management scope for the registration with an argument.
+    ///
+    /// This function allows configuring how the registered component's instances are
+    /// managed when the registration requires an argument, such as singleton, prototype,
+    /// or weak references.
+    ///
+    /// - parameter instance: The instance management strategy.
+    /// - parameter argument: The argument used to resolve the instance.
+    /// - Returns: The modified `Registration` instance.
+    @discardableResult
+    func `as`<Argument: Hashable>(_ instance: any Instance<Product>, with argument: Argument) throws -> Self
+    
     /// Sets an action to be performed after the product is initialized.
     ///
     /// This function allows configuring a post-initialization action that will be
@@ -41,6 +53,24 @@ public protocol Registrable<Product> {
     func afterInit(perform action: Action) -> Self
 }
 
+public extension Registrable {
+    /// Provides a default implementation that throws an error for the `as` function with an argument.
+    ///
+    /// This default implementation is used when a specific `Registration` class does not
+    /// provide its own implementation for handling instances with arguments.  It indicates
+    /// that this type of registration does not support argument-specific instance management.
+    ///
+    /// - parameter instance: The instance management strategy.
+    /// - parameter argument: The argument used to resolve the instance.
+    /// - Returns: The modified `Registration` instance.
+    /// - Throws: `AstrojectError.invalidInstance` indicating that this registration does not support arguments.
+    @discardableResult
+    func `as`<Argument: Hashable>(_ instance: any Instance<Product>, with argument: Argument) throws -> Self {
+        throw AstrojectError.invalidInstance
+    }
+}
+
+// MARK: Instance's
 public extension Registrable {
     /// Sets the instance management scope to `Singleton`.
     ///
@@ -73,5 +103,11 @@ public extension Registrable {
     @discardableResult
     func asPrototype() -> Self {
         return self.as(Prototype())
+    }
+    
+    // TODO: Comment
+    @discardableResult
+    func asGraph() -> Self {
+        return self.as(Graph())
     }
 }

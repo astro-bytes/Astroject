@@ -33,9 +33,10 @@ class Registration<Product>: Registrable {
     /// - parameter factory: The factory used to create instances of the product.
     /// - parameter isOverridable: Indicates whether this registration can be overridden.
     /// - parameter instance: The instance management strategy for the product (default is `Prototype`).
-    init(factory: Factory<Product, Resolver>,
-         isOverridable: Bool,
-         instance: any Instance<Product> = Prototype<Product>()
+    init(
+        factory: Factory<Product, Resolver>,
+        isOverridable: Bool,
+        instance: any Instance<Product>
     ) {
         self.factory = factory
         self.isOverridable = isOverridable
@@ -47,24 +48,18 @@ class Registration<Product>: Registrable {
     /// - parameter block: The factory closure used to create instances of the product.
     /// - parameter isOverridable: Indicates whether this registration can be overridden.
     /// - parameter instance: The instance management strategy for the product (default is `Prototype`).
-    init(factory block: @escaping Factory<Product, Resolver>.Block,
-         isOverridable: Bool,
-         instance: any Instance<Product> = Prototype<Product>()
+    convenience init(
+        factory block: @escaping Factory<Product, Resolver>.Block,
+        isOverridable: Bool,
+        instance: any Instance<Product>
     ) {
-        let factory = Factory(block)
-        self.factory = factory
-        self.isOverridable = isOverridable
-        self.instance = instance
+        self.init(
+            factory: Factory(block),
+            isOverridable: isOverridable,
+            instance: instance
+        )
     }
     
-    /// Resolves the product instance asynchronously.
-    ///
-    /// This function retrieves the product instance based on the instance management strategy.
-    /// If the instance is not yet created, it uses the factory to create it and runs any post-initialization actions.
-    ///
-    /// - parameter container: The container used for dependency resolution.
-    /// - Returns: The resolved product instance.
-    /// - Throws: `ResolutionError.underlyingError` if an error occurs during creation or post-initialization.
     func resolve(_ container: Container) async throws -> Product {
         if let product = self.instance.get() {
             return product
@@ -82,13 +77,6 @@ class Registration<Product>: Registrable {
         }
     }
     
-    /// Runs the post-initialization actions.
-    ///
-    /// This function executes the post-initialization actions associated with the registration.
-    ///
-    /// - parameter container: The container used for dependency resolution.
-    /// - parameter product: The resolved product instance.
-    /// - Throws: `ResolutionError.underlyingError` if an error occurs during action execution.
     private func runActions(_ container: Container, product: Product) throws {
         do {
             try actions.forEach { try $0(container, product) }
@@ -97,26 +85,12 @@ class Registration<Product>: Registrable {
         }
     }
     
-    /// Sets the instance management scope for the registration.
-    ///
-    /// This function allows configuring how the registered component's instances
-    /// are managed, such as singleton, prototype, or weak references.
-    ///
-    /// - parameter instance: The instance management strategy.
-    /// - Returns: The modified `Registration` instance.
     @discardableResult
     func `as`(_ instance: any Instance<Product>) -> Self {
         self.instance = instance
         return self
     }
     
-    /// Adds a post-initialization action to the registration.
-    ///
-    /// This function allows configuring a post-initialization action that will be executed
-    /// after the product instance is created.
-    ///
-    /// - parameter action: The action to be performed.
-    /// - Returns: The modified `Registration` instance.
     @discardableResult
     func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)

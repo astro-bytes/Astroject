@@ -15,9 +15,9 @@ public class Prototype<Product>: Instance {
     /// Initializes a new `Prototype` instance.
     public init() {}
     
-    public func get() -> Product? { nil }
+    public func get(for: Identifier) -> Product? { nil }
     
-    public func set(_ product: Product) {}
+    public func set(_ product: Product, for: Identifier) {}
     
-    public func release() {}
+    public func release(for: Identifier?) {}
 }

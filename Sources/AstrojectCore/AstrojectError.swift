@@ -1,10 +1,3 @@
-//
-// AstrojectError.swift
-// Astroject
-//
-// Created by Porter McGary on 2/27/25.
-//
-
 import Foundation
 
 /// Represents errors that can occur during dependency registration and resolution
@@ -29,25 +22,43 @@ public enum AstrojectError: LocalizedError {
     /// A circular dependency is detected during the resolution process.
     ///
     /// This case indicates that a chain of dependencies forms a loop, preventing successful resolution.
-    case circularDependencyDetected
+    case circularDependencyDetected(type: String, name: String? = nil)
 
     /// An error occurred within the factory closure during dependency resolution.
     ///
     /// This case wraps an underlying error that occurred while executing the factory
     /// closure responsible for creating a dependency instance.
     case underlyingError(Error)
+    
+    /// An invalid instance was encountered during resolution.
+    ///
+    /// This error occurs when the instance being resolved is not valid or
+    /// does not conform to the expected type.  This can happen if the
+    /// Instance implementation is incorrect, or if there is a mismatch
+    /// between the registered type and the actual type of the resolved instance.
+    case invalidInstance
 
     /// Provides a user-friendly description of the error.
     public var errorDescription: String? {
         switch self {
-        case .alreadyRegistered:
-            return "A registration with the same ProductKey already exists."
+        case .alreadyRegistered(let type, let name):
+            if let name = name {
+                return "A registration for type '\(type)' with name '\(name)' already exists."
+            } else {
+                return "A registration for type '\(type)' already exists."
+            }
         case .noRegistrationFound:
             return "No registration found for the requested dependency."
-        case .circularDependencyDetected:
-            return "A circular dependency was detected."
+        case .circularDependencyDetected(let type, let name):
+            if let name = name {
+                return "A circular dependency was detected while resolving type '\(type)' with name '\(name)'."
+            } else {
+                return "A circular dependency was detected."
+            }
         case .underlyingError(let error):
             return "An error occurred within the factory closure: \(error.localizedDescription)"
+        case .invalidInstance:
+            return "The resolved instance is invalid or of an unexpected type."
         }
     }
 
@@ -62,6 +73,8 @@ public enum AstrojectError: LocalizedError {
             return "Review your dependency graph to eliminate circular dependencies."
         case .underlyingError:
             return "Inspect the underlying error for more details."
+        case .invalidInstance:
+            return "The resolved instance did not match the expected type or was invalid."
         }
     }
 
@@ -77,6 +90,8 @@ public enum AstrojectError: LocalizedError {
             return "Break the circular dependency by introducing an abstraction or using a different dependency injection pattern or by using `postInitAction` to initialize cyclical dependencies."
         case .underlyingError:
             return "Check the factory closure for errors and ensure that it's correctly implemented."
+        case .invalidInstance:
+            return "Ensure that the Instance implementation is correct and that the registered type matches the actual type of the resolved instance."
         }
     }
 }
@@ -92,12 +107,14 @@ extension AstrojectError: Equatable {
     /// - Returns: `true` if the errors are equal, `false` otherwise.
     public static func == (lhs: AstrojectError, rhs: AstrojectError) -> Bool {
         switch (lhs, rhs) {
-        case (.alreadyRegistered(let lhsType, let lhsName), .alreadyRegistered(let rhsType, let rhsName)):
-            // Compare the associated types and names for alreadyRegistered errors.
+        case (.alreadyRegistered(let lhsType, let lhsName), .alreadyRegistered(let rhsType, let rhsName)),
+             (.circularDependencyDetected(let lhsType, let lhsName),
+              .circularDependencyDetected(let rhsType, let rhsName)):
+            // Compare the associated types and names for alreadyRegistered and circularDependencyDetected errors.
             return lhsType == rhsType && lhsName == rhsName
         case (.noRegistrationFound, .noRegistrationFound),
-             (.circularDependencyDetected, .circularDependencyDetected):
-            // noRegistrationFound and circularDependencyDetected errors are equal if they are the same case.
+             (.invalidInstance, .invalidInstance):
+            // noRegistrationFound and invalidInstance errors are equal if they are the same case.
             return true
         case (.underlyingError(let lhsError), .underlyingError(let rhsError)):
             // Compare the descriptions of the underlying errors.

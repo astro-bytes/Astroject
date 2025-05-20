@@ -10,14 +10,15 @@ import Testing
 
 @Suite("Assembly")
 struct AssemblyTests {
-    
-    @Test func assemblerInitialization() {
+    @Test("Init")
+    func assemblerInitialization() {
         let container = Container()
         let assembler = Assembler(container: container)
         #expect(assembler.container === container)
     }
     
-    @Test func applySingleAssembly() {
+    @Test("Apply One Assembly")
+    func applySingleAssembly() {
         let container = Container()
         let assembler = Assembler(container: container)
         let assembly = MockAssembly()
@@ -28,7 +29,8 @@ struct AssemblyTests {
         #expect(assembly.loadedCalled)
     }
     
-    @Test func applyMultipleAssemblies() {
+    @Test("Apply Multiple Assemblies")
+    func applyMultipleAssemblies() {
         let container = Container()
         let assembler = Assembler(container: container)
         let assembly1 = MockAssembly()

@@ -11,18 +11,21 @@ import Testing
 
 @Suite("Factory")
 struct FactoryTests {
-    @Test func initialization() {
+    @Test("Init")
+    func initialization() {
         let factory = Factory { 10 }
         #expect(factory != Factory { 20 }) // Ensure UUIDs are different
     }
     
-    @Test func equality() {
+    @Test("Equality")
+    func equality() {
         let factory1 = Factory { 10 }
         let factory2 = Factory { 10 }
         #expect(factory1 != factory2) // UUIDs are different, so not equal
     }
     
-    @Test func functionCall() async throws {
+    @Test("Call as Function")
+    func functionCall() async throws {
         let resolver = MockResolver()
         let factory = Factory { resolver in
             try await resolver.resolve(Int.self, name: nil) + 5
@@ -32,7 +35,8 @@ struct FactoryTests {
         #expect(result == 47)
     }
     
-    @Test func callWithResolver() async throws {
+    @Test("Call in Resolver")
+    func callWithResolver() async throws {
         let resolver = MockResolver()
         let factory = Factory { resolver in
             try await resolver.resolve(String.self, name: nil) + " Appended"
@@ -42,7 +46,8 @@ struct FactoryTests {
         #expect(result == "Test String Appended")
     }
     
-    @Test func throwsError() async throws {
+    @Test("Throws Errors")
+    func throwsError() async throws {
         let resolver = MockResolver()
         let factory = Factory { resolver in
             try await resolver.resolve(Double.self, name: nil)

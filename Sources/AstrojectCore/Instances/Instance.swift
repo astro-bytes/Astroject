@@ -23,18 +23,32 @@ public protocol Instance<Product> {
     /// If the instance has not been set or has been released, it returns `nil`.
     ///
     /// - Returns: The managed product, or `nil` if not available.
-    func get() -> Product?
+    func get(for identifier: Identifier) -> Product?
     
     /// Sets the managed product.
     ///
     /// This function sets the instance of the product being managed by the `Instance` implementation.
     ///
     /// - parameter product: The product to set.
-    func set(_ product: Product)
+    func set(_ product: Product, for identifier: Identifier)
     
     /// Releases the managed product or performs any necessary cleanup.
     ///
     /// This function releases the managed product, performing any necessary cleanup or deallocation.
     /// After calling this function, `get()` should return `nil`.
-    func release()
+    func release(for identifier: Identifier?)
+}
+
+extension Instance {
+    func get() -> Product? {
+        self.get(for: .init())
+    }
+    
+    func set(_ product: Product) {
+        self.set(product, for: .init())
+    }
+    
+    func release() {
+        self.release(for: nil)
+    }
 }
