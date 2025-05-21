@@ -7,11 +7,14 @@
 
 import Foundation
 
+// TODO: Make this a protocol or an open class maybe
+// TODO: Add a Sync Version of container
+
 /// A dependency injection container that manages registrations and resolves dependencies.
 public final class Container: @unchecked Sendable {
     /// A serial dispatch queue used to ensure thread-safe access to the container's internal state.
     ///  This prevents race conditions when multiple threads try to access or modify the `registrations` dictionary.
-    private let serialQueue: DispatchQueue = .init(label: "astroject.container")
+    private let serialQueue: DispatchQueue = .init(label: "com.astrobytes.astroject.container")
     /// A dictionary that stores the registrations of different product types. The key is a `RegistrationKey`
     /// that uniquely identifies a registration, and the value is the corresponding `Registrable` instance.
     ///  `Registrable` encapsulates the factory and other registration-related information.

@@ -13,6 +13,8 @@ import Foundation
 /// dependencies within a dependency injection `Container`.
 /// Implementations of this protocol are responsible for registering dependencies and performing any necessary setup.
 public protocol Assembly {
+    // TODO: add preLoaded()
+    
     /// Configures dependencies within the provided `Container`.
     ///
     /// This function is called by an `Assembler` to register dependencies in the given `Container`.

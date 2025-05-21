@@ -945,7 +945,7 @@ extension ContainerTests {
         @Test("Concurrent Graph Resolution")
         func containerConcurrentGraphResolution() async throws {
             let container = Container()
-            let serialQueue = DispatchQueue(label: "test.concurrency.graph.instances")
+            let serialQueue = DispatchQueue(label: "com.astrobytes.astroject.tests.graph")
             var object3Count = 0
             
             try container.register(Object3.self) {

@@ -7,6 +7,8 @@
 
 import Foundation
 
+// TODO: Add sync version of this
+
 /// A factory struct that encapsulates a closure for creating instances of a product type.
 ///
 /// This struct is used to store and execute the logic for resolving dependencies and

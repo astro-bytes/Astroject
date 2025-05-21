@@ -7,6 +7,8 @@
 
 import Foundation
 
+// TODO: Add Sync Version
+
 /// Represents a registration that requires an argument to resolve the product.
 ///
 /// This class extends `Registrable` to handle dependencies that need an argument during resolution.

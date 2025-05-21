@@ -7,6 +7,8 @@
 
 import Foundation
 
+// TODO: Add Sync Version
+
 /// Represents a registration of a product with a factory and instance management strategy.
 ///
 /// The `Registration` class implements the `Registrable` protocol and manages the lifecycle of a registered product.

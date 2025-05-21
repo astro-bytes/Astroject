@@ -4,16 +4,19 @@
 
 A lightweight and flexible dependency injection container for Swift.
 
+
+[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/astro-bytes/astroject?style=flat-square)](https://github.com/astro-bytes/astroject/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg?style=flat-square)](https://swift.org)
+[![Platform - iOS](https://img.shields.io/badge/platform-iOS%2016%2B-blue.svg?style=flat-square)](https://developer.apple.com/ios/)
+[![Platform - macOS](https://img.shields.io/badge/platform-macOS%2013%2B-lightgrey.svg?style=flat-square)](https://developer.apple.com/macos/)
+[![Platform - tvOS](https://img.shields.io/badge/platform-tvOS%2016%2B-green.svg?style=flat-square)](https://developer.apple.com/tvos/)
+[![Platform - watchOS](https://img.shields.io/badge/platform-watchOS%209%2B-red.svg?style=flat-square)](https://developer.apple.com/watchos/)
+[![Platform - visionOS](https://img.shields.io/badge/platform-visionOS%201%2B-purple.svg?style=flat-square)](https://developer.apple.com/visionos/)
+[![Build Status](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml)
+[![Lint Status](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml)
+
 Astroject is a modern, lightweight, and robust dependency injection (DI) framework designed for Swift applications across all platforms. It simplifies the management of object dependencies, promoting cleaner, more modular, and testable code. With a focus on thread safety and intuitive APIs, Astroject empowers developers to build complex applications with confidence. 
-
-<small>
-
-Many ideas came from a Sister Library [Swinject](https://github.com/Swinject/Swinject)
-
-<small>
-
-[![Swift Version](https://img.shields.io/badge/Swift-5.5+-orange.svg)](https://swift.org)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## ✨ Features
 Astroject comes packed with features to streamline your dependency management:
@@ -37,11 +40,6 @@ Astroject comes packed with features to streamline your dependency management:
 ## 🚀 Getting Started
 ### 📦 Installation
 Astroject is currently available via Swift Package Manager.
-
-#### Requirements
-- iOS 16.0+ / MacOS 13.0+ / WatchOS ??.?+ / tvOS ??.?+
-- Swift 5.5+
-- Xcode 16.0+
 
 #### For Xcode Projects:
 
@@ -176,7 +174,7 @@ try container.register(WeakObject.self) {
 }.asWeak()
 ```
 
-#### 5.0 Resolve your dependencies
+#### 4.0 Resolve your dependencies
 ```Swift
 // Resolve the simple Int
 let intValue = try await container.resolve(Int.self)
@@ -213,8 +211,15 @@ weakObject = nil // Release strong reference
 print("WeakObject after setting to nil: \(String(describing: weakObject))")
 ```
 
----
+## 📚 Core Concepts
+Astroject's design revolves around a few fundamental components, working together to provide a powerful dependency injection experience:
 
+- **Container:** The central hub of Astroject. The Container is responsible for managing all registrations and resolving dependencies. It ensures thread-safe operations and maintains the in-flight resolution graph, handling object lifecycles and behaviors as expected. It's the ultimate holder for all your registered factories and instances.
+- **Registrable:** This protocol defines anything that can be registered with the Container. A Registrable encapsulates the factory method used to create an object, its instance management scope, and any post-initialization actions. It's the blueprint the Container references to understand how to provide an object instance based on the requested scope. Astroject's extensibility allows you to define custom Registrable types.
+- **Instance:** Defines the lifecycle management strategy (scope) for a registered product. Implementations of this protocol (like Singleton, Weak, Transient, Graph) dictate how an object's instance is controlled and maintained. You can extend Astroject with your own custom scopes by conforming to the Instance protocol and using the .as() method during registration.
+- **Context:** Represents the current resolution context within the dependency graph. Primarily used for Graph instance management, the Context helps track the depth of resolution and provides a unique graphID for instances resolved within a specific resolution tree. It remains consistent throughout a single resolution tree, adapting for nested resolutions.
+
+---
 ### 🔏 Controlling Registration Overrides
 
 Astroject embraces flexibility by naturally supporting registration overriding. This means that if you register a type multiple times under the same key (same type and optional name), the latest registration will automatically take precedence. This powerful default behavior is incredibly useful for scenarios like:
@@ -264,17 +269,10 @@ do {
 ```
 *This granular control empowers you, the developer, to manage your dependency graph with precision, preventing unintended changes to critical components.*
 
-## 📚 Core Concepts
-Astroject's design revolves around a few fundamental components, working together to provide a powerful dependency injection experience:
-
-- **Container:** The central hub of Astroject. The Container is responsible for managing all registrations and resolving dependencies. It ensures thread-safe operations and maintains the in-flight resolution graph, handling object lifecycles and behaviors as expected. It's the ultimate holder for all your registered factories and instances.
-- **Registrable:** This protocol defines anything that can be registered with the Container. A Registrable encapsulates the factory method used to create an object, its instance management scope, and any post-initialization actions. It's the blueprint the Container references to understand how to provide an object instance based on the requested scope. Astroject's extensibility allows you to define custom Registrable types.
-- **Instance:** Defines the lifecycle management strategy (scope) for a registered product. Implementations of this protocol (like Singleton, Weak, Transient, Graph) dictate how an object's instance is controlled and maintained. You can extend Astroject with your own custom scopes by conforming to the Instance protocol and using the .as() method during registration.
-- **Context:** Represents the current resolution context within the dependency graph. Primarily used for Graph instance management, the Context helps track the depth of resolution and provides a unique graphID for instances resolved within a specific resolution tree. It remains consistent throughout a single resolution tree, adapting for nested resolutions.
 
 ### 🔭 Extending Instance Scopes
 
-Astroject is designed for flexibility, allowing you to define and use your own custom instance management scopes. This is achieved by conforming to the Instance protocol and integrating your custom scope via the .as() function on any Registrable.
+Astroject is designed for flexibility, allowing you to define and use your own custom instance management scopes. This is achieved by conforming to the Instance protocol and integrating your custom scope via the `.as()` function on any Registrable.
 
 #### Creating a Custom Instance:
 
@@ -340,7 +338,7 @@ let customScopedString = try await container.resolve(String.self)
 print("Resolved String with asExample: \(customScopedString)")
 ```
 
-### ⚙ Behaviors
+### ⚙️ Behaviors
 
 Astroject's Behaviors provide a powerful mechanism to inject additional functionality or cross-cutting concerns into your container's lifecycle. Behaviors are applied to each registration as they occur, allowing you to react to events like a new type being registered. This is incredibly useful for logging, analytics, debugging, or custom validation during the setup phase of your dependency graph.
 
@@ -357,7 +355,7 @@ class LoggingBehavior: Behavior {
     func didRegister<Product>(
         type: Product.Type,
         to container: Container,
-        as registration: Registration<Product>, // Note: For RegistrationWithArgument, you might handle it differently.
+        as registration: any Registrable<Product>,
         with name: String?
     ) {
         print("Astroject: Registered \(type) with name: '\(name ?? "nil")'")
@@ -435,21 +433,31 @@ print("Resolved number from container: \(number)") // Output: Resolved number fr
 *By leveraging Assemblies and Assemblers, you can significantly improve the organization, maintainability, and testability of your application's dependency setup.*
 
 ## 💡 Sample Code
-Checkout our sample code under the [playgrounds](/Playgrounds) directory.
+Checkout our sample code under the [playgrounds](/Playgrounds) directory. (Coming Soon!)
 
 ## 🚧 Roadmap
 Astroject is continually evolving! Here are some exciting features planned for the future:
 
-### Nexus Integration: 
-A new sub-library, Nexus, is planned to introduce automatic registration of objects, significantly reducing boilerplate. (Completion date TBD)
-### Singularity Integration: 
-Another upcoming sub-library, Singularity, will enable registration of objects directly from resource files. (Completion date TBD)
-### Comprehensive DocC Comments: 
-Full, detailed documentation for all public APIs will be provided.
-### Parent/Child Container Relationships: 
-Support for hierarchical containers, allowing for more granular scope management and overriding.
-### Interactive Code Examples: 
-Swift Playgrounds will be created to provide hands-on, executable examples of Astroject's features.
+- **Sync Container:** Support for a non async/await version of the container with all the same flexibility as the current async/await container.
+- **Parent/Child Container Relationships:** Support for hierarchical containers, allowing for more granular scope management and overriding.
+- **Custom Containers:** Support for building custom container objects that can be used in tandom with other public components/protocols.
+- **Interactive Code Examples:** Swift Playgrounds will be created to provide hands-on, executable examples of Astroject's features.
+- **Comprehensive DocC Comments:** Full, detailed documentation for all public APIs will be provided.
+- **Nexus Integration:** A new sub-library, Nexus, is planned to introduce automatic registration of objects, significantly reducing boilerplate. (Completion date TBD)
+- **Singularity Integration:** Another upcoming sub-library, Singularity, will enable registration of objects directly from resource files. (Completion date TBD)
+ 
+```mermaid
+graph TD
+    A[🔁 Sync Container]
+    B[🧬 Parent/Child Containers]
+    C[🧱 Custom Containers]
+    D[🎮 Interactive Examples]
+    E[📚 DocC Comments]
+    F[🧾 Singularity Integration]
+    G[⚡ Nexus Integration]
+
+    A --> B --> C --> D --> E --> G --> F
+```
 
 ## 👋🏼 Contributing
 We welcome contributions from the community! If you'd like to contribute to Astroject, please refer to our detailed [contributing guidelines](CONTRIBUTING.md).

@@ -7,6 +7,8 @@
 
 import Foundation
 
+// TODO: Add Sync Version
+
 /// A protocol defining a resolver that can resolve dependencies.
 ///
 /// The `Resolver` protocol is used to define the interface for resolving dependencies

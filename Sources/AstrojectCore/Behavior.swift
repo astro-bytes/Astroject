@@ -25,4 +25,6 @@ public protocol Behavior {
         as registration: any Registrable<Product>,
         with name: String?
     )
+    
+    // TODO: Add `didResolve`
 }
