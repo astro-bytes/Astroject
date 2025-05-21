@@ -1,0 +1,84 @@
+# .github/release-drafter.yml
+# The default template for your release notes
+name-template: 'v$NEXT_PATCH_VERSION' # E.g., v1.0.1, v1.1.0
+
+tag-template: 'v$NEXT_PATCH_VERSION'
+
+# Define sections for different types of changes
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## New Features ✨
+  $FEATURES
+
+  ## Bug Fixes 🐛
+  $BUGS
+
+  ## Enhancements & Refinements 🚀
+  $ENHANCEMENTS
+
+  ## Breaking Changes ⚠️
+  $BREAKING_CHANGES
+
+  ## Other Changes
+  $OTHERS
+
+# Categorize pull requests based on labels
+categories:
+  - title: 'New Features ✨'
+    labels:
+      - 'feature'
+      - 'feat'
+      - 'new-feature'
+    collapse-after: 5 # Collapse this section if there are more than 5 items
+    template: |
+      - {{TITLE}} (#{{NUMBER}})
+
+  - title: 'Bug Fixes 🐛'
+    labels:
+      - 'bug'
+      - 'fix'
+    template: |
+      - {{TITLE}} (#{{NUMBER}})
+
+  - title: 'Enhancements & Refinements 🚀'
+    labels:
+      - 'enhancement'
+      - 'refinement'
+      - 'improve'
+    template: |
+      - {{TITLE}} (#{{NUMBER}})
+
+  - title: 'Breaking Changes ⚠️'
+    labels:
+      - 'breaking-change'
+      - 'breaking'
+    template: |
+      - **BREAKING:** {{TITLE}} (#{{NUMBER}})
+
+  - title: 'Other Changes'
+    labels:
+      - 'dependencies'
+      - 'chore'
+      - 'docs'
+      - 'ci'
+      - 'build'
+      - 'refactor'
+    template: |
+      - {{TITLE}} (#{{NUMBER}})
+
+# Exclude certain labels from showing up in the notes
+exclude-labels:
+  - 'skip-changelog' # Use this label on PRs you don't want in release notes
+  - 'duplicate'
+  - 'invalid'
+
+# How to identify the target branch for the next release (useful for pre-releases)
+# This will create a 'Next' release when you push to main and no pre-release is active
+# If you want to draft a release based on the latest stable tag, you might omit this.
+# configuration-language: json
+# Here we're using a simple versioning scheme that bumps the patch version.
+# You can customize this extensively.
+version-template: $MAJOR.$MINOR.$PATCH
