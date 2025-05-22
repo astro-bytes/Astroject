@@ -6,15 +6,16 @@
 //
 
 import XCTest
-@testable import AstrojectCore
+@testable import Mocks
+@testable import Sync
 
 // swiftlint:disable identifier_name
 
 class PerformanceTests: XCTestCase {
     let iterations = 1_000
     
-    func testRegistrationPerformance() async throws {
-        let container = Container()
+    func testRegistrationPerformance() throws {
+        let container = SyncContainer()
         let iterations = iterations
         
         measure {
@@ -28,8 +29,8 @@ class PerformanceTests: XCTestCase {
         }
     }
     
-    func testResolutionPerformance() async throws {
-        let container = Container()
+    func testResolutionPerformance() throws {
+        let container = SyncContainer()
         let iterations = iterations
         try container.register(Int.self) { 42 }
         
@@ -39,7 +40,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try await container.resolve(Int.self, name: nil)
+                        _ = try await container.resolve(Int.self)
                     }
                     semaphore.signal()
                 }
@@ -50,13 +51,13 @@ class PerformanceTests: XCTestCase {
     }
     
     func testComplexResolutionPerformance() async throws {
-        let container = Container()
+        let container = SyncContainer()
         let iterations = iterations
         try container.register(Int.self) { 42 }
         try container.register(String.self) { "test" }
         try container.register(Double.self) { resolver in
-            let intValue = try await resolver.resolve(Int.self, name: nil)
-            let stringValue = try await resolver.resolve(String.self, name: nil)
+            let intValue = try await resolver.resolve(Int.self)
+            let stringValue = try await resolver.resolve(String.self)
             return Double(intValue) + Double(stringValue.count)
         }
         
@@ -66,7 +67,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try await container.resolve(Double.self, name: nil)
+                        _ = try await container.resolve(Double.self)
                     }
                     semaphore.signal()
                 }
@@ -77,7 +78,7 @@ class PerformanceTests: XCTestCase {
     }
     
     func testConcurrentResolutionPerformance() async throws {
-        let container = Container()
+        let container = SyncContainer()
         try container.register(Int.self) { 42 }
         let iterations = 100
         let concurrentTasks = 10
@@ -103,7 +104,7 @@ class PerformanceTests: XCTestCase {
     }
     
     func testBehaviorPerformance() async throws {
-        let container = Container()
+        let container = SyncContainer()
         let behavior = MockPerformanceBehavior()
         container.add(behavior)
         let iterations = iterations

@@ -13,16 +13,16 @@ import Foundation
 /// which registers dependencies and performs any necessary setup.
 public class Assembler {
     /// The `Container` instance that dependencies are assembled into.
-    let container: Container
+    public let container: Container
     
     /// A `Resolver` instance that provides access to the assembled dependencies.
     /// This property returns the `Container` itself, as it conforms to the `Resolver` protocol.
-    var resolver: Resolver { container }
+    public var resolver: Resolver { container }
     
     /// Initializes an `Assembler` with a specified `Container`.
     ///
     /// - Parameter container: The `Container` to use for dependency assembly. Defaults to a new `Container` instance.
-    public init(container: Container = .init()) {
+    public init(container: Container) {
         self.container = container
     }
     
@@ -33,7 +33,7 @@ public class Assembler {
     /// - Parameters:
     ///   - assemblies: An array of `Assembly` instances to apply.
     ///   - container: The `Container` to use for dependency assembly. Defaults to a new `Container` instance.
-    public convenience init(_ assemblies: [Assembly], container: Container = .init()) throws {
+    public convenience init(assemblies: [Assembly], container: Container) throws {
         self.init(container: container)
         try self.run(assemblies: assemblies)
     }
@@ -45,8 +45,8 @@ public class Assembler {
     /// - Parameters:
     ///   - assembly: The `Assembly` instance to apply.
     ///   - container: The `Container` to use for dependency assembly. Defaults to a new `Container` instance.
-    public convenience init(_ assembly: Assembly, container: Container = .init()) throws {
-        try self.init([assembly], container: container)
+    public convenience init(assembly: Assembly, container: Container) throws {
+        try self.init(assemblies: [assembly], container: container)
     }
     
     /// Applies a single `Assembly` to the `Container`.
@@ -76,6 +76,12 @@ public class Assembler {
     ///
     /// - Parameter assemblies: The array of `Assembly` instances to run.
     func run(assemblies: [Assembly]) throws {
+        // Iterate through the assemblies and call the preLoaded
+        // method on each one to perform any pre-registration configuration.
+        try assemblies.forEach {
+            try $0.preloaded()
+        }
+        
         // Iterate through the assemblies and call the assemble method on each one to register the dependencies.
         try assemblies.forEach {
             try $0.assemble(container: container)

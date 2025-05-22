@@ -18,20 +18,20 @@ public struct Context: Sendable {
     /// This allows for implicit passing of the context through a call stack,
     /// making it convenient to access the current resolution context without
     /// explicitly passing it as a function argument. It defaults to a new, empty context.
-    @TaskLocal static var current: Context = .init()
+    @TaskLocal public static var current: Context = .init()
     
     /// The current depth of the dependency resolution.
     ///
     /// This property tracks how many levels deep the current dependency resolution
     /// is within the graph. A `depth` of 0 typically indicates the initial context,
     /// while incrementing values indicate nested resolutions.
-    var depth: Int = 0
+    public private(set) var depth: Int = 0
     /// A unique identifier for the current graph resolution scope.
     ///
     /// This `UUID` is used by `Graph` instance management to store and retrieve
     /// instances specific to the current resolution path, ensuring that instances
     /// within a given "graph" or "scope" are consistent.
-    var graphID: UUID = UUID()
+    public private(set) var graphID: UUID = UUID()
     
     /// Creates a new `Context` by incrementing the depth and retaining the current `graphID`.
     ///
@@ -39,7 +39,7 @@ public struct Context: Sendable {
     /// resolution process, maintaining the same graph scope but indicating a deeper level.
     ///
     /// - Returns: A new `Context` instance with an incremented `depth` and the same `graphID`.
-    func next() -> Context {
+    public func next() -> Context {
         return Context(depth: depth + 1, graphID: graphID)
     }
     
@@ -49,7 +49,7 @@ public struct Context: Sendable {
     /// establishing a new `graphID` for any `Graph`-scoped instances.
     ///
     /// - Returns: A new `Context` instance with `depth` initialized to 1 and a newly generated `graphID`.
-    static func fresh() -> Context {
+    public static func fresh() -> Context {
         return Context(depth: 1, graphID: UUID())
     }
 }

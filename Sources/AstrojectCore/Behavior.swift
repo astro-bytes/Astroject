@@ -26,5 +26,11 @@ public protocol Behavior {
         with name: String?
     )
     
-    // TODO: Add `didResolve`
+    // TODO: Comment
+    func didResolve<Product>(
+        type: Product.Type,
+        to container: Container,
+        as registration: any Registrable<Product>,
+        with name: String?
+    )
 }

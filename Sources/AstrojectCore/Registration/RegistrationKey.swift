@@ -11,7 +11,7 @@ import Foundation
 ///
 /// The `RegistrationKey` struct is used to uniquely identify registrations within the dependency injection `Container`.
 /// It encapsulates the product type and an optional name, allowing for both named and unnamed registrations.
-struct RegistrationKey {
+public struct RegistrationKey {
     /// The type of the product being registered.
     let productType: Any.Type
     /// An optional name associated with the registration.
@@ -27,7 +27,7 @@ struct RegistrationKey {
     /// - parameter name: An optional name associated with the registration (default is `nil`).
     /// - parameter argumentType: The type of the argument associated with the registration.
     ///   This is used to differentiate registrations that require different argument types.
-    init<Product, Argument>(productType: Product.Type, name: String? = nil, argumentType: Argument.Type? = nil) {
+    public init<Product, Argument>(productType: Product.Type, name: String? = nil, argumentType: Argument.Type? = nil) {
         self.productType = productType
         self.name = name
         self.argumentType = argumentType
@@ -43,7 +43,7 @@ extension RegistrationKey {
     ///
     /// - parameter productType: The type of the product being registered.
     /// - parameter name: An optional name associated with the registration (default is `nil`).
-    init<Product>(productType: Product.Type, name: String? = nil) {
+    public init<Product>(productType: Product.Type, name: String? = nil) {
         self.productType = productType
         self.name = name
         self.argumentType = nil
@@ -59,7 +59,7 @@ extension RegistrationKey: Hashable {
     /// of the type.
     ///
     /// - parameter hasher: The hasher to use for combining the components.
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self.productType))
         hasher.combine(self.name)
         if let argumentType {
@@ -77,7 +77,7 @@ extension RegistrationKey: Equatable {
     /// - parameter lhs: The left-hand side key.
     /// - parameter rhs: The right-hand side key.
     /// - Returns: `true` if the keys are equal, `false` otherwise.
-    static func == (lhs: RegistrationKey, rhs: RegistrationKey) -> Bool {
+    public static func == (lhs: RegistrationKey, rhs: RegistrationKey) -> Bool {
         return lhs.productType == rhs.productType && lhs.name == rhs.name && lhs.argumentType == rhs.argumentType
     }
 }

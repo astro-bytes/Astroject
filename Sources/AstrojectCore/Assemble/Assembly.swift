@@ -13,7 +13,8 @@ import Foundation
 /// dependencies within a dependency injection `Container`.
 /// Implementations of this protocol are responsible for registering dependencies and performing any necessary setup.
 public protocol Assembly {
-    // TODO: add preLoaded()
+    // TODO: Comment
+    func preloaded() throws
     
     /// Configures dependencies within the provided `Container`.
     ///
@@ -34,6 +35,9 @@ public protocol Assembly {
 }
 
 public extension Assembly {
+    // TODO: Comment
+    func preloaded() throws {}
+    
     /// Default implementation of `loaded(resolver:)`, which does nothing.
     ///
     /// This default implementation is provided for convenience, allowing assemblies

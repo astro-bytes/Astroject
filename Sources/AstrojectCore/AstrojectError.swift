@@ -22,7 +22,7 @@ public enum AstrojectError: LocalizedError {
     /// A circular dependency is detected during the resolution process.
     ///
     /// This case indicates that a chain of dependencies forms a loop, preventing successful resolution.
-    case circularDependencyDetected(type: String, name: String? = nil)
+    case cyclicDependency(type: String, name: String? = nil)
     
     /// An error occurred within the factory closure during dependency resolution.
     ///
@@ -33,10 +33,17 @@ public enum AstrojectError: LocalizedError {
     /// An invalid instance was encountered during resolution.
     ///
     /// This error occurs when the instance being resolved is not valid or
-    /// does not conform to the expected type.  This can happen if the
+    /// does not conform to the expected type. This can happen if the
     /// Instance implementation is incorrect, or if there is a mismatch
     /// between the registered type and the actual type of the resolved instance.
     case invalidInstance
+    
+    /// A synchronous resolution method was called for a dependency that was registered with an asynchronous factory.
+    ///
+    /// This case indicates that you attempted to resolve a dependency synchronously
+    /// (e.g., using `resolve()`) when its registration factory (`registerAsync`)
+    /// requires asynchronous execution.
+    case misplacedAsyncCall
     
     /// Provides a user-friendly description of the error.
     public var errorDescription: String? {
@@ -53,7 +60,7 @@ public enum AstrojectError: LocalizedError {
             } else {
                 return "No registration found for dependency of '\(type)'."
             }
-        case .circularDependencyDetected(let type, let name):
+        case .cyclicDependency(let type, let name):
             if let name = name {
                 return "A circular dependency was detected while resolving type '\(type)' with name '\(name)'."
             } else {
@@ -63,6 +70,8 @@ public enum AstrojectError: LocalizedError {
             return "An error occurred within the factory closure: \(error.localizedDescription)"
         case .invalidInstance:
             return "The resolved instance is invalid or of an unexpected type."
+        case .misplacedAsyncCall:
+            return "Attempted to resolve an asynchronously registered dependency using a synchronous method."
         }
     }
     
@@ -73,12 +82,15 @@ public enum AstrojectError: LocalizedError {
             return "Attempting to register a dependency with a ProductKey that has already been used."
         case .noRegistrationFound:
             return "Register the dependency before attempting to resolve it."
-        case .circularDependencyDetected:
+        case .cyclicDependency:
             return "Review your dependency graph to eliminate circular dependencies."
         case .underlyingError:
             return "Inspect the underlying error for more details."
         case .invalidInstance:
             return "The resolved instance did not match the expected type or was invalid."
+        case .misplacedAsyncCall:
+            // swiftlint:disable:next line_length
+            return "The dependency was registered with an asynchronous factory (e.g., using `registerAsync`), but a synchronous resolution method (e.g., `resolve()`) was called."
         }
     }
     
@@ -89,7 +101,7 @@ public enum AstrojectError: LocalizedError {
             return "Use a different ProductKey or remove the existing registration before registering a new one."
         case .noRegistrationFound:
             return "Use the `register` or `registerAsync` method to register the dependency."
-        case .circularDependencyDetected:
+        case .cyclicDependency:
             // swiftlint:disable:next line_length
             return "Break the circular dependency by introducing an abstraction or using a different dependency injection pattern or by using `postInitAction` to initialize cyclical dependencies."
         case .underlyingError:
@@ -97,6 +109,9 @@ public enum AstrojectError: LocalizedError {
         case .invalidInstance:
             // swiftlint:disable:next line_length
             return "Ensure that the Instance implementation is correct and that the registered type matches the actual type of the resolved instance."
+        case .misplacedAsyncCall:
+            // swiftlint:disable:next line_length
+            return "Use an asynchronous resolution method (e.g., `resolveAsync()`) to resolve the dependency, or register it with a synchronous factory if synchronous resolution is intended."
         }
     }
 }
@@ -115,12 +130,16 @@ extension AstrojectError: Equatable {
         case (.alreadyRegistered(let lhsType, let lhsName), .alreadyRegistered(let rhsType, let rhsName)),
             (.noRegistrationFound(let lhsType, let lhsName),
              .noRegistrationFound(let rhsType, let rhsName)),
-            (.circularDependencyDetected(let lhsType, let lhsName),
-             .circularDependencyDetected(let rhsType, let rhsName)):
-            // Compare the associated types and names for alreadyRegistered and circularDependencyDetected errors.
+            (.cyclicDependency(let lhsType, let lhsName),
+             .cyclicDependency(let rhsType, let rhsName)):
+            // Compare the associated types and names for alreadyRegistered,
+            // noRegistrationFound, and circularDependencyDetected errors.
             return lhsType == rhsType && lhsName == rhsName
-        case (.invalidInstance, .invalidInstance):
-            // noRegistrationFound and invalidInstance errors are equal if they are the same case.
+        case (.invalidInstance, .invalidInstance),
+            (.misplacedAsyncCall,
+             .misplacedAsyncCall):
+            // invalidInstance and misplacedAsyncCall
+            // errors are equal if they are the same case.
             return true
         case (.underlyingError(let lhsError), .underlyingError(let rhsError)):
             // Compare the descriptions of the underlying errors.

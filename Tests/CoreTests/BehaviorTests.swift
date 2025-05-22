@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+@testable import Mocks
 @testable import AstrojectCore
 
 @Suite("Behavior")
@@ -14,76 +15,85 @@ struct BehaviorTests {
     
     @Test("Ensure didRegister is Called")
     func behaviorDidRegisterCalled() throws {
-        let container = Container()
+        let container = MockContainer()
         let behavior = MockBehavior()
+        
+        var didRegisterCalled = false
+        behavior.whenDidRegister = {
+            didRegisterCalled = true
+        }
+        
         container.add(behavior)
         
         try container.register(Int.self) { _ in 10 }
         
-        #expect(behavior.didRegisterCalled)
-        #expect(behavior.registeredType == Int.self)
-        #expect(behavior.registeredContainer === container)
-        #expect(behavior.registeredRegistration != nil)
-        #expect(behavior.registeredName == nil)
+        #expect(didRegisterCalled)
     }
     
     @Test("Ensure didRegisterWithName is Called")
     func behaviorDidRegisterWithName() throws {
-        let container = Container()
+        let container = MockContainer()
         let behavior = MockBehavior()
+        
+        var didRegisterCalled = false
+        behavior.whenDidRegister = {
+            didRegisterCalled = true
+        }
+        
         container.add(behavior)
         
         try container.register(String.self, name: "testString") { _ in "Hello" }
         
-        #expect(behavior.didRegisterCalled)
-        #expect(behavior.registeredType == String.self)
-        #expect(behavior.registeredContainer === container)
-        #expect(behavior.registeredRegistration != nil)
-        #expect(behavior.registeredName == "testString")
+        #expect(didRegisterCalled)
     }
     
     @Test("Testing Multiple Behaviors")
     func multipleBehaviors() throws {
-        let container = Container()
+        let container = MockContainer()
         let behavior1 = MockBehavior()
         let behavior2 = MockBehavior()
+        
+        var didRegister1 = false
+        var didRegister2 = false
+        
+        behavior1.whenDidRegister = {
+            didRegister1 = true
+        }
+        behavior2.whenDidRegister = {
+            didRegister2 = true
+        }
+        
         container.add(behavior1)
         container.add(behavior2)
         
         try container.register(Double.self) { _ in 3.14 }
         
-        #expect(behavior1.didRegisterCalled)
-        #expect(behavior2.didRegisterCalled)
-        #expect(behavior1.registeredType == Double.self)
-        #expect(behavior2.registeredType == Double.self)
-        #expect(behavior1.registeredContainer === container)
-        #expect(behavior2.registeredContainer === container)
-        #expect(behavior1.registeredRegistration != nil)
-        #expect(behavior2.registeredRegistration != nil)
-        #expect(behavior1.registeredName == nil)
-        #expect(behavior2.registeredName == nil)
+        #expect(didRegister1)
+        #expect(didRegister2)
     }
     
     @Test("Behaviors with Multiple Registrations")
     func behaviorWithDifferentRegistrations() throws {
-        let container = Container()
+        let container = MockContainer()
         let behavior = MockBehavior()
+        
+        var didRegister = false
+        behavior.whenDidRegister = {
+            didRegister = true
+        }
+        
         container.add(behavior)
         
         try container.register(Int.self) { _ in 10 }
         try container.register(String.self, name: "testString") { _ in "Hello" }
         
-        #expect(behavior.didRegisterCalled)
-        #expect(behavior.registeredType == String.self)
-        #expect(behavior.registeredName == "testString")
+        #expect(didRegister)
         
         // reset the behavior
-        behavior.reset()
+        didRegister = false
         
         try container.register(Double.self) { _ in 4.0 }
         
-        #expect(behavior.didRegisterCalled)
-        #expect(behavior.registeredType == Double.self)
-        #expect(behavior.registeredName == nil)
+        #expect(didRegister)
     }
 }

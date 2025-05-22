@@ -7,6 +7,7 @@
 
 import Foundation
 import Testing
+@testable import Mocks
 @testable import AstrojectCore
 
 @Suite("Factory")
@@ -49,11 +50,14 @@ struct FactoryTests {
     @Test("Throws Errors")
     func throwsError() async throws {
         let resolver = MockResolver()
+        resolver.whenResolve = {
+            throw MockError()
+        }
         let factory = Factory { resolver in
             try await resolver.resolve(Double.self, name: nil)
         }
         
-        await #expect(throws: resolver.error) {
+        await #expect(throws: MockError.self) {
             try await factory(resolver)
         }
     }

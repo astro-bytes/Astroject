@@ -7,24 +7,12 @@
 
 import Foundation
 
-// TODO: Add Sync Version
-
 /// A protocol defining a resolver that can resolve dependencies.
 ///
 /// The `Resolver` protocol is used to define the interface for resolving dependencies
 /// within a dependency injection container.
 /// Implementations of this protocol are responsible for providing instances of registered types.
 public protocol Resolver {
-    /// Resolves a product type asynchronously.
-    ///
-    /// This function resolves a dependency of the specified `productType` without a specific name.
-    /// It uses the default registration for the given type.
-    ///
-    /// - parameter productType: The type of the product to resolve.
-    /// - Returns: The resolved product instance.
-    /// - Throws: An error if the product cannot be resolved.
-    func resolve<Product>(_ productType: Product.Type) async throws -> Product
-    
     /// Resolves a product type asynchronously with an optional name.
     ///
     /// This function resolves a dependency of the specified `productType` with an optional `name`.
@@ -36,9 +24,15 @@ public protocol Resolver {
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
     func resolve<Product>(
-        _ productType: Product.Type,
+        productType: Product.Type,
         name: String?
     ) async throws -> Product
+    
+    // TODO: Comment
+    func resolve<Product>(
+        productType: Product.Type,
+        name: String?
+    ) throws -> Product
     
     /// Resolves a product type asynchronously with an optional name and an argument.
     ///
@@ -53,10 +47,17 @@ public protocol Resolver {
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
     func resolve<Product, Argument: Hashable>(
-        _ productType: Product.Type,
+        productType: Product.Type,
         name: String?,
         argument: Argument
     ) async throws -> Product
+    
+    // TODO: Comment
+    func resolve<Product, Argument: Hashable>(
+        productType: Product.Type,
+        name: String?,
+        argument: Argument
+    ) throws -> Product
 }
 
 public extension Resolver {
@@ -68,8 +69,16 @@ public extension Resolver {
     /// - parameter productType: The type of the product to resolve.
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
-    func resolve<Product>(_ productType: Product.Type) async throws -> Product {
-        try await resolve(productType, name: nil)
+    func resolve<Product>(_ productType: Product.Type, name: String? = nil) async throws -> Product {
+        try await resolve(productType: productType, name: name)
+    }
+    
+    // TODO: Comment
+    func resolve<Product>(
+        _ productType: Product.Type,
+        name: String? = nil
+    ) throws -> Product {
+        try resolve(productType: productType, name: name)
     }
     
     /// Default implementation for resolving a product type with an argument but without a name.
@@ -81,7 +90,20 @@ public extension Resolver {
     /// - parameter argument: The argument needed to resolve the dependency.
     /// - Returns: The resolved product instance.
     /// - Throws: An error if the product cannot be resolved.
-    func resolve<Product, Argument: Hashable>(_ productType: Product.Type, argument: Argument) async throws -> Product {
-        try await resolve(productType, name: nil, argument: argument)
+    func resolve<Product, Argument: Hashable>(
+        _ productType: Product.Type,
+        name: String? = nil,
+        argument: Argument
+    ) async throws -> Product {
+        try await resolve(productType: productType, name: name, argument: argument)
+    }
+    
+    // TODO: Comment
+    func resolve<Product, Argument: Hashable>(
+        _ productType: Product.Type,
+        name: String? = nil,
+        argument: Argument
+    ) throws -> Product {
+        try resolve(productType: productType, name: name, argument: argument)
     }
 }

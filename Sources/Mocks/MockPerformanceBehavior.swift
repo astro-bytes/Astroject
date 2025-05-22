@@ -10,6 +10,18 @@ import AstrojectCore
 
 // Mock Behavior for performance testing
 class MockPerformanceBehavior: Behavior {
+    func didResolve<Product>(
+        type: Product.Type,
+        to container: any AstrojectCore.Container,
+        as registration: any AstrojectCore.Registrable<Product>,
+        with name: String?
+    ) {
+        // Simulate some non-trivial work
+        for _ in 0..<1_000 {
+            _ = sin(Double.random(in: 0..<1))
+        }
+    }
+    
     func didRegister<Product>(
         type: Product.Type,
         to container: Container,

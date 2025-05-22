@@ -11,7 +11,7 @@ import Foundation
 /// The `Graph` class provides a mechanism to store, retrieve, and release instances of a generic `Product` type.
 /// It ensures thread safety for all operations using a private serial dispatch queue, making it suitable
 /// for environments where multiple threads might access or modify the stored products concurrently.
-final class Graph<Product>: Instance {
+public final class Graph<Product>: Instance {
     /// The private storage dictionary where `Product` instances are held.
     ///
     /// Each product is stored with a `UUID` as its key, which is typically derived from a `Context` object.
@@ -23,19 +23,21 @@ final class Graph<Product>: Instance {
     /// to ensure thread safety and prevent race conditions.
     private let serialQueue = DispatchQueue(label: "com.astrobytes.astroject.graph.instance")
     
-    func get(for context: Context) -> Product? {
+    public init() {}
+    
+    public func get(for context: Context) -> Product? {
         serialQueue.sync {
             storage[context.graphID]
         }
     }
     
-    func set(_ product: Product, for context: Context) {
+    public func set(_ product: Product, for context: Context) {
         serialQueue.sync {
             storage[context.graphID] = product
         }
     }
     
-    func release(for context: Context?) {
+    public func release(for context: Context?) {
         guard let context = context else {
             serialQueue.sync {
                 storage.removeAll()

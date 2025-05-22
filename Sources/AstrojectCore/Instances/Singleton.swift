@@ -11,21 +11,21 @@ import Foundation
 ///
 /// The `Singleton` class implements the `Instance` protocol and represents a singleton scope for dependency injection.
 /// It ensures that only one instance of the product is created and stored throughout the application's lifecycle.
-class Singleton<Product>: Instance {
+public class Singleton<Product>: Instance {
     /// The stored product instance.
     private var product: Product?
     
     /// Initializes a new `Singleton` instance.
-    init() {}
+    public init() {}
     
-    func get(for: Context) -> Product? {
+    public func get(for: Context) -> Product? {
         self.product
     }
     
-    func set(_ product: Product, for: Context) {
+    public func set(_ product: Product, for: Context) {
         guard self.product == nil else { return }
         self.product = product
     }
     
-    func release(for: Context?) {}
+    public func release(for: Context?) {}
 }

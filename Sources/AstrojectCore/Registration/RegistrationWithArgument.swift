@@ -7,19 +7,17 @@
 
 import Foundation
 
-// TODO: Add Sync Version
-
 /// Represents a registration that requires an argument to resolve the product.
 ///
 /// This class extends `Registrable` to handle dependencies that need an argument during resolution.
 /// It stores the factory, instance management strategy, and post-initialization actions.
-class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
+public final class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
     /// A closure type for actions to be performed after a product is resolved.
     /// This closure takes a resolver and the resolved product as input.
-    typealias Action = (Resolver, Product) throws -> Void
+    public typealias Action = (Resolver, Product) throws -> Void
     /// A tuple type representing the arguments required by the factory.
     /// It includes the resolver and the argument.
-    typealias Arguments = (Resolver, Argument)
+    public typealias Arguments = (Resolver, Argument)
     
     /// The factory used to create instances of the product with an argument.
     let factory: Factory<Product, Arguments>
@@ -42,7 +40,7 @@ class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
     /// - parameter isOverridable: Indicates whether this registration can be overridden.
     /// - parameter argumentType: The type of the argument required for this registration.
     /// - parameter instance: The instance management strategy for the product.
-    init(
+    public init(
         factory: Factory<Product, Arguments>,
         isOverridable: Bool,
         argumentType: Argument.Type,
@@ -60,8 +58,8 @@ class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
     /// - parameter isOverridable: Indicates whether this registration can be overridden.
     /// - parameter argumentType: The type of the argument required for this registration.
     /// - parameter instance: The instance management strategy for the product (default is `Transient`).
-    convenience init(
-        factory block: @escaping Factory<Product, Arguments>.Block,
+    public convenience init(
+        factory block: Factory<Product, Arguments>.Block,
         isOverridable: Bool,
         argumentType: Argument.Type,
         instance: any Instance<Product>
@@ -74,7 +72,8 @@ class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
         )
     }
     
-    func resolve(_ container: Container, argument: Argument) async throws -> Product {
+    // TODO: Comment
+    public func resolve(_ container: Container, argument: Argument) async throws -> Product {
         let context = Context.current
         
         if let instance = self.instances[argument] {
@@ -104,6 +103,37 @@ class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
         }
     }
     
+    // TODO: Comment
+    public func resolve(_ container: Container, argument: Argument) throws -> Product {
+        let context = Context.current
+        
+        if let instance = self.instances[argument] {
+            if let product = instance.get(for: context) {
+                return product
+            }
+        } else if let product = self.defaultInstance.get(for: context) {
+            return product
+        }
+        
+        do {
+            // Resolve the product using the factory and the argument.
+            let product: Product = try factory((container, argument))
+            // Store the resolved instance according to the instance management strategy.
+            let instance = defaultInstance
+            instance.set(product, for: context)
+            self.instances[argument] = instance
+            // Run any post-initialization actions.
+            try runActions(container, product: product)
+            return product
+        } catch let error as AstrojectError {
+            // If the error is already an AstrojectError, rethrow it.
+            throw error
+        } catch {
+            // Wrap any other error in an AstrojectError.
+            throw AstrojectError.underlyingError(error)
+        }
+    }
+    
     /// Runs the post-initialization actions.
     ///
     /// This function executes the post-initialization actions associated with the registration.  These actions
@@ -112,7 +142,7 @@ class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
     /// - parameter container: The container used for dependency resolution.
     /// - parameter product: The resolved product instance.
     /// - Throws: `AstrojectError.underlyingError` if an error occurs during action execution.
-    private func runActions(_ container: Container, product: Product) throws {
+    public func runActions(_ container: Container, product: Product) throws {
         do {
             // Iterate over each action and execute it.
             try actions.forEach { try $0(container, product) }
@@ -123,7 +153,7 @@ class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
     }
     
     @discardableResult
-    func `as`<A: Hashable>(_ instance: any Instance<Product>, with argument: A) throws -> Self {
+    public func `as`<A: Hashable>(_ instance: any Instance<Product>, with argument: A) throws -> Self {
         guard let argument = argument as? Argument else {
             throw AstrojectError.invalidInstance
         }
@@ -133,13 +163,13 @@ class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
     }
     
     @discardableResult
-    func `as`(_ instance: any Instance<Product>) -> Self {
+    public func `as`(_ instance: any Instance<Product>) -> Self {
         defaultInstance = instance
         return self
     }
     
     @discardableResult
-    func afterInit(perform action: @escaping Action) -> Self {
+    public func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)
         return self
     }
@@ -157,7 +187,7 @@ extension RegistrationWithArgument: Equatable where Product: Equatable {
     /// - parameter lhs: The left-hand side registration.
     /// - parameter rhs: The right-hand side registration.
     /// - Returns: `true` if the registrations are equal, `false` otherwise.
-    static func == (
+    public static func == (
         lhs: RegistrationWithArgument<Product, Argument>,
         rhs: RegistrationWithArgument<Product, Argument>
     ) -> Bool {
