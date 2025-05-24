@@ -43,6 +43,9 @@ struct Structs: Assembly {
     func assemble(container: any Container) throws {
         fatalError("Needs Implemented")
     }
+    
+    func asyncAssemble(container: any Container) throws {}
+    func syncAssemble(container: any Container) throws {}
 }
 
 // swiftlint:enable identifier_name

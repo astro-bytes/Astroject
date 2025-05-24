@@ -19,6 +19,8 @@ struct MockRegistration<Product>: Registrable {
         .init(Product.self)
     }
     
+    var isOverridable: Bool = false
+    
     init(_ type: Product.Type) {}
     init() {}
     

@@ -10,7 +10,7 @@ import AstrojectCore
 
 // swiftlint:disable force_cast
 
-class MockContainer: Container {
+final class MockContainer: Container, @unchecked Sendable {
     var whenRegister: () throws -> Void = {}
     var whenResolve: () throws -> Any = { 42 }
     var whenIsRegister: () -> Bool = { true }
@@ -29,8 +29,8 @@ class MockContainer: Container {
     
     func register<Product, Argument: Hashable>(
         productType: Product.Type,
+        argumentType: Argument.Type,
         name: String?,
-        argument: Argument.Type,
         isOverridable: Bool,
         factory: Factory<Product, (any Resolver, Argument)>
     ) throws -> any Registrable<Product> {

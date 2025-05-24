@@ -1,8 +1,7 @@
-//
 //  SyncContainer.swift
 //  Astroject
 //
-//  Created by Porter McGary on 5/21/25.
+//  Created by Porter McGady on 5/21/25.
 //
 
 import Foundation
@@ -21,9 +20,6 @@ public final class SyncContainer: Container, @unchecked Sendable {
     /// such as when registrations are added.  Behaviors can be used for cross-cutting concerns
     /// like logging, validation, or modifying registrations.
     private(set) var behaviors: [Behavior] = []
-    ///  A dictionary to store the dependency resolution graph for each thread.
-    ///  This is used to detect circular dependencies.
-    private(set) var resolvingGraphs: [ObjectIdentifier: [RegistrationKey]] = [:]
     
     /// Initializes a new `Container` instance.
     public init() {}
@@ -36,7 +32,7 @@ public final class SyncContainer: Container, @unchecked Sendable {
         factory: Factory<Product, Resolver>
     ) throws -> any Registrable<Product> {
         // Create a unique key for the registration based on the product type and optional name.
-        let key = RegistrationKey(productType: productType, name: name)
+        let key = RegistrationKey(factory: factory, name: name)
         // Create a registration instance that encapsulates the provided factory and the overridable setting.
         let registration = Registration(
             factory: factory,
@@ -44,7 +40,7 @@ public final class SyncContainer: Container, @unchecked Sendable {
             instance: Graph<Product>()
         )
         // Before adding the new registration, ensure that it is allowed based on existing registrations.
-        try assertRegistrationAllowed(productType, name: name, overridable: isOverridable)
+        try assertRegistrationAllowed(for: key, overridable: isOverridable)
         // Perform the actual registration by adding the key-registration pair to the dictionary
         // within a synchronized block to ensure thread safety.
         serialQueue.sync {
@@ -60,13 +56,13 @@ public final class SyncContainer: Container, @unchecked Sendable {
     @discardableResult
     public func register<Product, Argument: Hashable>(
         productType: Product.Type,
+        argumentType: Argument.Type,
         name: String? = nil,
-        argument: Argument.Type,
         isOverridable: Bool = true,
         factory: Factory<Product, (Resolver, Argument)>
     ) throws -> any Registrable<Product> {
         // Create a unique key for the registration, including the argument type.
-        let key = RegistrationKey(productType: productType, name: name, argumentType: Argument.self)
+        let key = RegistrationKey(factory: factory, name: name)
         // Create a registration instance that holds the factory, the overridable setting, and the argument type.
         let registration = RegistrationWithArgument(
             factory: factory,
@@ -75,7 +71,7 @@ public final class SyncContainer: Container, @unchecked Sendable {
             instance: Graph<Product>()
         )
         // Ensure that this registration is allowed based on any existing registrations.
-        try assertRegistrationAllowed(productType, name: name, overridable: isOverridable)
+        try assertRegistrationAllowed(for: key, overridable: isOverridable)
         // Add the registration to the dictionary in a thread-safe manner.
         serialQueue.sync {
             registrations[key] = registration
@@ -92,7 +88,11 @@ public final class SyncContainer: Container, @unchecked Sendable {
     
     public func isRegistered<Product>(productType: Product.Type, with name: String?) -> Bool {
         // Create a key representing the registration to check.
-        let key = RegistrationKey(productType: productType, name: name)
+        let key = RegistrationKey(
+            factoryType: Factory<Product, Resolver>.SyncBlock.self,
+            productType: productType,
+            name: name
+        )
         // Check if this key exists in the registrations dictionary.
         return serialQueue.sync {
             registrations.keys.contains(key)
@@ -104,7 +104,12 @@ public final class SyncContainer: Container, @unchecked Sendable {
         with name: String?,
         and argumentType: Argument.Type
     ) -> Bool {
-        let key = RegistrationKey(productType: productType, name: name, argumentType: argumentType)
+        let key = RegistrationKey(
+            factoryType: Factory<Product, (Resolver, Argument)>.SyncBlock.self,
+            productType: productType,
+            argumentType: argumentType,
+            name: name
+        )
         return serialQueue.sync {
             registrations.keys.contains(key)
         }
@@ -131,20 +136,8 @@ extension SyncContainer: Resolver {
         productType type: Product.Type,
         name: String?
     ) throws -> Product {
-        // Check current depth
-        let currentDepth = Context.current.depth
-        
-        if currentDepth == 0 {
-            // Top-level resolution: create fresh context with new graph ID
-            return try Context.$current.withValue(Context.fresh()) {
-                try internalResolve(type, name: name)
-            }
-        } else {
-            // Nested resolution: increment depth but keep same graphID
-            let nextContext = Context.current.next()
-            return try Context.$current.withValue(nextContext) {
-                try internalResolve(type, name: name)
-            }
+        try manageContext {
+            try initiateResolution(type, name: name, argument: Never?(nil))
         }
     }
     
@@ -153,20 +146,8 @@ extension SyncContainer: Resolver {
         name: String?,
         argument: Argument
     ) throws -> Product {
-        // Check current depth
-        let currentDepth = Context.current.depth
-        
-        if currentDepth == 0 {
-            // Top-level resolution: create fresh context with new graph ID
-            return try Context.$current.withValue(Context.fresh()) {
-                try internalResolve(type, name: name, argument: argument)
-            }
-        } else {
-            // Nested resolution: increment depth but keep same graphID
-            let nextContext = Context.current.next()
-            return try Context.$current.withValue(nextContext) {
-                try internalResolve(type, name: name, argument: argument)
-            }
+        try manageContext {
+            try initiateResolution(type, name: name, argument: argument)
         }
     }
     
@@ -188,162 +169,134 @@ extension SyncContainer: Resolver {
 
 // MARK: Helper Functions
 extension SyncContainer {
-    /// Internal resolution method for products without arguments.
-    ///
-    /// This method handles the core logic for resolving a product, including
-    /// checking for circular dependencies and interacting with the `Context`.
-    ///
-    /// - Parameters:
-    ///   - productType: The type of the product to resolve.
-    ///   - name: An optional name for the registration.
-    /// - Returns: An instance of the resolved `Product`.
-    /// - Throws: `AstrojectError.circularDependencyDetected` if a circular dependency is found,
-    ///           or `AstrojectError.noRegistrationFound` if no suitable registration exists.
-    func internalResolve<Product>(
-        _ productType: Product.Type,
-        name: String?
-    ) throws -> Product {
-        let key = RegistrationKey(productType: productType, name: name)
-        var graph = getGraph()
-        
-        // Check for circular dependency in THIS thread's stack
-        if graph.contains(key) {
-            throw AstrojectError.cyclicDependency(type: "\(productType)", name: name)
-        }
-        
-        // Push onto THIS thread's stack
-        graph.append(key)
-        updateGraph(graph)
-        defer {
-            // Pop from THIS thread's stack
-            graph.removeLast()
-            updateGraph(graph)
-        }
-        // Find the registration for the requested product type and name.
-        let registration = try findRegistration(for: productType, with: name)
-        // Resolve the product using the found registration and the current resolver (self).
-        let product = try registration.resolve(self)
-        // Return the resolved instance of the product.
-        return product
-    }
-    
-    /// Internal resolution method for products that require an argument.
-    ///
-    /// This method extends the resolution logic to handle factories that need
-    /// an additional argument for instantiation, including circular dependency detection.
+    /// Initiates the resolution process for a product, handling key creation,
+    /// circular dependency checks, and context management before delegating
+    /// to the actual registration lookup and resolution.
     ///
     /// - Parameters:
     ///   - productType: The type of the product to resolve.
     ///   - name: An optional name for the registration.
-    ///   - argument: The argument required by the product's factory.
+    ///   - argument: An optional argument value required by the product's factory.
+    ///   - argumentType: The *type* of the argument. Use `Void.self` if no argument is expected.
     /// - Returns: An instance of the resolved `Product`.
-    /// - Throws: `AstrojectError.circularDependencyDetected` if a circular dependency is found,
-    ///           or `AstrojectError.noRegistrationFound` if no suitable registration exists.
-    func internalResolve<Product, Argument: Hashable>(
+    /// - Throws: `AstrojectError.cyclicDependency` if a circular dependency is found,
+    ///           or `AstrojectError.noRegistrationFound` if no suitable registration exists,
+    ///           or any error thrown by the product's factory.
+    func initiateResolution<Product, Argument: Hashable>(
         _ productType: Product.Type,
         name: String?,
-        argument: Argument
+        argument: Argument? = nil
     ) throws -> Product {
-        let key = RegistrationKey(productType: productType, name: name, argumentType: Argument.self)
+        let key: RegistrationKey
         
-        var graph = getGraph()
-        // Check for circular dependency in THIS thread's stack
+        if argument != nil {
+            // Case: Resolving with an argument
+            key = RegistrationKey(
+                factoryType: Factory<Product, (Resolver, Argument)>.SyncBlock.self,
+                productType: productType,
+                argumentType: Argument.self, // Still need the type for the key
+                name: name
+            )
+        } else {
+            // Case: Resolving without an argument
+            key = RegistrationKey(
+                factoryType: Factory<Product, Resolver>.SyncBlock.self,
+                productType: productType,
+                name: name
+            )
+        }
+        
+        let graph = Context.current.graph
+        
+        // Check for circular dependency
         if graph.contains(key) {
-            throw AstrojectError.cyclicDependency(type: "\(productType)", name: name)
+            throw AstrojectError.cyclicDependency(key: graph.first ?? key, path: graph)
         }
         
-        // Push onto THIS thread's stack
-        graph.append(key)
-        updateGraph(graph)
-        defer {
-            // Pop from THIS thread's stack
-            graph.removeLast()
-            updateGraph(graph)
+        // Push onto the task-local resolution path
+        return try Context.$current.withValue(Context.current.push(key)) {
+            try findAndResolve(for: key, with: argument)
         }
-        
-        // Find the registration for the product type, name, and the type of the argument.
-        let registration = try findRegistration(for: productType, with: name, argument: argument)
-        // Resolve the product by calling the registration's resolve method with the resolver and the argument.
-        let product = try registration.resolve(self, argument: argument)
-        // Return the resolved product instance.
-        return product
     }
     
-    /// Finds a registration for a product type.
+    /// Looks up the registration for a given key and resolves the product.
+    /// This function handles the type casting and calls the appropriate resolve method
+    /// based on whether an argument is provided.
     ///
-    /// - parameter productType: The type of the product to find the registration for.
-    /// - parameter name: An optional name associated with the registration.
-    /// - Returns: The found `Registration` instance.
-    /// - Throws: `AstrojectError.noRegistrationFound` if no registration exists for the given
-    ///  `productType` and `name`.
-    func findRegistration<Product>(
-        for productType: Product.Type,
-        with name: String?
-    ) throws -> Registration<Product> {
-        // Create a key to look up the registration in the dictionary.
-        let key = RegistrationKey(productType: productType, name: name)
-        // Access the registrations dictionary in a thread-safe manner to retrieve the registration.
-        let registration = serialQueue.sync {
-            registrations[key] as? Registration<Product>
-        }
-        // If no registration is found for the given key, throw an error.
-        guard let registration else {
-            throw AstrojectError.noRegistrationFound(type: "\(productType)", name: name)
+    /// - Parameters:
+    ///   - key: The `RegistrationKey` to look up.
+    ///   - argument: An optional argument value to pass to the factory if it's an argumented registration.
+    /// - Returns: The resolved product instance.
+    /// - Throws: `AstrojectError.noRegistrationFound` if the registration doesn't exist
+    ///           or if there's a type mismatch during casting.
+    func findAndResolve<Product, Argument: Hashable>(
+        for key: RegistrationKey,
+        with argument: Argument?
+    ) throws -> Product {
+        // Retrieve registration based on the key
+        let maybeRegistration = serialQueue.sync {
+            registrations[key]
         }
         
-        // Return the found registration.
-        return registration
+        guard let registable = maybeRegistration else {
+            throw AstrojectError.noRegistrationFound(key: key)
+        }
+        
+        // Now, cast and resolve based on whether an argument was provided
+        if let argumentValue = argument {
+            // If an argument was provided, try to resolve it as an argumented registration
+            guard let registration = registable as? RegistrationWithArgument<Product, Argument> else {
+                // This means a registration for the product type and name exists,
+                // but it wasn't registered with the expected argument type.
+                throw AstrojectError.noRegistrationFound(key: key)
+            }
+            return try registration.resolve(self, argument: argumentValue)
+        } else {
+            // If no argument was provided, try to resolve it as a non-argumented registration
+            guard let registration = registable as? Registration<Product> else {
+                // Similar to above, registration exists but was actually registered with an argument.
+                throw AstrojectError.noRegistrationFound(key: key)
+            }
+            return try registration.resolve(self)
+        }
     }
     
-    /// Finds a registration for a product type that requires a specific argument.
+    /// A generic helper function to manage the `Context` for resolution calls.
+    /// It handles creating a fresh context for top-level resolutions or
+    /// advancing the context for nested resolutions.
     ///
-    /// - parameter productType: The type of the product to find the registration for.
-    /// - parameter name: An optional name associated with the registration.
-    /// - parameter argument: The specific argument instance used to identify the registration.
-    /// - Returns: The found `RegistrationWithArgument` instance.
-    /// - Throws: `AstrojectError.noRegistrationFound` if no matching registration is found.
-    func findRegistration<Product, Argument>(
-        for productType: Product.Type,
-        with name: String?,
-        argument: Argument
-    ) throws -> RegistrationWithArgument<Product, Argument> {
-        // Create the key used to find the registration, including the argument type.
-        let key = RegistrationKey(productType: productType, name: name, argumentType: Argument.self)
+    /// - Parameter body: A throwing closure that performs the actual resolution logic.
+    /// - Returns: The resolved product instance.
+    /// - Throws: Any error thrown by the `body` closure.
+    func manageContext<T>(body: () throws -> T) throws -> T {
+        let currentContext = Context.current
         
-        // Access the registrations dictionary in a thread-safe manner.
-        let registration = serialQueue.sync {
-            // Attempt to cast the registration to the specific type that handles arguments.
-            registrations[key] as? RegistrationWithArgument<Product, Argument>
+        if currentContext.depth == 0 {
+            // Top-level resolution: create fresh context with new graph ID and empty path
+            return try Context.$current.withValue(Context.fresh()) {
+                try body()
+            }
+        } else {
+            // Nested resolution: increment depth but keep same graphID and continue path
+            let nextContext = currentContext.next()
+            return try Context.$current.withValue(nextContext) {
+                try body()
+            }
         }
-        
-        // If no registration is found, throw an error indicating that.
-        guard let registration else {
-            let argumentType = type(of: argument)
-            let spacing = name == nil ? "" : " "
-            let nameAndArgument = name ?? "" + "\(spacing)argument of type: \(argumentType)"
-            throw AstrojectError.noRegistrationFound(
-                type: "\(productType)",
-                name: nameAndArgument)
-        }
-        
-        // Return the found registration.
-        return registration
     }
     
-    /// Validates if a registration already exists for the given product type and name,
-    /// throwing an error if a non-overridable registration is found.
+    /// Asserts whether a new registration is allowed based on existing registrations and their overridability.
     ///
-    /// - parameter productType: The type of the product being registered.
-    /// - parameter name: An optional name associated with the registration.
-    /// - parameter overridable: A boolean indicating if the new registration is overridable.
-    /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
-    func assertRegistrationAllowed<Product>(_ productType: Product.Type, name: String?, overridable: Bool) throws {
-        // Construct a RegistrationKey to identify the registration.
-        let key = RegistrationKey(productType: productType, name: name)
-        
+    /// - Parameters:
+    ///   - key: The `RegistrationKey` for the new registration.
+    ///   - overridable: A boolean indicating if the new registration is overridable.
+    /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration for the same
+    ///           key already exists, or if an existing overridable registration is found but the new registration is
+    ///           not marked as overridable.
+    func assertRegistrationAllowed(for key: RegistrationKey, overridable: Bool) throws {
         // Attempt to retrieve an existing registration using the key.
         let existingRegistration = serialQueue.sync {
-            registrations[key] as? Registration<Product>
+            registrations[key]
         }
         
         // Check if an existing registration was found.
@@ -353,37 +306,9 @@ extension SyncContainer {
             // If the existing one is not overridable, we should not allow the new registration.
             guard existingRegistration.isOverridable, overridable else {
                 // Throw an error indicating that a registration already exists and cannot be overridden.
-                throw AstrojectError.alreadyRegistered(type: "\(productType)", name: name)
+                throw AstrojectError.alreadyRegistered(key: key)
             }
         }
         // If no existing registration is found, or if both are overridable, the validation passes.
-    }
-    
-    /// Retrieves the dependency resolution graph for the current thread.
-    ///
-    /// - Returns: The dependency resolution graph for the current thread.
-    func getGraph() -> [RegistrationKey] {
-        let thread = Thread.current
-        let threadIdentifier = ObjectIdentifier(thread)
-        return serialQueue.sync {
-            if let graph = resolvingGraphs[threadIdentifier] {
-                return graph
-            } else {
-                let newGraph: [RegistrationKey] = []
-                resolvingGraphs[threadIdentifier] = newGraph
-                return newGraph
-            }
-        }
-    }
-    
-    /// Updates the dependency resolution graph for the current thread.
-    ///
-    /// - parameter graph: The updated dependency resolution graph.
-    func updateGraph(_ graph: [RegistrationKey]) {
-        let thread = Thread.current
-        let threadIdentifier = ObjectIdentifier(thread)
-        serialQueue.sync {
-            resolvingGraphs[threadIdentifier] = graph
-        }
     }
 }

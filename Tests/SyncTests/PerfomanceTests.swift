@@ -7,7 +7,7 @@
 
 import XCTest
 @testable import Mocks
-@testable import Sync
+@testable import AstrojectSync
 
 // swiftlint:disable identifier_name
 
@@ -29,7 +29,7 @@ class PerformanceTests: XCTestCase {
         }
     }
     
-    func testResolutionPerformance() throws {
+    func testResolutionPerformance() async throws {
         let container = SyncContainer()
         let iterations = iterations
         try container.register(Int.self) { 42 }
@@ -40,7 +40,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try await container.resolve(Int.self)
+                        _ = try container.resolve(Int.self)
                     }
                     semaphore.signal()
                 }
@@ -56,8 +56,8 @@ class PerformanceTests: XCTestCase {
         try container.register(Int.self) { 42 }
         try container.register(String.self) { "test" }
         try container.register(Double.self) { resolver in
-            let intValue = try await resolver.resolve(Int.self)
-            let stringValue = try await resolver.resolve(String.self)
+            let intValue = try resolver.resolve(Int.self)
+            let stringValue = try resolver.resolve(String.self)
             return Double(intValue) + Double(stringValue.count)
         }
         
@@ -67,7 +67,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try await container.resolve(Double.self)
+                        _ = try container.resolve(Double.self)
                     }
                     semaphore.signal()
                 }
@@ -90,7 +90,7 @@ class PerformanceTests: XCTestCase {
                         for _ in 0..<concurrentTasks {
                             group.addTask {
                                 do {
-                                    _ = try await container.resolve(Int.self)
+                                    _ = try container.resolve(Int.self)
                                 } catch {
                                     XCTFail("Failed with Error - \(error)")
                                 }

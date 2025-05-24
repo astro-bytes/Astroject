@@ -7,7 +7,7 @@
 
 import XCTest
 @testable import Mocks
-@testable import Async
+@testable import AstrojectAsync
 
 // swiftlint:disable identifier_name
 
@@ -40,7 +40,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try await container.resolve(Int.self, name: nil)
+                        _ = try await container.resolve(Int.self)
                     }
                     semaphore.signal()
                 }
@@ -51,13 +51,14 @@ class PerformanceTests: XCTestCase {
     }
     
     func testComplexResolutionPerformance() async throws {
+        
         let container = AsyncContainer()
         let iterations = iterations
         try container.register(Int.self) { 42 }
         try container.register(String.self) { "test" }
         try container.register(Double.self) { resolver in
-            let intValue = try await resolver.resolve(Int.self, name: nil)
-            let stringValue = try await resolver.resolve(String.self, name: nil)
+            let intValue = try await resolver.resolve(Int.self)
+            let stringValue = try await resolver.resolve(String.self)
             return Double(intValue) + Double(stringValue.count)
         }
         
@@ -67,7 +68,7 @@ class PerformanceTests: XCTestCase {
             DispatchQueue.main.async {
                 Task {
                     for _ in 0..<iterations {
-                        _ = try await container.resolve(Double.self, name: nil)
+                        _ = try await container.resolve(Double.self)
                     }
                     semaphore.signal()
                 }

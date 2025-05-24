@@ -11,14 +11,17 @@ import AstrojectCore
 // swiftlint:disable force_cast
 
 // Mock Resolver for testing
-class MockResolver: Resolver {
-    var whenResolve: () throws -> Any = { 42 }
+class MockResolver<P>: Resolver {
+    var whenResolve: () throws -> P = { throw MockError() }
     
     func resolve<Product>(
         productType: Product.Type,
         name: String?
     ) async throws -> Product {
-        try whenResolve() as! Product
+        guard Product.self == P.self else {
+            throw MockError()
+        }
+        return try whenResolve() as! Product
     }
     
     func resolve<Product, Argument>(
@@ -26,11 +29,17 @@ class MockResolver: Resolver {
         name: String?,
         argument: Argument
     ) async throws -> Product {
-        try whenResolve() as! Product
+        guard Product.self == P.self else {
+            throw MockError()
+        }
+        return try whenResolve() as! Product
     }
     
     func resolve<Product>(productType: Product.Type, name: String?) throws -> Product {
-        try whenResolve() as! Product
+        guard Product.self == P.self else {
+            throw MockError()
+        }
+        return try whenResolve() as! Product
     }
     
     func resolve<Product, Argument: Hashable>(
@@ -38,7 +47,10 @@ class MockResolver: Resolver {
         name: String?,
         argument: Argument
     ) throws -> Product {
-        try whenResolve() as! Product
+        guard Product.self == P.self else {
+            throw MockError()
+        }
+        return try whenResolve() as! Product
     }
 }
 

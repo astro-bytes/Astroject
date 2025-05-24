@@ -8,13 +8,12 @@ import Testing
 import Foundation
 @testable import AstrojectCore
 @testable import Mocks
-@testable import Sync
+@testable import AstrojectSync
 
 // swiftlint:disable identifier_name
 // swiftlint:disable force_cast
 // swiftlint:disable type_name
 // swiftlint:disable nesting
-// swiftlint:disable line_length
 
 @Suite("Container")
 struct SyncContainerTests {
@@ -23,8 +22,8 @@ struct SyncContainerTests {
         let container = SyncContainer()
         try container.register(Int.self) { 1 }
         try container.register(Int.self, name: "2") { 2 }
-        try container.register(Int.self, name: "3", argument: String.self) { _,_ in 3 }
-        try container.register(Int.self, argument: String.self) { _,_ in 4 }
+        try container.register(Int.self, argumentType: String.self, name: "3") { 3 }
+        try container.register(Int.self, argumentType: String.self) { 4 }
         
         #expect(container.isRegistered(Int.self))
         #expect(container.isRegistered(Int.self, with: "2"))
@@ -46,34 +45,6 @@ struct SyncContainerTests {
         #expect((container.behaviors[1] as? MockBehavior) === behavior2)
     }
     
-    @Test("Find a Registration")
-    func findRegistration() throws {
-        let container = SyncContainer()
-        let factory = Factory { 42 }
-        try container.register(Int.self, factory: factory)
-        
-        let registration = try container.findRegistration(for: Int.self, with: nil)
-        #expect(registration.factory == factory)
-        
-        #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: nil)) {
-            _ = try container.findRegistration(for: Double.self, with: nil)
-        }
-    }
-    
-    @Test("Find a Named Registration")
-    func findNamedRegistration() throws {
-        let container = SyncContainer()
-        let factory = Factory { 42 }
-        try container.register(Int.self, name: "test", factory: factory)
-        
-        let registration = try container.findRegistration(for: Int.self, with: "test")
-        #expect(registration.factory == factory)
-        
-        #expect(throws: AstrojectError.noRegistrationFound(type: "\(Int.self)", name: "wrongName")) {
-            _ = try container.findRegistration(for: Int.self, with: "wrongName")
-        }
-    }
-    
     @Test("Validate Overriding Registration is Allowed")
     func assertRegistrationAllowed() throws {
         let container = SyncContainer()
@@ -82,9 +53,10 @@ struct SyncContainerTests {
         try container.register(Int.self, factory: factory)
         try container.register(Int.self, factory: factory) // Should succeed, as it's overridable
         
-        #expect(throws: AstrojectError.alreadyRegistered(type: "\(String.self)")) {
-            try container.register(String.self, isOverridable: false) { "test" }
-            try container.register(String.self) { "test2" }
+        let key = RegistrationKey(factory: factory)
+        #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
+            try container.register(Int.self, isOverridable: false, factory: factory)
+            try container.register(Int.self, factory: factory)
         }
     }
     
@@ -111,7 +83,7 @@ extension SyncContainerTests {
             let factory = Factory { 42 }
             try container.register(Int.self, factory: factory)
             let expected = Registration(factory: factory, isOverridable: true, instance: Transient())
-            let key = RegistrationKey(productType: Int.self)
+            let key = RegistrationKey(factory: factory)
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
         }
@@ -122,7 +94,7 @@ extension SyncContainerTests {
             let factory = Factory { 42 }
             try container.register(Int.self, name: "42", factory: factory)
             let expected = Registration(factory: factory, isOverridable: true, instance: Transient())
-            let key = RegistrationKey(productType: Int.self, name: "42")
+            let key = RegistrationKey(factory: factory, name: "42")
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
         }
@@ -130,15 +102,18 @@ extension SyncContainerTests {
         @Test("Throw Already Registered Error")
         func registrationAlreadyExistsError() throws {
             let container = SyncContainer()
-            
-            #expect(throws: AstrojectError.alreadyRegistered(type: "\(Int.self)", name: nil)) {
-                try container.register(Int.self, isOverridable: false) { _ in 42 }
-                try container.register(Int.self) { _ in 41 }
+            let intFactory = Factory { 42 }
+            let intKey = RegistrationKey(factory: intFactory)
+            #expect(throws: AstrojectError.alreadyRegistered(key: intKey)) {
+                try container.register(Int.self, isOverridable: false) {  42 }
+                try container.register(Int.self) {  41 }
             }
             
-            #expect(throws: AstrojectError.alreadyRegistered(type: "\(String.self)", name: nil)) {
-                try container.register(String.self) { _ in "41" }
-                try container.register(String.self, isOverridable: false) { _ in "42" }
+            let strFactory = Factory { "42" }
+            let strKey = RegistrationKey(factory: strFactory)
+            #expect(throws: AstrojectError.alreadyRegistered(key: strKey)) {
+                try container.register(String.self) {  "41" }
+                try container.register(String.self, isOverridable: false) {  "42" }
             }
         }
     }
@@ -151,18 +126,16 @@ extension SyncContainerTests {
         @Test("Resolve Happy Path")
         func resolution() throws {
             let container = SyncContainer()
-            try container.register(Int.self) { _ in 42 }
+            try container.register(Int.self) {  42 }
             let resolvedValue: Int = try container.resolve(Int.self)
             #expect(resolvedValue == 42)
-            
-            let a = try container.resolve(Protocols.Animal.self)
         }
         
         @Test("Named Resolution Happy Path")
         func namedResolution() throws {
             let container = SyncContainer()
-            try container.register(Int.self, name: "41") { _ in 41 }
-            try container.register(Int.self, name: "42") { _ in 42 }
+            try container.register(Int.self, name: "41") {  41 }
+            try container.register(Int.self, name: "42") {  42 }
             let resolved41 = try container.resolve(Int.self, name: "41")
             let resolved42 = try container.resolve(Int.self, name: "42")
             #expect(resolved41 == 41)
@@ -173,7 +146,7 @@ extension SyncContainerTests {
         func argumentResolution() throws {
             let container = SyncContainer()
             typealias G = Classes.ObjectG
-            try container.register(G.self, argument: Int.self) { _, int in
+            try container.register(G.self, argumentType: Int.self) { _, int in
                 G(int: int)
             }
             
@@ -190,7 +163,7 @@ extension SyncContainerTests {
             let container = SyncContainer()
             typealias G = Classes.ObjectG
             
-            try container.register(G.self, name: "g", argument: Int.self) { _, int in
+            try container.register(G.self, argumentType: Int.self, name: "g") { _, int in
                 .init(int: int)
             }
             
@@ -205,28 +178,33 @@ extension SyncContainerTests {
         @Test("Throw No Registration Error")
         func noRegistrationFoundError() throws {
             let container = SyncContainer()
-            
-            #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: nil)) {
-                try container.resolve(Double.self)
+            let factory = Factory { 42 }
+            let key = RegistrationKey(factory: factory)
+            #expect(throws: AstrojectError.noRegistrationFound(key: key)) {
+                try container.resolve(Int.self)
             }
             
-            #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: "42")) {
-                try container.resolve(Double.self, name: "42")
+            let namedKey = RegistrationKey(factory: factory, name: "42")
+            #expect(throws: AstrojectError.noRegistrationFound(key: namedKey)) {
+                try container.resolve(Int.self, name: "42")
             }
             
-            #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: "42")) {
-                try container.resolve(Double.self, name: "42", argument: "1")
+            let argumentFactory = Factory { (_, _: String) in 42 }
+            let namedArgumentKey = RegistrationKey(factory: argumentFactory, name: "42")
+            #expect(throws: AstrojectError.noRegistrationFound(key: namedArgumentKey)) {
+                try container.resolve(Int.self, name: "42", argument: "1")
             }
             
-            #expect(throws: AstrojectError.noRegistrationFound(type: "\(Double.self)", name: nil)) {
-                try container.resolve(Double.self, argument: "1")
+            let argumentKey = RegistrationKey(factory: argumentFactory)
+            #expect(throws: AstrojectError.noRegistrationFound(key: argumentKey)) {
+                try container.resolve(Int.self, argument: "1")
             }
         }
         
         @Test("Throw Resolution Error")
         func underlyingFactoryError() throws {
             let container = SyncContainer()
-            try container.register(Int.self) { _ in throw MockError() }
+            try container.register(Int.self) {  throw MockError() }
             #expect(throws: AstrojectError.underlyingError(MockError())) {
                 try container.resolve(Int.self)
             }
@@ -443,45 +421,20 @@ extension SyncContainerTests {
         
         @Test("Concurrent Resolution with Shared Dependencies")
         func concurrentResolutionWithSharedDependencies() async throws {
-            class SharedDependency {}
-            
-            class ObjectA {
-                let shared: SharedDependency
-                init(shared: SharedDependency) {
-                    self.shared = shared
-                }
-            }
-            
-            class ObjectB {
-                let shared: SharedDependency
-                init(shared: SharedDependency) {
-                    self.shared = shared
-                }
-            }
-            
-            let container = SyncContainer()
-            // Register a shared dependency
-            try container.register(SharedDependency.self) { SharedDependency() }
-            
-            // Register two types that depend on the shared dependency
-            try container.register(ObjectA.self) { resolver in
-                let shared = try resolver.resolve(SharedDependency.self)
-                return ObjectA(shared: shared)
-            }
-            try container.register(ObjectB.self) { resolver in
-                let shared = try resolver.resolve(SharedDependency.self)
-                return ObjectB(shared: shared)
-            }
+            typealias B = Classes.ObjectB
+            typealias C = Classes.ObjectC
+            typealias D = Classes.ObjectD
             
             let iterations = 50
+            let container = try Assembler(Classes()).container
             
             await withTaskGroup(of: Void.self) { group in
                 for _ in 0..<iterations {
                     group.addTask {
-                        let a = try? container.resolve(ObjectA.self)
-                        let b = try? container.resolve(ObjectB.self)
-                        #expect(a != nil)
-                        #expect(b != nil)
+                        #expect(throws: Never.self) {
+                            _ = try container.resolve(B.self)
+                            _ = try container.resolve(C.self)
+                        }
                     }
                 }
             }
@@ -496,119 +449,73 @@ extension SyncContainerTests {
         @Test("Detect Circular Dependencies")
         func circularDependencyDetected() throws {
             let container = try Assembler(CircularDependency()).container
-            typealias A = CircularDependency.Classes.ObjectA
-            typealias B = CircularDependency.Classes.ObjectB
-            typealias C = CircularDependency.Classes.ObjectC
-            typealias D = CircularDependency.Classes.ObjectD
-            typealias E = CircularDependency.Classes.ObjectE
-            typealias F = CircularDependency.Classes.ObjectF
-            typealias G = CircularDependency.Classes.ObjectG
+            typealias A = CircularDependency.ObjectA
+            typealias B = CircularDependency.ObjectB
+            typealias C = CircularDependency.ObjectC
+            typealias D = CircularDependency.ObjectD
+            typealias E = CircularDependency.ObjectE
+            typealias G = CircularDependency.ObjectG
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(A.self)", name: nil)) {
+            typealias K = RegistrationKey
+            typealias F = Factory
+            typealias R = Resolver
+            
+            let aKey = K(factoryType: F<A, R>.SyncBlock.self, productType: A.self)
+            let bKey = K(factoryType: F<B, R>.SyncBlock.self, productType: B.self)
+            #expect(throws: AstrojectError.cyclicDependency(key: aKey, path: [aKey, bKey])) {
                 _ = try container.resolve(A.self)
             }
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(B.self)", name: nil)) {
+            #expect(throws: AstrojectError.cyclicDependency(key: bKey, path: [bKey, aKey])) {
                 _ = try container.resolve(B.self)
             }
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(C.self)", name: nil)) {
+            let cKey = K(factoryType: F<C, R>.SyncBlock.self, productType: C.self)
+            let dKey = K(factoryType: F<D, R>.SyncBlock.self, productType: D.self)
+            let eKey = K(factoryType: F<E, R>.SyncBlock.self, productType: E.self)
+            #expect(throws: AstrojectError.cyclicDependency(key: cKey, path: [cKey, dKey, eKey])) {
                 _ = try container.resolve(C.self)
             }
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(D.self)", name: nil)) {
-                _ = try container.resolve(D.self)
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(E.self)", name: nil)) {
-                _ = try container.resolve(E.self)
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(F.self)", name: nil)) {
-                _ = try container.resolve(F.self)
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(G.self)", name: nil)) {
+            let gKey = K(factoryType: F<G, R>.SyncBlock.self, productType: G.self)
+            #expect(throws: AstrojectError.cyclicDependency(key: gKey, path: [gKey])) {
                 _ = try container.resolve(G.self)
-            }
-        }
-        
-        @Test("Named Circular Dependencies")
-        func namedCircularDependencies() throws {
-            let container = try Assembler(CircularDependency()).container
-            typealias A = CircularDependency.Classes.ObjectA
-            typealias B = CircularDependency.Classes.ObjectB
-            typealias C = CircularDependency.Classes.ObjectC
-            typealias D = CircularDependency.Classes.ObjectD
-            typealias E = CircularDependency.Classes.ObjectE
-            typealias F = CircularDependency.Classes.ObjectF
-            typealias G = CircularDependency.Classes.ObjectG
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(A.self)", name: "test")) {
-                _ = try container.resolve(A.self, name: "test")
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(B.self)", name: "test")) {
-                _ = try container.resolve(B.self, name: "test")
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(C.self)", name: "test")) {
-                _ = try container.resolve(C.self, name: "test")
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(D.self)", name: "test")) {
-                _ = try container.resolve(D.self, name: "test")
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(E.self)", name: "test")) {
-                _ = try container.resolve(E.self, name: "test")
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(F.self)", name: "test")) {
-                _ = try container.resolve(F.self, name: "test")
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(G.self)", name: "test")) {
-                _ = try container.resolve(G.self, name: "test")
             }
         }
         
         @Test("Argument Circular Dependencies")
         func circularDependenciesWithArguments() throws {
             let container = try Assembler(CircularDependency()).container
-            typealias A = CircularDependency.Classes.ObjectA
-            typealias B = CircularDependency.Classes.ObjectB
-            typealias C = CircularDependency.Classes.ObjectC
-            typealias D = CircularDependency.Classes.ObjectD
-            typealias E = CircularDependency.Classes.ObjectE
-            typealias F = CircularDependency.Classes.ObjectF
-            typealias G = CircularDependency.Classes.ObjectG
+            typealias A = CircularDependency.ObjectA
+            typealias B = CircularDependency.ObjectB
+            typealias C = CircularDependency.ObjectC
+            typealias D = CircularDependency.ObjectD
+            typealias E = CircularDependency.ObjectE
+            typealias G = CircularDependency.ObjectG
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(A.self)", name: "test")) {
+            typealias K = RegistrationKey
+            typealias F = Factory
+            typealias R = Resolver
+            
+            let aKey = K(factoryType: F<A, (R, Int)>.SyncBlock.self, productType: A.self, argumentType: Int.self)
+            let bKey = K(factoryType: F<B, (R, Int)>.SyncBlock.self, productType: B.self, argumentType: Int.self)
+            #expect(throws: AstrojectError.cyclicDependency(key: aKey, path: [aKey, bKey])) {
                 _ = try container.resolve(A.self, argument: 1)
             }
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(B.self)", name: "test")) {
+            #expect(throws: AstrojectError.cyclicDependency(key: bKey, path: [bKey, aKey])) {
                 _ = try container.resolve(B.self, argument: 1)
             }
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(C.self)", name: "test")) {
+            let cKey = K(factoryType: F<C, (R, Int)>.SyncBlock.self, productType: C.self, argumentType: Int.self)
+            let dKey = K(factoryType: F<D, (R, Int)>.SyncBlock.self, productType: D.self, argumentType: Int.self)
+            let eKey = K(factoryType: F<E, (R, Int)>.SyncBlock.self, productType: E.self, argumentType: Int.self)
+            #expect(throws: AstrojectError.cyclicDependency(key: cKey, path: [cKey, dKey, eKey])) {
                 _ = try container.resolve(C.self, argument: 1)
             }
             
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(D.self)", name: "test")) {
-                _ = try container.resolve(D.self, argument: 1)
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(E.self)", name: "test")) {
-                _ = try container.resolve(E.self, argument: 1)
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(F.self)", name: "test")) {
-                _ = try container.resolve(F.self, argument: 1)
-            }
-            
-            #expect(throws: AstrojectError.cyclicDependency(type: "\(G.self)", name: "test")) {
+            let gKey = K(factoryType: F<G, (R, Int)>.SyncBlock.self, productType: G.self, argumentType: Int.self)
+            #expect(throws: AstrojectError.cyclicDependency(key: gKey, path: [gKey])) {
                 _ = try container.resolve(G.self, argument: 1)
             }
         }
@@ -626,7 +533,7 @@ extension SyncContainerTests {
             typealias G = Classes.ObjectG
             
             var count = 0
-            try container.register(G.self) { _ in
+            try container.register(G.self) {
                 count += 1
                 return G()
             }
@@ -645,7 +552,7 @@ extension SyncContainerTests {
             typealias G = Classes.ObjectG
             
             var count = 0
-            try container.register(G.self) { _ in
+            try container.register(G.self) {
                 count += 1
                 return G()
             }
@@ -664,7 +571,7 @@ extension SyncContainerTests {
             typealias G = Classes.ObjectG
             
             var count = 0
-            try container.register(G.self) { _ in
+            try container.register(G.self) {
                 count += 1
                 return G()
             }
@@ -770,11 +677,11 @@ extension SyncContainerTests {
             var transientCount = 0
             var weakCount = 0
             
-            try container.register(D.self) { _ in
-                singletonCount += 1
+            try container.register(D.self) {
+                transientCount += 1
                 return D()
             }
-            .asSingleton()
+            .asTransient()
             
             try container.register(C.self) { resolver in
                 graphCount += 1
@@ -783,12 +690,12 @@ extension SyncContainerTests {
             }
             
             try container.register(B.self) { resolver in
-                transientCount += 1
+                singletonCount += 1
                 let c = try resolver.resolve(C.self)
                 let d = try resolver.resolve(D.self)
                 return B(c: c, d: d)
             }
-            .asTransient()
+            .asSingleton()
             
             try container.register(A.self) { resolver in
                 weakCount += 1
@@ -803,7 +710,7 @@ extension SyncContainerTests {
             var a: A? = try container.resolve(A.self)
             
             #expect(weakCount == 1)
-            #expect(transientCount == 2)
+            #expect(transientCount == 4)
             #expect(graphCount == 1)
             #expect(singletonCount == 1)
             
@@ -811,7 +718,7 @@ extension SyncContainerTests {
             
             // There are no changes because the object was never resolved!
             #expect(weakCount == 1)
-            #expect(transientCount == 2)
+            #expect(transientCount == 4)
             #expect(graphCount == 1)
             #expect(singletonCount == 1)
             
@@ -821,7 +728,7 @@ extension SyncContainerTests {
             _ = try container.resolve(A.self)
             
             #expect(weakCount == 2)
-            #expect(transientCount == 4)
+            #expect(transientCount == 7)
             #expect(graphCount == 2)
             #expect(singletonCount == 1)
             
@@ -836,7 +743,7 @@ extension SyncContainerTests {
             var graphIDs: [UUID] = []
             
             // Register a simple type that captures the current graphID
-            try container.register(UUID.self) { _ in
+            try container.register(UUID.self) {
                 let graphID = Context.current.graphID
                 graphIDs.append(graphID)
                 return graphID
@@ -862,7 +769,7 @@ extension SyncContainerTests {
             class O1 {}
             class O2 {}
             
-            try container.register(O2.self) { _ in
+            try container.register(O2.self) {
                 capturedGraphIDs.append(Context.current.graphID)
                 return O2()
             }
@@ -908,8 +815,98 @@ extension SyncContainerTests {
     }
 }
 
+// MARK: Behavior Test
+extension SyncContainerTests {
+    @Suite("Behavior")
+    struct BehaviorTests {
+        @Test("Ensure didRegister is Called")
+        func behaviorDidRegisterCalled() throws {
+            let container = SyncContainer()
+            let behavior = MockBehavior()
+            
+            var didRegisterCalled = false
+            behavior.whenDidRegister = {
+                didRegisterCalled = true
+            }
+            
+            container.add(behavior)
+            
+            try container.register(Int.self) {  10 }
+            
+            #expect(didRegisterCalled)
+        }
+        
+        @Test("Ensure didRegisterWithName is Called")
+        func behaviorDidRegisterWithName() throws {
+            let container = SyncContainer()
+            let behavior = MockBehavior()
+            
+            var didRegisterCalled = false
+            behavior.whenDidRegister = {
+                didRegisterCalled = true
+            }
+            
+            container.add(behavior)
+            
+            try container.register(String.self, name: "testString") {  "Hello" }
+            
+            #expect(didRegisterCalled)
+        }
+        
+        @Test("Testing Multiple Behaviors")
+        func multipleBehaviors() throws {
+            let container = SyncContainer()
+            let behavior1 = MockBehavior()
+            let behavior2 = MockBehavior()
+            
+            var didRegister1 = false
+            var didRegister2 = false
+            
+            behavior1.whenDidRegister = {
+                didRegister1 = true
+            }
+            behavior2.whenDidRegister = {
+                didRegister2 = true
+            }
+            
+            container.add(behavior1)
+            container.add(behavior2)
+            
+            try container.register(Double.self) {  3.14 }
+            
+            #expect(didRegister1)
+            #expect(didRegister2)
+        }
+        
+        @Test("Behaviors with Multiple Registrations")
+        func behaviorWithDifferentRegistrations() throws {
+            let container = SyncContainer()
+            let behavior = MockBehavior()
+            
+            var didRegister = false
+            behavior.whenDidRegister = {
+                didRegister = true
+            }
+            
+            container.add(behavior)
+            
+            try container.register(Int.self) {  10 }
+            try container.register(String.self, name: "testString") {  "Hello" }
+            
+            #expect(didRegister)
+            
+            // reset the behavior
+            didRegister = false
+            
+            try container.register(Double.self) {  4.0 }
+            
+            #expect(didRegister)
+        }
+    }
+
+}
+
 // swiftlint:enable identifier_name
 // swiftlint:enable force_cast
 // swiftlint:enable type_name
 // swiftlint:enable nesting
-// swiftlint:enable line_length

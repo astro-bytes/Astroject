@@ -20,6 +20,8 @@ public protocol Registrable<Product> {
     /// The type of product that this registrable component produces.
     associatedtype Product
     
+    var isOverridable: Bool { get }
+    
     /// Sets the instance management scope for the registration.
     ///
     /// This function allows configuring how the registered component's instances are

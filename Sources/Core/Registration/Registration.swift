@@ -15,19 +15,19 @@ import Foundation
 public final class Registration<Product>: Registrable {
     /// A closure type for actions to be performed after a product is resolved.
     public typealias Action = (Resolver, Product) throws -> Void
-    
+
     /// The factory used to create instances of the product.
     let factory: Factory<Product, Resolver>
-    
+
     /// An array of actions to be performed after a product is resolved.
     private var actions: [Action] = []
-    
+
     /// The instance management strategy for the product.
     private(set) var instance: any Instance<Product>
-    
+
     /// Indicates whether this registration can be overridden by another registration.
     public let isOverridable: Bool
-    
+
     /// Initializes a new `Registration` instance.
     ///
     /// - parameter factory: The factory used to create instances of the product.
@@ -42,28 +42,20 @@ public final class Registration<Product>: Registrable {
         self.isOverridable = isOverridable
         self.instance = instance
     }
-    
-    /// Initializes a new `Registration` instance with a factory closure.
+
+    /// Resolves and returns an instance of the product asynchronously.
     ///
-    /// - parameter block: The factory closure used to create instances of the product.
-    /// - parameter isOverridable: Indicates whether this registration can be overridden.
-    /// - parameter instance: The instance management strategy for the product.
-    public convenience init(
-        factory block: Factory<Product, Resolver>.Block,
-        isOverridable: Bool,
-        instance: any Instance<Product>
-    ) {
-        self.init(
-            factory: Factory(block),
-            isOverridable: isOverridable,
-            instance: instance
-        )
-    }
-    
-    // TODO: Comment
+    /// This method first checks if an instance already exists for the current context.
+    /// If not, it uses the registered factory to create a new instance, stores it according
+    /// to the instance management strategy, and then runs any defined `afterInit` actions.
+    ///
+    /// - parameter container: The `Container` (acting as a `Resolver`) to use
+    ///                        for resolving dependencies within the factory.
+    /// - Returns: An instance of the `Product`.
+    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(_ container: Container) async throws -> Product {
         let context = Context.current
-        
+
         if let product = instance.get(for: context) {
             return product
         } else {
@@ -79,11 +71,20 @@ public final class Registration<Product>: Registrable {
             }
         }
     }
-    
-    // TODO: Comment
+
+    /// Resolves and returns an instance of the product synchronously.
+    ///
+    /// This method first checks if an instance already exists for the current context.
+    /// If not, it uses the registered factory to create a new instance, stores it according
+    /// to the instance management strategy, and then runs any defined `afterInit` actions.
+    ///
+    /// - parameter container: The `Container` (acting as a `Resolver`) to use for resolving
+    ///                        dependencies within the factory.
+    /// - Returns: An instance of the `Product`.
+    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(_ container: Container) throws -> Product {
         let context = Context.current
-        
+
         if let product = instance.get(for: context) {
             return product
         } else {
@@ -99,8 +100,16 @@ public final class Registration<Product>: Registrable {
             }
         }
     }
-    
-    // TODO: Comment
+
+    /// Executes all registered `afterInit` actions for a given product.
+    ///
+    /// This method iterates through the `actions` array and executes each `Action` closure,
+    /// passing the container and the newly resolved product.
+    ///
+    /// - Parameters:
+    ///   - container: The `Container` to pass to the actions.
+    ///   - product: The product instance on which to perform the actions.
+    /// - Throws: `AstrojectError.underlyingError` if any of the actions throw an error.
     public func runActions(_ container: Container, product: Product) throws {
         do {
             try actions.forEach { try $0(container, product) }
@@ -108,13 +117,13 @@ public final class Registration<Product>: Registrable {
             throw AstrojectError.underlyingError(error)
         }
     }
-    
+
     @discardableResult
     public func `as`(_ instance: any Instance<Product>) -> Self {
         self.instance = instance
         return self
     }
-    
+
     @discardableResult
     public func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)

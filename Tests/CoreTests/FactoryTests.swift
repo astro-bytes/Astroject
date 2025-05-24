@@ -14,51 +14,81 @@ import Testing
 struct FactoryTests {
     @Test("Init")
     func initialization() {
-        let factory = Factory { 10 }
-        #expect(factory != Factory { 20 }) // Ensure UUIDs are different
+        #expect(Factory(.sync { 20 }) != Factory(.sync { 20 }))
+        #expect(Factory(.async { 20 }) != Factory(.sync { 20 }))
+        #expect(Factory(.async { 20 }) != Factory(.async { 20 }))
     }
     
     @Test("Equality")
     func equality() {
-        let factory1 = Factory { 10 }
-        let factory2 = Factory { 10 }
-        #expect(factory1 != factory2) // UUIDs are different, so not equal
+        let factory1 = Factory(.sync { 10 })
+        let factory2 = Factory(.async { 10 })
+        #expect(factory1 != factory2)
+        #expect(factory1 == factory1)
     }
     
     @Test("Call as Function")
-    func functionCall() async throws {
-        let resolver = MockResolver()
-        let factory = Factory { resolver in
-            try await resolver.resolve(Int.self, name: nil) + 5
-        }
-        
-        let result = try await factory(resolver)
+    func asyncFunctionCall() async throws {
+        let factory = Factory(.async { 48 })
+        let result = try await factory()
+        #expect(result == 48)
+    }
+    
+    @Test("Call as Function")
+    func syncFunctionCall() throws {
+        let factory = Factory(.sync { 47 })
+        let result = try factory()
         #expect(result == 47)
     }
     
-    @Test("Call in Resolver")
-    func callWithResolver() async throws {
-        let resolver = MockResolver()
-        let factory = Factory { resolver in
-            try await resolver.resolve(String.self, name: nil) + " Appended"
-        }
-        
-        let result = try await factory(resolver)
-        #expect(result == "Test String Appended")
-    }
-    
     @Test("Throws Errors")
-    func throwsError() async throws {
-        let resolver = MockResolver()
-        resolver.whenResolve = {
+    func throwsErrorAsync() async throws {
+        let factory2 = Factory(.async {
             throw MockError()
-        }
-        let factory = Factory { resolver in
-            try await resolver.resolve(Double.self, name: nil)
-        }
+        })
         
         await #expect(throws: MockError.self) {
-            try await factory(resolver)
+            try await factory2()
+        }
+    }
+    
+    @Test("Throws Error")
+    func throwsErrorSync() throws {
+        let factory1 = Factory(.sync {
+            throw MockError()
+        })
+        #expect(throws: MockError.self) {
+            try factory1()
+        }
+    }
+}
+
+private extension Factory where Arguments == () {
+    func callAsFunction() async throws -> Product {
+        try await block()
+    }
+    
+    func callAsFunction() throws -> Product {
+        try block()
+    }
+}
+
+private extension Factory.Block where Arguments == Void {
+    func callAsFunction() async throws -> Product {
+        switch self {
+        case .sync(let syncBlock):
+            try syncBlock(Void())
+        case .async(let asyncBlock):
+            try await asyncBlock(Void())
+        }
+    }
+    
+    func callAsFunction() throws -> Product {
+        switch self {
+        case .sync(let syncBlock):
+            try syncBlock(Void())
+        case .async:
+            throw AstrojectError.invalidFactory
         }
     }
 }

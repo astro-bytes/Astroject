@@ -25,8 +25,18 @@ public protocol Behavior {
         as registration: any Registrable<Product>,
         with name: String?
     )
-    
-    // TODO: Comment
+
+    /// Called after a product has been successfully resolved from the `Container`.
+    ///
+    /// This function provides a hook to perform actions immediately after an instance
+    /// of a registered product is created and returned by the resolver. This can be useful
+    /// for logging successful resolutions, performing post-resolution validation,
+    /// or triggering other related processes.
+    ///
+    /// - parameter type: The type of the product that was resolved.
+    /// - parameter container: The `Container` instance from which the product was resolved.
+    /// - parameter registration: The `Registrable` instance used for the resolution.
+    /// - parameter name: An optional name associated with the resolved registration.
     func didResolve<Product>(
         type: Product.Type,
         to container: Container,
