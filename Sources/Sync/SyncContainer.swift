@@ -152,18 +152,22 @@ extension SyncContainer: Resolver {
     }
     
     public func resolve<Product>(
-        productType: Product.Type,
+        productType type: Product.Type,
         name: String?
     ) async throws -> Product {
-        fatalError("Not Supported")
+        try manageContext {
+            try initiateResolution(type, name: name, argument: Never?(nil))
+        }
     }
     
     public func resolve<Product, Argument: Hashable>(
-        productType: Product.Type,
+        productType type: Product.Type,
         name: String?,
         argument: Argument
     ) async throws -> Product {
-        fatalError("Not Supported")
+        try manageContext {
+            try initiateResolution(type, name: name, argument: argument)
+        }
     }
 }
 

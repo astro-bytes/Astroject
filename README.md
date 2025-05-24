@@ -21,8 +21,6 @@
 
 ---
 
-A lightweight and flexible dependency injection container for Swift.
-
 Astroject is a modern, lightweight, and robust dependency injection (DI) framework designed for Swift applications across all platforms. It simplifies the management of object dependencies, promoting cleaner, more modular, and testable code. With a focus on thread safety and intuitive APIs, Astroject empowers developers to build complex applications with confidence. 
 
 ## ✨ Features
