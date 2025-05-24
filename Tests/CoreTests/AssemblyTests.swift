@@ -5,20 +5,21 @@
 //
 
 import Testing
+@testable import Mocks
 @testable import AstrojectCore
 
 @Suite("Assembly")
 struct AssemblyTests {
     @Test("Init")
     func assemblerInitialization() {
-        let container = Container()
+        let container = MockContainer()
         let assembler = Assembler(container: container)
-        #expect(assembler.container === container)
+        #expect(assembler.container as? MockContainer === container)
     }
     
     @Test("Apply One Assembly")
     func applySingleAssembly() throws {
-        let container = Container()
+        let container = MockContainer()
         let assembler = Assembler(container: container)
         let assembly = MockAssembly()
         
@@ -29,7 +30,7 @@ struct AssemblyTests {
     
     @Test("Apply Multiple Assemblies")
     func applyMultipleAssemblies() throws {
-        let container = Container()
+        let container = MockContainer()
         let assembler = Assembler(container: container)
         let assembly1 = MockAssembly()
         let assembly2 = MockAssembly()
@@ -44,19 +45,19 @@ struct AssemblyTests {
     
     @Test("Assembly Initializers")
     func assemblyInitializers() throws {
-        let container1 = Container()
+        let container1 = MockContainer()
         let assembly1 = MockAssembly()
-        let assembler1 = try Assembler(assembly1, container: container1)
-        #expect(assembler1.container === container1)
+        let assembler1 = try Assembler(assembly: assembly1, container: container1)
+        #expect(assembler1.container as? MockContainer === container1)
         #expect(assembly1.assembleCalled)
         #expect(assembly1.loadedCalled)
         
-        let container2 = Container()
+        let container2 = MockContainer()
         let assembly2 = MockAssembly()
         let assembly3 = MockAssembly()
         let assemblies = [assembly2, assembly3]
-        let assembler2 = try Assembler(assemblies, container: container2)
-        #expect(assembler2.container === container2)
+        let assembler2 = try Assembler(assemblies: assemblies, container: container2)
+        #expect(assembler2.container as? MockContainer === container2)
         #expect(assembly2.assembleCalled)
         #expect(assembly2.loadedCalled)
         #expect(assembly3.assembleCalled)
@@ -65,7 +66,7 @@ struct AssemblyTests {
     
     @Test("Assemblies are applied in order")
     func assembliesAppliedInOrder() throws {
-        let container = Container()
+        let container = MockContainer()
         let assembler = Assembler(container: container)
         var order = 0
         var order1 = 0
@@ -99,14 +100,14 @@ struct AssemblyTests {
     
     @Test("Empty Assemblies Array")
     func emptyAssembliesArray() throws {
-        let container = Container()
+        let container = MockContainer()
         let assembler = Assembler(container: container)
         try assembler.apply(assemblies: []) // Should not throw
     }
     
     @Test("Assembly Throwing Errors")
     func assemblyThrowingErrors() throws {
-        let container = Container()
+        let container = MockContainer()
         let assembler = Assembler(container: container)
         let assembly = MockAssembly()
         assembly.whenAssemble = {
@@ -120,7 +121,7 @@ struct AssemblyTests {
 
     @Test("Assembly Throwing Errors After Assembled")
     func assemblyThrowingErrorsAfter() throws {
-        let container = Container()
+        let container = MockContainer()
         let assembler = Assembler(container: container)
         let assembly = MockAssembly()
         assembly.whenLoaded = {
