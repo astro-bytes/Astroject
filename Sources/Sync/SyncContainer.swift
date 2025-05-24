@@ -237,30 +237,46 @@ extension SyncContainer {
         for key: RegistrationKey,
         with argument: Argument?
     ) throws -> Product {
+        // Helper function to notify behaviors after successful resolution.
+        func didRegister(_ registration: any Registrable<Product>) {
+            serialQueue.sync {
+                behaviors.forEach {
+                    $0.didResolve(
+                        type: Product.self,
+                        to: self,
+                        as: registration,
+                        with: key.name
+                    )
+                }
+            }
+        }
+        
         // Retrieve registration based on the key
-        let maybeRegistration = serialQueue.sync {
+        let registration = serialQueue.sync {
             registrations[key]
         }
         
-        guard let registable = maybeRegistration else {
+        guard let registration else {
             throw AstrojectError.noRegistrationFound(key: key)
         }
         
         // Now, cast and resolve based on whether an argument was provided
         if let argumentValue = argument {
             // If an argument was provided, try to resolve it as an argumented registration
-            guard let registration = registable as? RegistrationWithArgument<Product, Argument> else {
+            guard let registration = registration as? RegistrationWithArgument<Product, Argument> else {
                 // This means a registration for the product type and name exists,
                 // but it wasn't registered with the expected argument type.
                 throw AstrojectError.noRegistrationFound(key: key)
             }
+            defer { didRegister(registration) }
             return try registration.resolve(self, argument: argumentValue)
         } else {
             // If no argument was provided, try to resolve it as a non-argumented registration
-            guard let registration = registable as? Registration<Product> else {
+            guard let registration = registration as? Registration<Product> else {
                 // Similar to above, registration exists but was actually registered with an argument.
                 throw AstrojectError.noRegistrationFound(key: key)
             }
+            defer { didRegister(registration) }
             return try registration.resolve(self)
         }
     }

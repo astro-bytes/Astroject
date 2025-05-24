@@ -836,8 +836,8 @@ extension SyncContainerTests {
             #expect(didRegisterCalled)
         }
         
-        @Test("Ensure didRegisterWithName is Called")
-        func behaviorDidRegisterWithName() throws {
+        @Test("Ensure didRegisterWithArgument is Called")
+        func behaviorDidRegisterWithArgument() throws {
             let container = SyncContainer()
             let behavior = MockBehavior()
             
@@ -848,9 +848,45 @@ extension SyncContainerTests {
             
             container.add(behavior)
             
-            try container.register(String.self, name: "testString") {  "Hello" }
+            try container.register(String.self, argumentType: String.self) {  "Hello" }
             
             #expect(didRegisterCalled)
+        }
+        
+        @Test("Ensure didResolve is Called")
+        func behaviorDidResolveCalled() throws {
+            let container = SyncContainer()
+            let behavior = MockBehavior()
+            
+            var isCalled = false
+            behavior.whenDidResolve = {
+                isCalled = true
+            }
+            
+            container.add(behavior)
+            
+            try container.register(Int.self) {  10 }
+            _ = try container.resolve(Int.self)
+            
+            #expect(isCalled)
+        }
+        
+        @Test("Ensure didResolveWithArgument is Called")
+        func behaviorDidResolveWithArgument() throws {
+            let container = SyncContainer()
+            let behavior = MockBehavior()
+            
+            var isCalled = false
+            behavior.whenDidResolve = {
+                isCalled = true
+            }
+            
+            container.add(behavior)
+            
+            try container.register(String.self, argumentType: String.self) { "Hello" }
+            _ = try container.resolve(String.self, argument: "")
+            
+            #expect(isCalled)
         }
         
         @Test("Testing Multiple Behaviors")

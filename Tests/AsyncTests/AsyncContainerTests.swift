@@ -836,8 +836,8 @@ extension AsyncContainerTests {
             #expect(didRegisterCalled)
         }
         
-        @Test("Ensure didRegisterWithName is Called")
-        func behaviorDidRegisterWithName() throws {
+        @Test("Ensure didRegisterWithArgument is Called")
+        func behaviorDidRegisterWithArgument() throws {
             let container = AsyncContainer()
             let behavior = MockBehavior()
             
@@ -848,9 +848,45 @@ extension AsyncContainerTests {
             
             container.add(behavior)
             
-            try container.register(String.self, name: "testString") {  "Hello" }
+            try container.register(String.self, argumentType: String.self) { "Hello" }
             
             #expect(didRegisterCalled)
+        }
+        
+        @Test("Ensure didResolve is Called")
+        func behaviorDidResolveCalled() async throws {
+            let container = AsyncContainer()
+            let behavior = MockBehavior()
+            
+            var isCalled = false
+            behavior.whenDidResolve = {
+                isCalled = true
+            }
+            
+            container.add(behavior)
+            
+            try container.register(Int.self) {  10 }
+            _ = try await container.resolve(Int.self)
+            
+            #expect(isCalled)
+        }
+        
+        @Test("Ensure didResolveWithArgument is Called")
+        func behaviorDidResolveWithArgument() async throws {
+            let container = AsyncContainer()
+            let behavior = MockBehavior()
+            
+            var isCalled = false
+            behavior.whenDidResolve = {
+                isCalled = true
+            }
+            
+            container.add(behavior)
+            
+            try container.register(String.self, argumentType: String.self) { "Hello" }
+            _ = try await container.resolve(String.self, argument: "")
+            
+            #expect(isCalled)
         }
         
         @Test("Testing Multiple Behaviors")
