@@ -1,10 +1,11 @@
-# Astroject
+<div align="center">
+  <img width="628" alt="astroject-logo" src="https://github.com/user-attachments/assets/b7d09641-537e-4b48-9f2a-b2cb692e4e7f"/>
+</div>
 
-<!-- TODO: Insert Astroject Image-->
+<br>
 
-A lightweight and flexible dependency injection container for Swift.
-
-
+<div align="center">
+  
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/astro-bytes/astroject?style=flat-square)](https://github.com/astro-bytes/astroject/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg?style=flat-square)](https://swift.org)
@@ -15,6 +16,12 @@ A lightweight and flexible dependency injection container for Swift.
 [![Platform - visionOS](https://img.shields.io/badge/platform-visionOS%201%2B-purple.svg?style=flat-square)](https://developer.apple.com/visionos/)
 [![Build Status](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml)
 [![Lint Status](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml)
+
+</div>
+
+---
+
+A lightweight and flexible dependency injection container for Swift.
 
 Astroject is a modern, lightweight, and robust dependency injection (DI) framework designed for Swift applications across all platforms. It simplifies the management of object dependencies, promoting cleaner, more modular, and testable code. With a focus on thread safety and intuitive APIs, Astroject empowers developers to build complex applications with confidence. 
 
