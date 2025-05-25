@@ -14,6 +14,7 @@ import Foundation
 // swiftlint:disable force_cast
 // swiftlint:disable type_name
 // swiftlint:disable nesting
+// swiftlint:disable type_body_length
 
 @Suite("Container")
 struct SyncContainerTests {
@@ -82,7 +83,11 @@ extension SyncContainerTests {
             let container = SyncContainer()
             let factory = Factory { 42 }
             try container.register(Int.self, factory: factory)
-            let expected = Registration(factory: factory, isOverridable: true, instance: Transient())
+            let expected = Registration(
+                factory: factory,
+                isOverridable: true,
+                instanceType: Graph.self
+            )
             let key = RegistrationKey(factory: factory)
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
@@ -93,7 +98,11 @@ extension SyncContainerTests {
             let container = SyncContainer()
             let factory = Factory { 42 }
             try container.register(Int.self, name: "42", factory: factory)
-            let expected = Registration(factory: factory, isOverridable: true, instance: Transient())
+            let expected = Registration(
+                factory: factory,
+                isOverridable: true,
+                instanceType: Graph.self
+            )
             let key = RegistrationKey(factory: factory, name: "42")
             let registration = container.registrations[key] as! Registration<Int>
             #expect(registration == expected)
@@ -812,6 +821,178 @@ extension SyncContainerTests {
             
             #expect(count == 10)
         }
+        
+        @Test("Singleton Instance with Arguments Creates Unique Instances Per Argument")
+        func containerSingletonWithArgumentsUniquePerArgument() throws {
+            let container = SyncContainer()
+            typealias G = Classes.ObjectG // Assuming ObjectG has an initializer like init(int: Int)
+            
+            var creationCount = 0
+            try container.register(G.self, argumentType: Int.self) { _, intArgument in
+                creationCount += 1
+                return G(int: intArgument) // Assuming ObjectG takes an Int in its initializer
+            }
+            .asSingleton() // This is the crucial part: registered as a singleton with arguments
+            
+            // Resolve with argument 1
+            let instanceOneArg1 = try container.resolve(G.self, argument: 1)
+            let instanceTwoArg1 = try container.resolve(G.self, argument: 1)
+            
+            // Resolve with argument 2
+            let instanceOneArg2 = try container.resolve(G.self, argument: 2)
+            let instanceTwoArg2 = try container.resolve(G.self, argument: 2)
+            
+            // Resolve with argument 3
+            let instanceOneArg3 = try container.resolve(G.self, argument: 3)
+            let instanceTwoArg3 = try container.resolve(G.self, argument: 3)
+            
+            // Re-resolve with argument 1 and 2 to ensure uniqueness is maintained
+            let instanceThreeArg1 = try container.resolve(G.self, argument: 1)
+            let instanceThreeArg2 = try container.resolve(G.self, argument: 2)
+            
+            // 1. Assert that resolving with the same argument yields the same instance
+            #expect(instanceOneArg1 === instanceTwoArg1)
+            #expect(instanceOneArg2 === instanceTwoArg2)
+            #expect(instanceOneArg3 === instanceTwoArg3)
+            
+            // 2. Assert that resolving with different arguments yields different instances
+            #expect(instanceOneArg1 !== instanceOneArg2)
+            #expect(instanceOneArg1 !== instanceOneArg3)
+            #expect(instanceOneArg2 !== instanceOneArg3)
+            
+            // 3. Assert that re-resolving with a previously used argument returns the original instance
+            #expect(instanceOneArg1 === instanceThreeArg1)
+            #expect(instanceOneArg2 === instanceThreeArg2)
+            
+            // Assert creation count: Should be 3, because an instance is created only once per unique argument
+            #expect(creationCount == 3)
+        }
+        
+        @Test("Weak Instance with Arguments Creates Unique Instances Per Argument")
+        func containerWeakWithArgumentsUniquePerArgument() throws {
+            let container = SyncContainer()
+            typealias G = Classes.ObjectG
+            
+            var creationCount = 0
+            try container.register(G.self, argumentType: Int.self) { _, intArgument in
+                creationCount += 1
+                return G(int: intArgument)
+            }
+            .asWeak() // Registered as weak
+            
+            // 1. Resolve with argument 1: First creation for arg 1
+            var instanceOneArg1: G? = try container.resolve(G.self, argument: 1)
+            #expect(creationCount == 1)
+            #expect(instanceOneArg1?.int == 1)
+            
+            // 2. Resolve again with argument 1: Should reuse the existing instance
+            var instanceTwoArg1: G? = try container.resolve(G.self, argument: 1)
+            #expect(instanceOneArg1 === instanceTwoArg1)
+            #expect(creationCount == 1) // Still 1, as it was reused
+            
+            // 3. Resolve with argument 2: First creation for arg 2
+            var instanceOneArg2: G? = try container.resolve(G.self, argument: 2)
+            #expect(creationCount == 2) // Now 2, new instance for arg 2
+            #expect(instanceOneArg2?.int == 2)
+            #expect(instanceOneArg1 !== instanceOneArg2) // Different instances for different args
+            
+            // 4. Resolve again with argument 2: Should reuse existing instance for arg 2
+            var instanceTwoArg2: G? = try container.resolve(G.self, argument: 2)
+            #expect(instanceOneArg2 === instanceTwoArg2)
+            #expect(creationCount == 2) // Still 2
+            
+            // Clear references to allow weak instances to deallocate
+            let originalIdArg1 = instanceOneArg1?.id
+            instanceOneArg1 = nil
+            instanceTwoArg1 = nil
+            instanceOneArg2 = nil
+            instanceTwoArg2 = nil
+            
+            // 5. Resolve with argument 1 again after deallocation: Should create a new instance for arg 1
+            let instanceThreeArg1 = try container.resolve(G.self, argument: 1)
+            #expect(creationCount == 3) // Now 3, new instance for arg 1
+            #expect(instanceThreeArg1.int == 1)
+            #expect(instanceThreeArg1.id != originalIdArg1) // A new instance for argument 1
+            
+            // 6. Resolve with argument 2 again (assuming its previous instance
+            // was deallocated): Should create a new instance for arg 2
+            let instanceThreeArg2 = try container.resolve(G.self, argument: 2)
+            #expect(creationCount == 4) // Now 4, new instance for arg 2
+            #expect(instanceThreeArg2.int == 2)
+            #expect(instanceThreeArg1 !== instanceThreeArg2) // Still different instances
+            
+            // Test that if we resolve again with 1 (and it's still in memory), it's the same
+            let instanceFourArg1 = try container.resolve(G.self, argument: 1)
+            #expect(instanceThreeArg1 === instanceFourArg1)
+            #expect(creationCount == 4)
+        }
+        
+        @Test("Graph Instance with Arguments Creates Unique Instances Per Graph Root Resolution")
+        func containerGraphWithArgumentsUniquePerRootResolution() throws {
+            let container = SyncContainer()
+            typealias F = Classes.ObjectF
+            typealias G = Classes.ObjectG
+            
+            var gCreationCount = 0
+            var fCreationCount = 0
+            
+            try container.register(G.self, argumentType: Int.self) { _, intArgument in
+                gCreationCount += 1
+                return G(int: intArgument)
+            }
+            .asGraph()
+            // If you have a different default scope, ensure it's set to .asGraph() or remove this line.
+            
+            try container.register(F.self, argumentType: Int.self) { resolver, intArgument in
+                fCreationCount += 1
+                // F resolves G, passing its own argument down
+                let g = try resolver.resolve(G.self, argument: intArgument)
+                return F(g: g)
+            }
+            
+            // --- First Resolution Tree (root is H with argument 1) ---
+            let f1_arg1_tree1 = try container.resolve(F.self, argument: 1)
+            #expect(fCreationCount == 1) // F created once
+            #expect(gCreationCount == 1) // G created once for argument 1 within this tree
+            #expect(f1_arg1_tree1.g.int == 1)
+            
+            // --- Second Resolution Tree (root is F with argument 1 - same argument) ---
+            let f2_arg1_tree2 = try container.resolve(F.self, argument: 1)
+            #expect(fCreationCount == 2) // F created again (new root resolution)
+            #expect(gCreationCount == 2) // G created again (new root resolution for arg 1)
+            #expect(f2_arg1_tree2.g.int == 1)
+            #expect(f1_arg1_tree1 !== f2_arg1_tree2) // Different root F instances
+            #expect(f1_arg1_tree1.g !== f2_arg1_tree2.g) // Different G instances because it's a new graph
+            
+            // --- Third Resolution Tree (root is F with argument 2 - different argument) ---
+            let f3_arg2_tree3 = try container.resolve(F.self, argument: 2)
+            #expect(fCreationCount == 3) // F created again
+            #expect(gCreationCount == 3) // G created again (new root resolution for arg 2)
+            #expect(f3_arg2_tree3.g.int == 2)
+            #expect(f1_arg1_tree1.g !== f3_arg2_tree3.g) // Different G instances
+            
+            // --- Verify intra-graph uniqueness for G if resolved multiple times within a single F resolution ---
+            var gInstancesInSingleFResolution: [G] = []
+            try container.register(F.self, argumentType: Int.self) { resolver, intArgument in
+                fCreationCount += 1 // Will increment this for the new F registration
+                let g1 = try resolver.resolve(G.self, argument: intArgument)
+                let g2 = try resolver.resolve(G.self, argument: intArgument)
+                gInstancesInSingleFResolution.append(g1)
+                gInstancesInSingleFResolution.append(g2)
+                return F(g: g1) // Return one of them
+            }
+            
+            _ = try container.resolve(F.self, argument: 5)
+            #expect(gInstancesInSingleFResolution.count == 2)
+            // Within a single resolution tree, even with arguments, graph scope reuses the instance
+            #expect(gInstancesInSingleFResolution[0] === gInstancesInSingleFResolution[1])
+            #expect(gInstancesInSingleFResolution[0].int == 5)
+            // The creation count for G was already 3 from previous tests, and now it should be 4
+            // because a new F resolution (which resolves G internally) happened.
+            #expect(gCreationCount == 4)
+            // The key for Graph is that a new instance is created *per root resolution*,
+            // and within that root resolution, that instance is reused for the same argument.
+        }
     }
 }
 
@@ -946,3 +1127,4 @@ extension SyncContainerTests {
 // swiftlint:enable force_cast
 // swiftlint:enable type_name
 // swiftlint:enable nesting
+// swiftlint:enable type_body_length

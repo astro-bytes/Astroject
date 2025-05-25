@@ -16,7 +16,7 @@ public enum AstrojectError: LocalizedError {
     ///
     /// - Parameter key: The `RegistrationKey` that is already registered.
     case alreadyRegistered(key: RegistrationKey)
-
+    
     /// Indicates that no registration could be found for the given key.
     ///
     /// This error occurs when you try to resolve a dependency using a `RegistrationKey`
@@ -24,7 +24,7 @@ public enum AstrojectError: LocalizedError {
     ///
     /// - Parameter key: The `RegistrationKey` for which no registration was found.
     case noRegistrationFound(key: RegistrationKey)
-
+    
     /// Indicates that a circular dependency was detected during resolution.
     ///
     /// This error occurs when the dependency graph forms a cycle, meaning
@@ -35,28 +35,28 @@ public enum AstrojectError: LocalizedError {
     ///   - key: The `RegistrationKey` of the dependency that caused the cycle.
     ///   - path: The resolution path that led to the cyclic dependency, showing the sequence of `RegistrationKey`s.
     case cyclicDependency(key: RegistrationKey, path: [RegistrationKey])
-
+    
     /// An error occurred within the factory closure during dependency resolution.
     ///
     /// This case wraps an underlying error that occurred while executing the factory
     /// closure responsible for creating a dependency instance.
     case underlyingError(Error)
-
-    /// An invalid instance was encountered during resolution.
-    ///
-    /// This error occurs when the instance being resolved is not valid or
-    /// does not conform to the expected type. This can happen if the
-    /// Instance implementation is incorrect, or if there is a mismatch
-    /// between the registered type and the actual type of the resolved instance.
-    case invalidInstance
-
+    
     /// A synchronous resolution method was called for a dependency that was registered with an asynchronous factory.
     ///
     /// This case indicates that you attempted to resolve a dependency synchronously
     /// (e.g., using `resolve()`) when its registration factory (`registerAsync`)
     /// requires asynchronous execution.
     case invalidFactory
-
+    
+    /// An error occurred during a registration-related action.
+    ///
+    /// This case wraps an underlying error that happened within a closure or operation
+    /// associated with the registration of a dependency, such as a `postInitAction`.
+    ///
+    /// - Parameter error: The underlying `Error` that occurred during the registration action.
+    case registrationAction(Error)
+    
     /// Provides a user-friendly description of the error.
     public var errorDescription: String? {
         switch self {
@@ -69,14 +69,14 @@ public enum AstrojectError: LocalizedError {
             return "Cyclic Dependency Detected for \(key). Resolution path: \(pathString)"
         case .underlyingError(let error):
             return "An error occurred within the factory closure: \(error.localizedDescription)"
-        case .invalidInstance:
-            return "The resolved instance is invalid or of an unexpected type."
         case .invalidFactory:
             // swiftlint:disable:next line_length
             return "Attempted to resolve an asynchronously/synchronously registered dependency using a synchronous/asynchronous method."
+        case .registrationAction(let error):
+            return "An error occurred during a registration action: \(error.localizedDescription)"
         }
     }
-
+    
     /// Provides a reason for the error, explaining why it occurred.
     public var failureReason: String? {
         switch self {
@@ -88,14 +88,15 @@ public enum AstrojectError: LocalizedError {
             return "Review your dependency graph to eliminate circular dependencies."
         case .underlyingError:
             return "Inspect the underlying error for more details."
-        case .invalidInstance:
-            return "The resolved instance did not match the expected type or was invalid."
         case .invalidFactory:
             // swiftlint:disable:next line_length
             return "The dependency was registered with an asynchronous factory (e.g., using `registerAsync`), but a synchronous resolution method (e.g., `resolve()`) was called."
+        case .registrationAction:
+            // swiftlint:disable:next line_length
+            return "A problem occurred within a closure or operation executed during dependency registration (e.g., a post-initialization action)."
         }
     }
-
+    
     /// Provides a suggestion for recovering from the error.
     public var recoverySuggestion: String? {
         switch self {
@@ -108,12 +109,12 @@ public enum AstrojectError: LocalizedError {
             return "Break the circular dependency by introducing an abstraction or using a different dependency injection pattern or by using `postInitAction` to initialize cyclical dependencies."
         case .underlyingError:
             return "Check the factory closure for errors and ensure that it's correctly implemented."
-        case .invalidInstance:
-            // swiftlint:disable:next line_length
-            return "Ensure that the Instance implementation is correct and that the registered type matches the actual type of the resolved instance."
         case .invalidFactory:
             // swiftlint:disable:next line_length
             return "Use an asynchronous resolution method (e.g., `resolveAsync()`) to resolve the dependency, or register it with a synchronous factory if synchronous resolution is intended."
+        case .registrationAction:
+            // swiftlint:disable:next line_length
+            return "Review the code within the registration action (e.g., your `postInitAction` closure) for potential errors."
         }
     }
 }
@@ -130,22 +131,21 @@ extension AstrojectError: Equatable {
     public static func == (lhs: AstrojectError, rhs: AstrojectError) -> Bool {
         switch (lhs, rhs) {
         case (.alreadyRegistered(let lhsKey), .alreadyRegistered(let rhsKey)),
-             (.noRegistrationFound(let lhsKey),
-              .noRegistrationFound(let rhsKey)):
+            (.noRegistrationFound(let lhsKey),
+             .noRegistrationFound(let rhsKey)):
             // Compare the associated keys for alreadyRegistered and noRegistrationFound errors.
             return lhsKey == rhsKey
         case (.cyclicDependency(let lhsKey, let lhsPath),
               .cyclicDependency(let rhsKey, let rhsPath)):
             // Compare the associated keys and paths for cyclicDependency errors.
             return lhsKey == rhsKey && lhsPath == rhsPath
-        case (.invalidInstance, .invalidInstance),
-             (.invalidFactory,
-              .invalidFactory):
+        case (.invalidFactory, .invalidFactory):
             // invalidInstance and invalidFactory
             // errors are equal if they are the same case.
             return true
-        case (.underlyingError(let lhsError), .underlyingError(let rhsError)):
-            // Compare the descriptions of the underlying errors.
+        case (.underlyingError(let lhsError), .underlyingError(let rhsError)),
+            (.registrationAction(let lhsError), .registrationAction(let rhsError)):
+            // Compare the descriptions of the underlying errors for both cases.
             return String(describing: lhsError) == String(describing: rhsError)
         default:
             // All other cases are not equal.

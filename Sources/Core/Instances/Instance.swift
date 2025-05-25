@@ -17,6 +17,12 @@ public protocol Instance<Product> {
     /// The type of product that this instance manages.
     associatedtype Product
     
+    /// Initializes a new instance manager.
+    ///
+    /// This initializer is typically used by the dependency injection container
+    /// to create and configure an instance manager for a specific product type.
+    init()
+    
     /// Retrieves a product instance from the instance manager based on the provided context.
     /// - Parameter context: The `Context` object containing information pertinent to the instance's retrieval,
     ///   such as a `graphID` for scoped instances.

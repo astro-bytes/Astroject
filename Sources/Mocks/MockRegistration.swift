@@ -24,11 +24,11 @@ struct MockRegistration<Product>: Registrable {
     init(_ type: Product.Type) {}
     init() {}
     
-    func `as`(_ instance: any Instance<Product>) -> MockRegistration {
+    func `as`(_ instance: any Instance<Product>.Type) -> MockRegistration {
         whenAs()
     }
     
     func afterInit(perform action: () -> Void) -> MockRegistration {
-        whenAs()
+        whenAfterInit()
     }
 }

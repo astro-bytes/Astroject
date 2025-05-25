@@ -37,7 +37,7 @@ public final class SyncContainer: Container, @unchecked Sendable {
         let registration = Registration(
             factory: factory,
             isOverridable: isOverridable,
-            instance: Graph<Product>()
+            instanceType: Graph.self
         )
         // Before adding the new registration, ensure that it is allowed based on existing registrations.
         try assertRegistrationAllowed(for: key, overridable: isOverridable)
@@ -68,7 +68,7 @@ public final class SyncContainer: Container, @unchecked Sendable {
             factory: factory,
             isOverridable: isOverridable,
             argumentType: Argument.self,
-            instance: Graph<Product>()
+            instanceType: Graph.self
         )
         // Ensure that this registration is allowed based on any existing registrations.
         try assertRegistrationAllowed(for: key, overridable: isOverridable)

@@ -20,29 +20,20 @@ public protocol Registrable<Product> {
     /// The type of product that this registrable component produces.
     associatedtype Product
     
+    /// A boolean value indicating whether this registration can be overridden by another registration for
+    /// the same product type.
     var isOverridable: Bool { get }
     
-    /// Sets the instance management scope for the registration.
+    /// Specifies the instance management strategy for the registered product.
     ///
-    /// This function allows configuring how the registered component's instances are
-    /// managed, such as singleton, transient, or weak references.
+    /// This function allows you to define how instances of the `Product` will be
+    /// created and managed by the dependency injection container.
     ///
-    /// - parameter instance: The instance management strategy.
-    /// - Returns: The modified `Registration` instance.
+    /// - Parameter instance: The type of `Instance` (e.g., `Singleton.self`, `Transient.self`)
+    ///   that will manage the product's lifecycle.
+    /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
-    func `as`(_ instance: any Instance<Product>) -> Self
-    
-    /// Sets the instance management scope for the registration with an argument.
-    ///
-    /// This function allows configuring how the registered component's instances are
-    /// managed when the registration requires an argument, such as singleton, transient,
-    /// or weak references.
-    ///
-    /// - parameter instance: The instance management strategy.
-    /// - parameter argument: The argument used to resolve the instance.
-    /// - Returns: The modified `Registration` instance.
-    @discardableResult
-    func `as`<Argument: Hashable>(_ instance: any Instance<Product>, with argument: Argument) throws -> Self
+    func `as`(_ instance: any Instance<Product>.Type) -> Self
     
     /// Sets an action to be performed after the product is initialized.
     ///
@@ -55,67 +46,49 @@ public protocol Registrable<Product> {
     func afterInit(perform action: Action) -> Self
 }
 
-public extension Registrable {
-    /// Provides a default implementation that throws an error for the `as` function with an argument.
-    ///
-    /// This default implementation is used when a specific `Registration` class does not
-    /// provide its own implementation for handling instances with arguments.  It indicates
-    /// that this type of registration does not support argument-specific instance management.
-    ///
-    /// - parameter instance: The instance management strategy.
-    /// - parameter argument: The argument used to resolve the instance.
-    /// - Returns: The modified `Registration` instance.
-    /// - Throws: `AstrojectError.invalidInstance` indicating that this registration does not support arguments.
-    @discardableResult
-    func `as`<Argument: Hashable>(_ instance: any Instance<Product>, with argument: Argument) throws -> Self {
-        throw AstrojectError.invalidInstance
-    }
-}
-
 // MARK: Instance's
 public extension Registrable {
-    /// Sets the instance management scope to `Singleton`.
+    /// Specifies that the registered product should be a **singleton**.
     ///
-    /// This function sets the instance management scope to `Singleton`,
-    /// ensuring that only one instance of the product is created and shared.
+    /// A singleton instance means that only one instance of the product will be
+    /// created and reused throughout the application's lifecycle.
     ///
-    /// - Returns: The modified `Registration` instance.
+    /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
     func asSingleton() -> Self {
-        return self.as(Singleton())
+        return self.as(Singleton.self)
     }
     
-    /// Sets the instance management scope to `Weak`.
+    /// Specifies that the registered product should be a **weak** instance.
     ///
-    /// This function sets the instance management scope to `Weak`, holding a weak reference to the product instance.
-    /// The instance will be deallocated when no longer strongly referenced elsewhere.
+    /// A weak instance means that the container will hold a weak reference to the
+    /// product. If no other strong references exist, the instance can be deallocated.
     ///
-    /// - Returns: The modified `Registration` instance.
+    /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
     func asWeak() -> Self {
-        return self.as(Weak())
+        return self.as(Weak.self)
     }
     
-    /// Sets the instance management scope to `Transient`.
+    /// Specifies that a **new instance** of the product should be created **each time** it is resolved.
     ///
-    /// This function sets the instance management scope to `Transient`,
-    /// creating a new instance of the product each time it is resolved.
+    /// This is often referred to as a "transient" or "factory" scope.
     ///
-    /// - Returns: The modified `Registration` instance.
+    /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
     func asTransient() -> Self {
-        return self.as(Transient())
+        return self.as(Transient.self)
     }
     
-    /// Sets the instance management scope to `Graph`.
+    /// Specifies that the registered product should be scoped to its **dependency graph**.
     ///
-    /// This function sets the instance management scope to `Graph`,
-    /// allowing the instance to be managed within a specific graph or hierarchy,
-    /// enabling scoped instance management.
+    /// This means that a new instance will be created for each distinct resolution
+    /// operation that involves this product, but if the product is a dependency
+    /// within a larger graph, the same instance will be reused within that graph.
     ///
-    /// - Returns: The modified `Registration` instance.
+    /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
     func asGraph() -> Self {
-        return self.as(Graph())
+        return self.as(Graph.self)
     }
 }

@@ -13,7 +13,7 @@ import Foundation
 /// Each time a dependency with a transient scope is resolved, a new instance of the product is created.
 public class Transient<Product>: Instance {
     /// Initializes a new `Transient` instance.
-    public init() {}
+    public required init() {}
     
     public func get(for: Context) -> Product? { nil }
     

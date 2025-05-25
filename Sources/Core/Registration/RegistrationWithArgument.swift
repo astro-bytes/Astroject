@@ -18,40 +18,42 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     /// A tuple type representing the arguments required by the factory.
     /// It includes the resolver and the argument.
     public typealias Arguments = (Resolver, Argument)
-
+    
     /// The factory used to create instances of the product with an argument.
     let factory: Factory<Product, Arguments>
     /// The type of the argument required for this registration.
     let argumentType: Argument.Type
-
+    
     /// An array of actions to be performed after a product is resolved.
-    private var actions: [Action] = []
+    private(set) var actions: [Action] = []
     /// The instance management strategy for the product.
     /// This determines how instances of the product are created and managed.
     private(set) var instances: [Argument: any Instance<Product>] = [:]
-    /// The default instance strategy.
-    private(set) var defaultInstance: any Instance<Product>
-    /// Indicates whether this registration can be overridden by another registration.
+    /// The type of instance manager (e.g., `Singleton.self`, `Transient.self`) that will be used for products
+    /// resolved by this registration, if an argument-specific instance is not already set.
+    private(set) var instanceType: any Instance<Product>.Type
+    
     public let isOverridable: Bool
-
-    /// Initializes a new `RegistrationWithArgument` instance.
+    
+    /// Initializes a new `RegistrationWithArgument` instance with the necessary components.
     ///
-    /// - parameter factory: The factory used to create instances of the product with an argument.
-    /// - parameter isOverridable: Indicates whether this registration can be overridden.
-    /// - parameter argumentType: The type of the argument required for this registration.
-    /// - parameter instance: The instance management strategy for the product.
+    /// - Parameters:
+    ///   - factory: The `Factory` responsible for creating product instances.
+    ///   - isOverridable: A boolean indicating whether this registration can be overridden by subsequent registrations.
+    ///   - argumentType: The explicit type of the argument required for this registration.
+    ///   - instanceType: The default instance management strategy to use for products resolved by this registration.
     public init(
         factory: Factory<Product, Arguments>,
         isOverridable: Bool,
         argumentType: Argument.Type,
-        instance: any Instance<Product>
+        instanceType: any Instance<Product>.Type
     ) {
         self.factory = factory
         self.isOverridable = isOverridable
         self.argumentType = argumentType
-        self.defaultInstance = instance
+        self.instanceType = instanceType
     }
-
+    
     /// Initializes a new `RegistrationWithArgument` instance with a factory closure.
     ///
     /// - parameter block: The factory closure used to create instances of the product with an argument.
@@ -62,16 +64,16 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
         factory block: Factory<Product, Arguments>.Block,
         isOverridable: Bool,
         argumentType: Argument.Type,
-        instance: any Instance<Product>
+        instanceType: any Instance<Product>.Type
     ) {
         self.init(
             factory: Factory(block),
             isOverridable: isOverridable,
             argumentType: argumentType,
-            instance: instance
+            instanceType: instanceType
         )
     }
-
+    
     /// Resolves and returns an instance of the product asynchronously, using the provided argument.
     ///
     /// This method first checks if an instance already exists for the given argument and current context.
@@ -86,34 +88,22 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(_ container: Container, argument: Argument) async throws -> Product {
         let context = Context.current
-
-        if let instance = self.instances[argument] {
-            if let product = instance.get(for: context) {
+        guard let product = instances[argument]?.get(for: context) else {
+            do {
+                let product: Product = try await factory((container, argument))
+                set(product, with: argument, in: context)
+                try runActions(container, product: product)
                 return product
+            } catch let error as AstrojectError {
+                throw error
+            } catch {
+                throw AstrojectError.underlyingError(error)
             }
-        } else if let product = self.defaultInstance.get(for: context) {
-            return product
         }
-
-        do {
-            // Resolve the product using the factory and the argument.
-            let product: Product = try await factory((container, argument))
-            // Store the resolved instance according to the instance management strategy.
-            let instance = defaultInstance
-            instance.set(product, for: context)
-            self.instances[argument] = instance
-            // Run any post-initialization actions.
-            try runActions(container, product: product)
-            return product
-        } catch let error as AstrojectError {
-            // If the error is already an AstrojectError, rethrow it.
-            throw error
-        } catch {
-            // Wrap any other error in an AstrojectError.
-            throw AstrojectError.underlyingError(error)
-        }
+        
+        return product
     }
-
+    
     /// Resolves and returns an instance of the product synchronously, using the provided argument.
     ///
     /// This method first checks if an instance already exists for the given argument and current context.
@@ -128,34 +118,22 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(_ container: Container, argument: Argument) throws -> Product {
         let context = Context.current
-
-        if let instance = self.instances[argument] {
-            if let product = instance.get(for: context) {
+        guard let product = instances[argument]?.get(for: context) else {
+            do {
+                let product: Product = try factory((container, argument))
+                set(product, with: argument, in: context)
+                try runActions(container, product: product)
                 return product
+            } catch let error as AstrojectError {
+                throw error
+            } catch {
+                throw AstrojectError.underlyingError(error)
             }
-        } else if let product = self.defaultInstance.get(for: context) {
-            return product
         }
-
-        do {
-            // Resolve the product using the factory and the argument.
-            let product: Product = try factory((container, argument))
-            // Store the resolved instance according to the instance management strategy.
-            let instance = defaultInstance
-            instance.set(product, for: context)
-            self.instances[argument] = instance
-            // Run any post-initialization actions.
-            try runActions(container, product: product)
-            return product
-        } catch let error as AstrojectError {
-            // If the error is already an AstrojectError, rethrow it.
-            throw error
-        } catch {
-            // Wrap any other error in an AstrojectError.
-            throw AstrojectError.underlyingError(error)
-        }
+        
+        return product
     }
-
+    
     /// Runs the post-initialization actions.
     ///
     /// This function executes the post-initialization actions associated with the registration. These actions
@@ -170,26 +148,18 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
             try actions.forEach { try $0(container, product) }
         } catch {
             // Wrap any error that occurs during action execution.
-            throw AstrojectError.underlyingError(error)
+            throw AstrojectError.registrationAction(error)
         }
     }
-
+    
     @discardableResult
-    public func `as`<A: Hashable>(_ instance: any Instance<Product>, with argument: A) throws -> Self {
-        guard let argument = argument as? Argument else {
-            throw AstrojectError.invalidInstance
-        }
-
-        self.instances[argument] = instance
+    public func `as`(_ instance: any Instance<Product>.Type) -> Self {
+        guard instance != instanceType else { return self }
+        instanceType = instance
+        instances = [:] // Reset instances if the instance type changes
         return self
     }
-
-    @discardableResult
-    public func `as`(_ instance: any Instance<Product>) -> Self {
-        defaultInstance = instance
-        return self
-    }
-
+    
     @discardableResult
     public func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)
@@ -214,17 +184,34 @@ extension RegistrationWithArgument: Equatable where Product: Equatable {
         rhs: RegistrationWithArgument<Product, Argument>
     ) -> Bool {
         let context = Context.current
-
-        // check default instance and argument instances
-        let defaultInstanceCheck = lhs.defaultInstance.get(for: context) == rhs.defaultInstance.get(for: context)
+        
+        let instanceTypeCheck = lhs.instanceType == rhs.instanceType
         let argumentInstancesCheck = lhs.instances.allSatisfy { (argument, instance) -> Bool in
             guard let rhsInstance = rhs.instances[argument] else { return false }
             return instance.get(for: context) == rhsInstance.get(for: context)
         }
-
-        return defaultInstanceCheck && argumentInstancesCheck &&
+        
+        return instanceTypeCheck &&
+        argumentInstancesCheck &&
         lhs.isOverridable == rhs.isOverridable &&
         lhs.factory == rhs.factory &&
         lhs.argumentType == rhs.argumentType
+    }
+}
+
+extension RegistrationWithArgument {
+    /// Sets a product instance for a specific argument and context, managed by the determined instance strategy.
+    ///
+    /// This method initializes an `Instance` of the `instanceType` and uses it to store the provided product.
+    /// The instance is then associated with the given argument in the `instances` dictionary.
+    ///
+    /// - Parameters:
+    ///   - product: The product instance to store.
+    ///   - argument: The argument key under which to store the product instance.
+    ///   - context: The context relevant for instance management.
+    func set(_ product: Product, with argument: Argument, in context: Context) {
+        let instance = instanceType.init()
+        instance.set(product, for: context)
+        self.instances[argument] = instance
     }
 }

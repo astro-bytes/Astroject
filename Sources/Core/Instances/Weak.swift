@@ -22,7 +22,7 @@ public class Weak<Product>: Instance {
     }
     
     /// Initializes a new `Weak` instance.
-    public init() {}
+    public required init() {}
     
     public func get(for: Context) -> Product? {
         self.product

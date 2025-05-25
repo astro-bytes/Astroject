@@ -15,19 +15,19 @@ import Foundation
 public final class Registration<Product>: Registrable {
     /// A closure type for actions to be performed after a product is resolved.
     public typealias Action = (Resolver, Product) throws -> Void
-
+    
     /// The factory used to create instances of the product.
     let factory: Factory<Product, Resolver>
-
+    
     /// An array of actions to be performed after a product is resolved.
-    private var actions: [Action] = []
-
+    private(set) var actions: [Action] = []
+    
     /// The instance management strategy for the product.
     private(set) var instance: any Instance<Product>
-
+    
     /// Indicates whether this registration can be overridden by another registration.
     public let isOverridable: Bool
-
+    
     /// Initializes a new `Registration` instance.
     ///
     /// - parameter factory: The factory used to create instances of the product.
@@ -36,13 +36,13 @@ public final class Registration<Product>: Registrable {
     public init(
         factory: Factory<Product, Resolver>,
         isOverridable: Bool,
-        instance: any Instance<Product>
+        instanceType: any Instance<Product>.Type
     ) {
         self.factory = factory
         self.isOverridable = isOverridable
-        self.instance = instance
+        self.instance = instanceType.init()
     }
-
+    
     /// Resolves and returns an instance of the product asynchronously.
     ///
     /// This method first checks if an instance already exists for the current context.
@@ -55,7 +55,7 @@ public final class Registration<Product>: Registrable {
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(_ container: Container) async throws -> Product {
         let context = Context.current
-
+        
         if let product = instance.get(for: context) {
             return product
         } else {
@@ -71,7 +71,7 @@ public final class Registration<Product>: Registrable {
             }
         }
     }
-
+    
     /// Resolves and returns an instance of the product synchronously.
     ///
     /// This method first checks if an instance already exists for the current context.
@@ -84,7 +84,7 @@ public final class Registration<Product>: Registrable {
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(_ container: Container) throws -> Product {
         let context = Context.current
-
+        
         if let product = instance.get(for: context) {
             return product
         } else {
@@ -100,7 +100,7 @@ public final class Registration<Product>: Registrable {
             }
         }
     }
-
+    
     /// Executes all registered `afterInit` actions for a given product.
     ///
     /// This method iterates through the `actions` array and executes each `Action` closure,
@@ -117,13 +117,13 @@ public final class Registration<Product>: Registrable {
             throw AstrojectError.underlyingError(error)
         }
     }
-
+    
     @discardableResult
-    public func `as`(_ instance: any Instance<Product>) -> Self {
-        self.instance = instance
+    public func `as`(_ instance: any Instance<Product>.Type) -> Self {
+        self.instance = instance.init()
         return self
     }
-
+    
     @discardableResult
     public func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)
@@ -140,6 +140,7 @@ extension Registration: Equatable where Product: Equatable {
     public static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
         let context = Context.current
         return lhs.instance.get(for: context) == rhs.instance.get(for: context) &&
+        type(of: lhs.instance) == type(of: rhs.instance) &&
         lhs.isOverridable == rhs.isOverridable &&
         lhs.factory == rhs.factory
     }

@@ -26,10 +26,10 @@ public final class AsyncContainer: Container, @unchecked Sendable {
     /// such as when registrations are added. Behaviors can be used for cross-cutting concerns
     /// like logging, validation, or modifying registrations.
     private(set) var behaviors: [Behavior] = []
-
+    
     /// Initializes a new `AsyncContainer` instance.
     public init() {}
-
+    
     @discardableResult
     public func register<Product>(
         productType: Product.Type,
@@ -43,7 +43,7 @@ public final class AsyncContainer: Container, @unchecked Sendable {
         let registration = Registration(
             factory: factory,
             isOverridable: isOverridable,
-            instance: Graph<Product>()
+            instanceType: Graph.self
         )
         // Before adding the new registration, ensure that it is allowed based on existing registrations.
         try assertRegistrationAllowed(for: key, overridable: isOverridable)
@@ -60,7 +60,7 @@ public final class AsyncContainer: Container, @unchecked Sendable {
         // Return the newly created registration.
         return registration
     }
-
+    
     @discardableResult
     public func register<Product, Argument: Hashable>(
         productType: Product.Type,
@@ -76,7 +76,7 @@ public final class AsyncContainer: Container, @unchecked Sendable {
             factory: factory,
             isOverridable: isOverridable,
             argumentType: Argument.self,
-            instance: Graph<Product>()
+            instanceType: Graph.self
         )
         // Ensure that this registration is allowed based on any existing registrations.
         try assertRegistrationAllowed(for: key, overridable: isOverridable)
@@ -93,7 +93,7 @@ public final class AsyncContainer: Container, @unchecked Sendable {
         // Return the created registration.
         return registration
     }
-
+    
     public func isRegistered<Product>(productType: Product.Type, with name: String?) -> Bool {
         // Create a key representing the registration to check.
         // We need to try both AsyncBlock and SyncBlock factory types because the key needs to match
@@ -108,13 +108,13 @@ public final class AsyncContainer: Container, @unchecked Sendable {
             productType: Product.self,
             name: name
         )
-
+        
         // Check if either of these keys exists in the registrations dictionary.
         return serialQueue.sync {
             registrations.keys.contains(asyncKey) || registrations.keys.contains(syncKey)
         }
     }
-
+    
     public func isRegistered<Product, Argument: Hashable>(
         productType: Product.Type,
         with name: String?,
@@ -133,20 +133,20 @@ public final class AsyncContainer: Container, @unchecked Sendable {
             argumentType: Argument.self,
             name: name
         )
-
+        
         // Check if either of these keys exists.
         return serialQueue.sync {
             registrations.keys.contains(asyncKey) || registrations.keys.contains(syncKey)
         }
     }
-
+    
     public func clear() {
         // Remove all key-value pairs from the registrations dictionary in a thread-safe way.
         serialQueue.sync {
             registrations.removeAll()
         }
     }
-
+    
     public func add(_ behavior: Behavior) {
         // Append the provided behavior to the list of registered behaviors.
         serialQueue.sync {
@@ -165,7 +165,7 @@ extension AsyncContainer: Resolver {
             try await initiateResolution(type, name: name, argument: Never?(nil))
         }
     }
-
+    
     public func resolve<Product, Argument: Hashable>(
         productType type: Product.Type,
         name: String?,
@@ -175,7 +175,7 @@ extension AsyncContainer: Resolver {
             try await initiateResolution(type, name: name, argument: argument)
         }
     }
-
+    
     /// This method is intentionally not supported in `AsyncContainer` to enforce asynchronous resolution.
     /// Attempting to call this will result in a fatal error.
     public func resolve<Product>(
@@ -184,7 +184,7 @@ extension AsyncContainer: Resolver {
     ) throws -> Product {
         fatalError("Synchronous resolution is not supported by AsyncContainer. Use async resolve methods instead.")
     }
-
+    
     /// This method is intentionally not supported in `AsyncContainer` to enforce asynchronous resolution.
     /// Attempting to call this will result in a fatal error.
     public func resolve<Product, Argument: Hashable>(
@@ -217,7 +217,7 @@ extension AsyncContainer {
         argument: Argument?
     ) async throws -> Product {
         let key: RegistrationKey
-
+        
         if argument != nil {
             key = RegistrationKey(
                 factoryType: Factory<Product, (Resolver, Argument)>.AsyncBlock.self,
@@ -232,14 +232,14 @@ extension AsyncContainer {
                 name: name
             )
         }
-
+        
         let graph = Context.current.graph
-
+        
         // Check for circular dependency
         if graph.contains(key) {
             throw AstrojectError.cyclicDependency(key: graph.first ?? key, path: graph)
         }
-
+        
         // Push onto the task-local resolution path
         return try await Context.$current.withValue(Context.current.push(key)) {
             let resolvedProduct: Product = try await findAndResolve(for: key, with: argument)
@@ -252,7 +252,7 @@ extension AsyncContainer {
             return resolvedProduct
         }
     }
-
+    
     /// Looks up the registration for a given key and resolves the product.
     /// This function handles the type casting and calls the appropriate resolve method
     /// based on whether an argument is provided.
@@ -285,11 +285,11 @@ extension AsyncContainer {
         let registration = serialQueue.sync {
             registrations[key]
         }
-
+        
         guard let registration else {
             throw AstrojectError.noRegistrationFound(key: key)
         }
-
+        
         // Now, cast and resolve based on whether an argument was provided
         if let argumentValue = argument, type(of: argumentValue) != Never.self {
             // If an argument was provided, try to resolve it as an argumented registration
@@ -308,7 +308,7 @@ extension AsyncContainer {
             return try await registration.resolve(self)
         }
     }
-
+    
     /// A generic helper function to manage the `Context` for resolution calls.
     /// It handles creating a fresh context for top-level resolutions or
     /// advancing the context for nested resolutions.
@@ -318,7 +318,7 @@ extension AsyncContainer {
     /// - Throws: Any error thrown by the `body` closure.
     func manageContext<T>(body: () async throws -> T) async throws -> T {
         let currentContext = Context.current
-
+        
         if currentContext.depth == 0 {
             // Top-level resolution: create fresh context with new graph ID and empty path
             return try await Context.$current.withValue(Context.fresh()) {
@@ -332,7 +332,7 @@ extension AsyncContainer {
             }
         }
     }
-
+    
     /// Asserts whether a new registration is allowed based on existing registrations.
     ///
     /// This function checks if a `RegistrationKey` already exists in the container's
@@ -351,7 +351,7 @@ extension AsyncContainer {
         let existingRegistration = serialQueue.sync {
             registrations[key]
         }
-
+        
         // Check if an existing registration was found.
         if let existingRegistration {
             // If an existing registration is found, check if both the existing registration and

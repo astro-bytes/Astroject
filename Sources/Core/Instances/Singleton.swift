@@ -16,7 +16,7 @@ public class Singleton<Product>: Instance {
     private var product: Product?
     
     /// Initializes a new `Singleton` instance.
-    public init() {}
+    public required init() {}
     
     public func get(for: Context) -> Product? {
         self.product

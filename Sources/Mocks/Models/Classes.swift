@@ -60,7 +60,11 @@ struct Classes: Assembly {
         }
     }
     
-    class ObjectG {
+    class ObjectG: Equatable {
+        static func == (lhs: Classes.ObjectG, rhs: Classes.ObjectG) -> Bool {
+            lhs.id == rhs.id && lhs.int == rhs.int
+        }
+        
         let id: UUID = .init()
         let int: Int
         init(int: Int = 1) { self.int = int }
