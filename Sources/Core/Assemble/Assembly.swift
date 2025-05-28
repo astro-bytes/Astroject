@@ -18,7 +18,7 @@ public protocol Assembly {
     /// This function is typically used for tasks that must be completed prior to the main `assemble` phase,
     /// such as loading configuration files or initializing external systems that the assembly depends on.
     func preloaded() throws
-
+    
     /// Configures dependencies within the provided `Container`.
     ///
     /// This function is called by an `Assembler` to register dependencies in the given `Container`.
@@ -26,7 +26,7 @@ public protocol Assembly {
     ///
     /// - parameter container: The `Container` instance to configure.
     func assemble(container: Container) throws
-
+    
     /// Called after the assembly has been loaded into the `Container`.
     ///
     /// This function is called by an `Assembler` after all assemblies have been processed.
@@ -43,7 +43,7 @@ public extension Assembly {
     /// This default implementation is provided for convenience, allowing assemblies
     /// that do not require pre-assembly setup to omit implementing the `preloaded` function.
     func preloaded() throws {}
-
+    
     /// Default implementation of `loaded(resolver:)`, which does nothing.
     ///
     /// This default implementation is provided for convenience, allowing assemblies

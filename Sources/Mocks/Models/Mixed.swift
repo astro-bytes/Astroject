@@ -8,8 +8,6 @@
 import Foundation
 import AstrojectCore
 
-// swiftlint:disable identifier_name
-
 struct Mixed: Assembly {
     class ObjectA {
         let b: ObjectB
@@ -58,5 +56,3 @@ struct Mixed: Assembly {
     func asyncAssemble(container: any Container) throws {}
     func syncAssemble(container: any Container) throws {}
 }
-
-// swiftlint:enable identifier_name

@@ -148,7 +148,7 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
             try actions.forEach { try $0(container, product) }
         } catch {
             // Wrap any error that occurs during action execution.
-            throw AstrojectError.registrationAction(error)
+            throw AstrojectError.afterInit(error)
         }
     }
     

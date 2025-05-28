@@ -55,7 +55,7 @@ public enum AstrojectError: LocalizedError {
     /// associated with the registration of a dependency, such as a `postInitAction`.
     ///
     /// - Parameter error: The underlying `Error` that occurred during the registration action.
-    case registrationAction(Error)
+    case afterInit(Error)
     
     /// Provides a user-friendly description of the error.
     public var errorDescription: String? {
@@ -72,7 +72,7 @@ public enum AstrojectError: LocalizedError {
         case .invalidFactory:
             // swiftlint:disable:next line_length
             return "Attempted to resolve an asynchronously/synchronously registered dependency using a synchronous/asynchronous method."
-        case .registrationAction(let error):
+        case .afterInit(let error):
             return "An error occurred during a registration action: \(error.localizedDescription)"
         }
     }
@@ -91,7 +91,7 @@ public enum AstrojectError: LocalizedError {
         case .invalidFactory:
             // swiftlint:disable:next line_length
             return "The dependency was registered with an asynchronous factory (e.g., using `registerAsync`), but a synchronous resolution method (e.g., `resolve()`) was called."
-        case .registrationAction:
+        case .afterInit:
             // swiftlint:disable:next line_length
             return "A problem occurred within a closure or operation executed during dependency registration (e.g., a post-initialization action)."
         }
@@ -112,7 +112,7 @@ public enum AstrojectError: LocalizedError {
         case .invalidFactory:
             // swiftlint:disable:next line_length
             return "Use an asynchronous resolution method (e.g., `resolveAsync()`) to resolve the dependency, or register it with a synchronous factory if synchronous resolution is intended."
-        case .registrationAction:
+        case .afterInit:
             // swiftlint:disable:next line_length
             return "Review the code within the registration action (e.g., your `postInitAction` closure) for potential errors."
         }
@@ -144,7 +144,7 @@ extension AstrojectError: Equatable {
             // errors are equal if they are the same case.
             return true
         case (.underlyingError(let lhsError), .underlyingError(let rhsError)),
-            (.registrationAction(let lhsError), .registrationAction(let rhsError)):
+            (.afterInit(let lhsError), .afterInit(let rhsError)):
             // Compare the descriptions of the underlying errors for both cases.
             return String(describing: lhsError) == String(describing: rhsError)
         default:

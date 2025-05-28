@@ -8,8 +8,6 @@
 import Foundation
 import AstrojectCore
 
-// swiftlint:disable identifier_name
-
 struct Classes: Assembly {
     class ObjectA: Protocols.Animal {
         let b: Protocols.Building
@@ -201,5 +199,3 @@ struct Classes: Assembly {
         }))
     }
 }
-
-// swiftlint:enable identifier_name

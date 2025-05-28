@@ -35,7 +35,7 @@ public protocol Container: Resolver, Sendable {
         isOverridable: Bool,
         factory: Factory<Product, Resolver>
     ) throws -> any Registrable<Product>
-
+    
     /// Registers a factory for a product that requires an argument for resolution.
     ///
     /// This method allows you to register factories that depend on an external argument
@@ -61,7 +61,7 @@ public protocol Container: Resolver, Sendable {
         isOverridable: Bool,
         factory: Factory<Product, (Resolver, Argument)>
     ) throws -> any Registrable<Product>
-
+    
     /// Checks if a registration exists for a given product type and optional name.
     ///
     /// - Parameters:
@@ -69,7 +69,7 @@ public protocol Container: Resolver, Sendable {
     ///   - name: An optional name associated with the registration.
     /// - Returns: `true` if a registration exists for the specified `productType` and `name`, `false` otherwise.
     func isRegistered<Product>(productType: Product.Type, with name: String?) -> Bool
-
+    
     /// Checks if a registration exists for a given product type, optional name, and argument type.
     ///
     /// This method is used for registrations that require an argument to differentiate them
@@ -85,14 +85,14 @@ public protocol Container: Resolver, Sendable {
         with name: String?,
         and argumentType: Argument.Type
     ) -> Bool
-
+    
     /// Clears all existing registrations from the container.
     ///
     /// This method removes all registered factories and instances, effectively resetting
     /// the container to its initial empty state. Use with caution, especially in production
     /// environments, as it will invalidate all previously resolved dependencies.
     func clear()
-
+    
     /// Adds a behavior to the container.
     ///
     /// Behaviors allow you to inject custom logic into the dependency registration
@@ -131,7 +131,7 @@ public extension Container {
             factory: factory
         )
     }
-
+    
     /// Registers a factory for a product that requires an argument,
     /// with `name` defaulting to `nil` and `isOverridable` defaulting to `true`.
     ///
@@ -159,7 +159,7 @@ public extension Container {
             factory: factory
         )
     }
-
+    
     /// Checks if a registration exists for a given product type, with the name defaulting to `nil`.
     ///
     /// - Parameters:
@@ -169,7 +169,7 @@ public extension Container {
     func isRegistered<Product>(_ productType: Product.Type, with name: String? = nil) -> Bool {
         self.isRegistered(productType: productType, with: name)
     }
-
+    
     /// Checks if a registration exists for a given product type, argument type,
     /// with the name defaulting to `nil`.
     ///

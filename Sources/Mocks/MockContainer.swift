@@ -8,8 +8,6 @@
 import Foundation
 import AstrojectCore
 
-// swiftlint:disable force_cast
-
 final class MockContainer: Container, @unchecked Sendable {
     var whenRegister: () throws -> Void = {}
     var whenResolve: () throws -> Any = { 42 }
@@ -91,5 +89,3 @@ final class MockContainer: Container, @unchecked Sendable {
         whenAdd()
     }
 }
-
-// swiftlint:enable force_cast

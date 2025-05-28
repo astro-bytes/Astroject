@@ -25,7 +25,7 @@ public struct RegistrationKey: Sendable {
     public let argumentType: Any.Type?
     /// An optional name associated with the registration.
     public let name: String?
-
+    
     /// Initializes a `RegistrationKey` for a registration that takes an argument.
     ///
     /// - Parameters:
@@ -44,7 +44,7 @@ public struct RegistrationKey: Sendable {
         self.argumentType = argumentType
         self.name = name
     }
-
+    
     /// Initializes a `RegistrationKey` for a registration that does not take an argument.
     ///
     /// - Parameters:
@@ -61,7 +61,7 @@ public struct RegistrationKey: Sendable {
         self.argumentType = nil
         self.name = name
     }
-
+    
     /// Initializes a `RegistrationKey` from a `Factory` for a product that does not require an argument.
     ///
     /// This convenience initializer infers the `productType` and `factoryType` directly from the provided `Factory`.
@@ -87,9 +87,9 @@ public struct RegistrationKey: Sendable {
                 name: name
             )
         }
-
+        
     }
-
+    
     /// Initializes a `RegistrationKey` from a `Factory` for a product that requires an argument.
     ///
     /// This convenience initializer infers the `productType`, `argumentType`, and `factoryType`
@@ -133,11 +133,11 @@ extension RegistrationKey: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self.factoryType))
         hasher.combine(ObjectIdentifier(self.productType))
-
+        
         if let argumentType {
             hasher.combine(ObjectIdentifier(argumentType))
         }
-
+        
         if let name {
             hasher.combine(name)
         }

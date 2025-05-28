@@ -8,8 +8,6 @@
 import Foundation
 import AstrojectCore
 
-// swiftlint:disable force_cast
-
 // Mock Resolver for testing
 class MockResolver<P>: Resolver {
     var whenResolve: () throws -> P = { throw MockError() }
@@ -53,5 +51,3 @@ class MockResolver<P>: Resolver {
         return try whenResolve() as! Product
     }
 }
-
-// swiftlint:enable force_cast

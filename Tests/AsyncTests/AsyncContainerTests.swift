@@ -10,12 +10,6 @@ import Foundation
 @testable import Mocks
 @testable import AstrojectAsync
 
-// swiftlint:disable identifier_name
-// swiftlint:disable force_cast
-// swiftlint:disable type_name
-// swiftlint:disable nesting
-// swiftlint:disable type_body_length
-
 @Suite("Container")
 struct AsyncContainerTests {
     @Test("Validate isRegistered")
@@ -1121,9 +1115,3 @@ extension AsyncContainerTests {
     }
     
 }
-
-// swiftlint:enable identifier_name
-// swiftlint:enable force_cast
-// swiftlint:enable type_name
-// swiftlint:enable nesting
-// swiftlint:enable type_body_length

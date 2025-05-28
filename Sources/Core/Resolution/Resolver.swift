@@ -27,7 +27,7 @@ public protocol Resolver {
         productType: Product.Type,
         name: String?
     ) async throws -> Product
-
+    
     /// Resolves a product type synchronously with an optional name.
     ///
     /// This function resolves a dependency of the specified `productType` with an optional `name`.
@@ -43,7 +43,7 @@ public protocol Resolver {
         productType: Product.Type,
         name: String?
     ) throws -> Product
-
+    
     /// Resolves a product type asynchronously with an optional name and an argument.
     ///
     /// This function resolves a dependency of the specified `productType` with an optional `name` and an `argument`.
@@ -62,7 +62,7 @@ public protocol Resolver {
         name: String?,
         argument: Argument
     ) async throws -> Product
-
+    
     /// Resolves a product type synchronously with an optional name and an argument.
     ///
     /// This function resolves a dependency of the specified `productType` with an optional `name` and an `argument`.
@@ -97,7 +97,7 @@ public extension Resolver {
     func resolve<Product>(_ productType: Product.Type, name: String? = nil) async throws -> Product {
         try await resolve(productType: productType, name: name)
     }
-
+    
     /// Default implementation for resolving a product type synchronously without a name.
     ///
     /// This default implementation calls the `resolve(productType:name:)` function with a `nil` name,
@@ -113,7 +113,7 @@ public extension Resolver {
     ) throws -> Product {
         try resolve(productType: productType, name: name)
     }
-
+    
     /// Default implementation for resolving a product type asynchronously with an argument but without a name.
     ///
     /// This default implementation calls the `resolve(productType:name:argument:)` function with a `nil` name,
@@ -131,7 +131,7 @@ public extension Resolver {
     ) async throws -> Product {
         try await resolve(productType: productType, name: name, argument: argument)
     }
-
+    
     /// Default implementation for resolving a product type synchronously with an argument but without a name.
     ///
     /// This default implementation calls the `resolve(productType:name:argument:)` function with a `nil` name,

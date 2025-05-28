@@ -9,8 +9,6 @@ import XCTest
 @testable import Mocks
 @testable import AstrojectAsync
 
-// swiftlint:disable identifier_name
-
 class PerformanceTests: XCTestCase {
     let iterations = 1_000
     
@@ -121,5 +119,3 @@ class PerformanceTests: XCTestCase {
         }
     }
 }
-
-// swiftlint:enable identifier_name

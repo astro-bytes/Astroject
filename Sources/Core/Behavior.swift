@@ -25,7 +25,7 @@ public protocol Behavior {
         as registration: any Registrable<Product>,
         with name: String?
     )
-
+    
     /// Called after a product has been successfully resolved from the `Container`.
     ///
     /// This function provides a hook to perform actions immediately after an instance

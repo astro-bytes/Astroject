@@ -8,9 +8,6 @@
 import Foundation
 import AstrojectCore
 
-// swiftlint:disable identifier_name
-// swiftlint:disable function_body_length
-
 struct CircularDependency: Assembly {
     
     // Simple Cyclical
@@ -285,6 +282,3 @@ struct CircularDependency: Assembly {
     }
     
 }
-
-// swiftlint:enable identifier_name
-// swiftlint:enable function_body_length
