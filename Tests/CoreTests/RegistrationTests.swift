@@ -54,40 +54,6 @@ struct RegistrationTests {
     
     @Suite("Sync Resolution")
     struct SyncResolution {
-        @Test("Cached Instance")
-        func cachedInstance() throws {
-            var calledSet = false
-            var calledGet = false
-            var calledFactory = false
-            var calledAfterInit = false
-            let instance = MockInstance(
-                whenSet: { calledSet = true },
-                whenGet: {
-                    calledGet = true
-                    return 1
-                }
-            )
-            let factory = Factory<Int, Resolver>(.sync { _ in
-                calledFactory = true
-                return 1
-            })
-            let registration = Registration(
-                factory: factory,
-                isOverridable: true,
-                instance: instance
-            ).afterInit { _, _ in
-                calledAfterInit = true
-            }
-            
-            let result = try registration.resolve(MockContainer())
-            
-            #expect(calledGet == true)
-            #expect(calledSet == false)
-            #expect(calledFactory == false)
-            #expect(calledAfterInit == false)
-            #expect(result == 1)
-        }
-        
         @Test("No Cached Instance")
         func noCachedInstance() throws {
             var calledSet = false
@@ -122,6 +88,40 @@ struct RegistrationTests {
             #expect(result == 1)
         }
         
+        @Test("Cached Instance")
+        func cachedInstance() throws {
+            var calledSet = false
+            var calledGet = false
+            var calledFactory = false
+            var calledAfterInit = false
+            let instance = MockInstance(
+                whenSet: { calledSet = true },
+                whenGet: {
+                    calledGet = true
+                    return 1
+                }
+            )
+            let factory = Factory<Int, Resolver>(.sync { _ in
+                calledFactory = true
+                return 1
+            })
+            let registration = Registration(
+                factory: factory,
+                isOverridable: true,
+                instance: instance
+            ).afterInit { _, _ in
+                calledAfterInit = true
+            }
+            
+            let result = try registration.resolve(MockContainer())
+            
+            #expect(calledGet == true)
+            #expect(calledSet == false)
+            #expect(calledFactory == false)
+            #expect(calledAfterInit == false)
+            #expect(result == 1)
+        }
+        
         @Test("Throws Underlying Error")
         func throwsUnderlyingError() {
             let factory = Factory<Int, Resolver>(.sync { _ in throw MockError() })
@@ -153,7 +153,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws After Init Error")
-        func throwsAfterInitError() throws {
+        func throwsAfterInitError() {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration = Registration(
                 factory: factory,
@@ -171,40 +171,6 @@ struct RegistrationTests {
     
     @Suite("Async Resolution")
     struct AsyncResolution {
-        @Test("Cached Instance")
-        func cachedInstance() async throws {
-            var calledSet = false
-            var calledGet = false
-            var calledFactory = false
-            var calledAfterInit = false
-            let instance = MockInstance(
-                whenSet: { calledSet = true },
-                whenGet: {
-                    calledGet = true
-                    return 1
-                }
-            )
-            let factory = Factory<Int, Resolver>(.sync { _ in
-                calledFactory = true
-                return 1
-            })
-            let registration = Registration(
-                factory: factory,
-                isOverridable: true,
-                instance: instance
-            ).afterInit { _, _ in
-                calledAfterInit = true
-            }
-            
-            let result = try await registration.resolve(MockContainer())
-            
-            #expect(calledGet == true)
-            #expect(calledSet == false)
-            #expect(calledFactory == false)
-            #expect(calledAfterInit == false)
-            #expect(result == 1)
-        }
-        
         @Test("No Cached Instance")
         func noCachedInstance() async throws {
             var calledSet = false
@@ -239,6 +205,40 @@ struct RegistrationTests {
             #expect(result == 1)
         }
         
+        @Test("Cached Instance")
+        func cachedInstance() async throws {
+            var calledSet = false
+            var calledGet = false
+            var calledFactory = false
+            var calledAfterInit = false
+            let instance = MockInstance(
+                whenSet: { calledSet = true },
+                whenGet: {
+                    calledGet = true
+                    return 1
+                }
+            )
+            let factory = Factory<Int, Resolver>(.sync { _ in
+                calledFactory = true
+                return 1
+            })
+            let registration = Registration(
+                factory: factory,
+                isOverridable: true,
+                instance: instance
+            ).afterInit { _, _ in
+                calledAfterInit = true
+            }
+            
+            let result = try await registration.resolve(MockContainer())
+            
+            #expect(calledGet == true)
+            #expect(calledSet == false)
+            #expect(calledFactory == false)
+            #expect(calledAfterInit == false)
+            #expect(result == 1)
+        }
+        
         @Test("Throws Underlying Error")
         func throwsUnderlyingError() async {
             let factory = Factory<Int, Resolver>(.sync { _ in throw MockError() })
@@ -270,7 +270,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws After Init Error")
-        func throwsAfterInitError() async throws {
+        func throwsAfterInitError() async {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration = Registration(
                 factory: factory,
@@ -288,8 +288,8 @@ struct RegistrationTests {
     
     @Suite("Equality")
     struct Equality {
-        @Test("All Equal")
-        func whenAllEqual() {
+        @Test("Happy Path")
+        func whenHappyPath() {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration1 = Registration(
                 factory: factory,
@@ -303,7 +303,10 @@ struct RegistrationTests {
                 instanceType: MockInstance.self
             )
             
+            #expect(registration1.isEqual(to: registration2))
+            #expect(registration1.isEqual(to: registration1))
             #expect(registration1 == registration2)
+            #expect(registration1 == registration1)
         }
         
         @Test("IsOverridable Differs")
@@ -321,6 +324,7 @@ struct RegistrationTests {
                 instanceType: MockInstance.self
             )
             
+            #expect(registration1.isEqual(to: registration2) == false)
             #expect(registration1 != registration2)
         }
         
@@ -340,6 +344,7 @@ struct RegistrationTests {
                 instanceType: MockInstance.self
             )
             
+            #expect(registration1.isEqual(to: registration2) == false)
             #expect(registration1 != registration2)
         }
         
@@ -358,6 +363,7 @@ struct RegistrationTests {
                 instanceType: Weak.self
             )
             
+            #expect(registration1.isEqual(to: registration2) == false)
             #expect(registration1 != registration2)
         }
         
@@ -378,7 +384,32 @@ struct RegistrationTests {
                 instance: instance2
             )
             
-            #expect(registration1 != registration2)
+            #expect(registration1.isEqual(to: registration2) == false)
+            #expect(registration1 == registration2)
+        }
+    }
+    
+    @Suite("Thread Safety")
+    struct ThreadSafety {
+        @Test("Concurrent Resolve")
+        func concurrentResolve() {
+            fatalError("Implement")
+        }
+        
+        @Test("Concurrent As")
+        func concurrentAs() {
+            fatalError("Implement")
+        }
+        
+        @Test("Concurrent After Init")
+        func concurrentAfterInit() {
+            fatalError("Implement")
+        }
+        
+        @Test("Stress Test")
+        func stressTest() {
+            // Run thousands of concurrent resolutions with random arguments to stress test race conditions.
+            fatalError("Implement")
         }
     }
 }

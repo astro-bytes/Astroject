@@ -67,7 +67,7 @@ public struct Factory<Product, Arguments>: Equatable {
     }
     
     /// A unique identifier for the factory, used for equality checks.
-    var id: UUID = .init()
+    let id: UUID = .init()
     /// The closure that creates the product instance.
     let block: Block
     

@@ -12,17 +12,17 @@ import Foundation
 /// This class extends `Registrable` to handle dependencies that need an argument during resolution.
 /// It stores the factory, instance management strategy, and post-initialization actions.
 public final class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
-    /// A closure type for actions to be performed after a product is resolved.
-    /// This closure takes a resolver and the resolved product as input.
+    
     public typealias Action = (Resolver, Product) throws -> Void
-    /// A tuple type representing the arguments required by the factory.
-    /// It includes the resolver and the argument.
+    
     public typealias Arguments = (Resolver, Argument)
     
     /// The factory used to create instances of the product with an argument.
     let factory: Factory<Product, Arguments>
     /// The type of the argument required for this registration.
     let argumentType: Argument.Type
+    // TODO: Comment
+    let queue = DispatchQueue(label: "com.astrobytes.astroject.registration.with.argument.\(Product.self).\(Argument.self)")
     
     /// An array of actions to be performed after a product is resolved.
     private(set) var actions: [Action] = []
@@ -54,24 +54,18 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
         self.instanceType = instanceType
     }
     
-    /// Initializes a new `RegistrationWithArgument` instance with a factory closure.
-    ///
-    /// - parameter block: The factory closure used to create instances of the product with an argument.
-    /// - parameter isOverridable: Indicates whether this registration can be overridden.
-    /// - parameter argumentType: The type of the argument required for this registration.
-    /// - parameter instance: The instance management strategy for the product (default is `Transient`).
-    public convenience init(
-        factory block: Factory<Product, Arguments>.Block,
+    // TODO: Comment ... this is built specifically for testing in mind
+    init(
+        factory: Factory<Product, Arguments>,
         isOverridable: Bool,
-        argumentType: Argument.Type,
-        instanceType: any Instance<Product>.Type
+        argument: Argument,
+        instance: any Instance<Product>
     ) {
-        self.init(
-            factory: Factory(block),
-            isOverridable: isOverridable,
-            argumentType: argumentType,
-            instanceType: instanceType
-        )
+        self.factory = factory
+        self.isOverridable = isOverridable
+        self.argumentType = type(of: argument)
+        self.instanceType = type(of: instance)
+        self.instances[argument] = instance
     }
     
     /// Resolves and returns an instance of the product asynchronously, using the provided argument.
@@ -84,10 +78,14 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     /// - Parameters:
     ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
     ///   - argument: The argument required by the product's factory.
+    ///   - context: TODO
     /// - Returns: An instance of the `Product`.
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
-    public func resolve(_ container: Container, argument: Argument) async throws -> Product {
-        let context = Context.current
+    public func resolve(
+        _ container: Container,
+        argument: Argument,
+        in context: Context = .current
+    ) async throws -> Product {
         guard let product = instances[argument]?.get(for: context) else {
             do {
                 let product: Product = try await factory((container, argument))
@@ -114,10 +112,14 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     /// - Parameters:
     ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
     ///   - argument: The argument required by the product's factory.
+    ///   - context: TODO
     /// - Returns: An instance of the `Product`.
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
-    public func resolve(_ container: Container, argument: Argument) throws -> Product {
-        let context = Context.current
+    public func resolve(
+        _ container: Container,
+        argument: Argument,
+        in context: Context = .current
+    ) throws -> Product {
         guard let product = instances[argument]?.get(for: context) else {
             do {
                 let product: Product = try factory((container, argument))
@@ -141,7 +143,7 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     ///
     /// - parameter container: The container used for dependency resolution.
     /// - parameter product: The resolved product instance.
-    /// - Throws: `AstrojectError.underlyingError` if an error occurs during action execution.
+    /// - Throws: `AstrojectError.afterInit` if an error occurs during action execution.
     public func runActions(_ container: Container, product: Product) throws {
         do {
             // Iterate over each action and execute it.
@@ -165,6 +167,19 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
         actions.append(action)
         return self
     }
+    
+    // TODO: Comment
+    public func isEqual(
+        to other: RegistrationWithArgument<Product, Argument>,
+        in context: Context = .current
+    ) -> Bool where Product: Equatable {
+        let argumentInstancesCheck = instances.allSatisfy { (argument, instance) -> Bool in
+            guard let otherInstance = other.instances[argument] else { return false }
+            return instance.get(for: context) == otherInstance.get(for: context)
+        }
+        
+        return argumentInstancesCheck && self == other
+    }
 }
 
 extension RegistrationWithArgument: Equatable where Product: Equatable {
@@ -183,16 +198,7 @@ extension RegistrationWithArgument: Equatable where Product: Equatable {
         lhs: RegistrationWithArgument<Product, Argument>,
         rhs: RegistrationWithArgument<Product, Argument>
     ) -> Bool {
-        let context = Context.current
-        
-        let instanceTypeCheck = lhs.instanceType == rhs.instanceType
-        let argumentInstancesCheck = lhs.instances.allSatisfy { (argument, instance) -> Bool in
-            guard let rhsInstance = rhs.instances[argument] else { return false }
-            return instance.get(for: context) == rhsInstance.get(for: context)
-        }
-        
-        return instanceTypeCheck &&
-        argumentInstancesCheck &&
+        lhs.instanceType == rhs.instanceType &&
         lhs.isOverridable == rhs.isOverridable &&
         lhs.factory == rhs.factory &&
         lhs.argumentType == rhs.argumentType
