@@ -67,7 +67,6 @@ public final class SyncContainer: Container, @unchecked Sendable {
         let registration = RegistrationWithArgument(
             factory: factory,
             isOverridable: isOverridable,
-            argumentType: Argument.self,
             instanceType: Graph.self
         )
         // Ensure that this registration is allowed based on any existing registrations.

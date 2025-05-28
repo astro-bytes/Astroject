@@ -75,7 +75,6 @@ public final class AsyncContainer: Container, @unchecked Sendable {
         let registration = RegistrationWithArgument(
             factory: factory,
             isOverridable: isOverridable,
-            argumentType: Argument.self,
             instanceType: Graph.self
         )
         // Ensure that this registration is allowed based on any existing registrations.

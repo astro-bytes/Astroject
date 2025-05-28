@@ -13,7 +13,7 @@ import Foundation
 /// registered with a dependency injection `Container`.
 /// It provides methods for configuring the instance management scope and post
 /// -initialization actions for the registered component.
-public protocol Registrable<Product>: Sendable {
+public protocol Registrable<Product> {
     /// A closure type for actions to be performed after a product is resolved.
     associatedtype Action
     

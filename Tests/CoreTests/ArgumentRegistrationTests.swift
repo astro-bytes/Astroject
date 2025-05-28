@@ -17,62 +17,69 @@ struct ArgumentRegistrationTests {
         let registration = RegistrationWithArgument(
             factory: factory,
             isOverridable: true,
-            argumentType: Int.self,
             instanceType: MockInstance.self
         )
         
         #expect(registration.isOverridable)
         #expect(registration.instances.isEmpty)
-        #expect(registration.instanceType == MockInstance<Int>.self)
         #expect(registration.argumentType == Int.self)
         #expect(registration.factory == factory)
         #expect(registration.actions.isEmpty)
     }
     
     @Test("Sets New Instance")
-    func setsNewInstance() {
-        fatalError("Implement")
+    func setsNewInstance() throws {
+        let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in 1 })
+        let registration = RegistrationWithArgument(
+            factory: factory,
+            isOverridable: true,
+            instanceType: Weak.self
+        ).as(MockInstance.self)
+        
+        #expect(registration.instances.isEmpty)
+        
+        _ = try registration.resolve(MockContainer(), argument: 1)
+        
+        #expect(type(of: registration.instances[1]!) == MockInstance<Int>.self)
     }
     
     @Test("After Init Adds Action")
     func afterInitAddsAction() {
-        fatalError("Implement")
-    }
-    
-    @Test("Set Instance")
-    func setInstance() {
-        fatalError("Implement")
+        let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in 1 })
+        let registration = RegistrationWithArgument(
+            factory: factory,
+            isOverridable: true,
+            instanceType: MockInstance.self
+        ).afterInit { _, _ in }
+        #expect(registration.actions.count == 1)
+        
+        registration.afterInit { _, _ in }
+        #expect(registration.actions.count == 2)
     }
     
     @Suite("Sync Resolution")
     struct SyncResolution {
         @Test("No Cached Instance")
         func noCachedInstance() throws {
-            var calledSet = false
-            var calledGet = false
             var calledFactory = false
             var calledAfterInit = false
             let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in
                 calledFactory = true
                 return 1
             })
-            let instance = MockInstance<Int>(
-                whenSet: { calledSet = true },
-                whenGet: { calledGet = true; return nil }
-            )
             let registration = RegistrationWithArgument(
                 factory: factory,
                 isOverridable: true,
-                argument: 1,
-                instance: instance
+                instanceType: MockInstance.self
             ).afterInit { _, _ in
                 calledAfterInit = true
             }
             
             let result = try registration.resolve(MockContainer(), argument: 1)
+            let instance = registration.instances[1]! as! MockInstance<Int>
             
-            #expect(calledGet)
-            #expect(calledSet)
+            #expect(!instance.calledGet) // didn't exist
+            #expect(instance.calledSet)
             #expect(calledFactory)
             #expect(calledAfterInit)
             #expect(result == 1)
@@ -81,18 +88,13 @@ struct ArgumentRegistrationTests {
         
         @Test("Cached Instance")
         func cachedInstance() throws {
-            var calledSet = false
-            var calledGet = false
             var calledFactory = false
             var calledAfterInit = false
             let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in
                 calledFactory = true
                 return 1
             })
-            let instance = MockInstance<Int>(
-                whenSet: { calledSet = true },
-                whenGet: { calledGet = true; return 1 }
-            )
+            let instance = MockInstance<Int>(whenGet: { 1 })
             let registration = RegistrationWithArgument(
                 factory: factory,
                 isOverridable: true,
@@ -104,32 +106,93 @@ struct ArgumentRegistrationTests {
             
             let result = try registration.resolve(MockContainer(), argument: 1)
             
-            #expect(calledGet)
-            #expect(calledSet == false)
-            #expect(calledFactory == false)
-            #expect(calledAfterInit == false)
+            #expect(instance.calledGet)
+            #expect(!instance.calledSet)
+            #expect(!calledFactory)
+            #expect(!calledAfterInit)
             #expect(result == 1)
             #expect(registration.instances[1] != nil)
         }
         
-        @Test("Cache Unique Arguments")
-        func cacheUniqueArguments() throws {
-            fatalError("Implement")
+        @Test("Caches Unique Arguments")
+        func cachesUniqueArguments() throws {
+            var factoryCount = 0
+            var afterInitCount = 0
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in
+                factoryCount += 1
+                return factoryCount
+            })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            ).afterInit { _, _ in
+                afterInitCount += 1
+            }
+            
+            let result = try registration.resolve(MockContainer(), argument: 1)
+            let instance1 = registration.instances[1]! as! MockInstance<Int>
+            #expect(instance1.getCount == 0)
+            #expect(instance1.setCount == 1)
+            #expect(factoryCount == 1)
+            #expect(afterInitCount == 1)
+            #expect(result == 1)
+            #expect(registration.instances[1] != nil)
+            
+            let result2 = try registration.resolve(MockContainer(), argument: 2)
+            let instance2 = registration.instances[2]! as! MockInstance<Int>
+            #expect(instance2.getCount == 0)
+            #expect(instance2.setCount == 1)
+            #expect(factoryCount == 2)
+            #expect(afterInitCount == 2)
+            #expect(result2 == 2)
+            #expect(registration.instances[2] != nil)
         }
         
         @Test("Throws Underlying Error")
         func throwsUnderlyingError() {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in throw MockError() })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            #expect(throws: AstrojectError.underlyingError(MockError())) {
+                _ = try registration.resolve(MockContainer(), argument: 1)
+            }
         }
         
         @Test("Throws Astroject Error")
         func throwsAstrojectError() {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in
+                throw AstrojectError.invalidFactory
+            })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            #expect(throws: AstrojectError.invalidFactory) {
+                _ = try registration.resolve(MockContainer(), argument: 1)
+            }
         }
         
         @Test("Throws After Init Error")
         func throwsAfterInitError() {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            ).afterInit { _, _ in
+                throw MockError()
+            }
+            
+            #expect(throws: AstrojectError.afterInit(MockError())) {
+                _ = try registration.resolve(MockContainer(), argument: 1)
+            }
         }
     }
     
@@ -137,31 +200,24 @@ struct ArgumentRegistrationTests {
     struct AsyncResolution {
         @Test("No Cached Instance")
         func noCachedInstance() async throws {
-            var calledSet = false
-            var calledGet = false
             var calledFactory = false
             var calledAfterInit = false
-            let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in
+            let factory = Factory<Int, (Resolver, Int)>(.async { _, _ in
                 calledFactory = true
                 return 1
             })
-            let instance = MockInstance<Int>(
-                whenSet: { calledSet = true },
-                whenGet: { calledGet = true; return nil }
-            )
             let registration = RegistrationWithArgument(
                 factory: factory,
                 isOverridable: true,
-                argument: 1,
-                instance: instance
+                instanceType: MockInstance.self
             ).afterInit { _, _ in
                 calledAfterInit = true
             }
             
             let result = try await registration.resolve(MockContainer(), argument: 1)
-            
-            #expect(calledGet)
-            #expect(calledSet)
+            let instance = registration.instances[1]! as! MockInstance<Int>
+            #expect(!instance.calledGet)
+            #expect(instance.calledSet)
             #expect(calledFactory)
             #expect(calledAfterInit)
             #expect(result == 1)
@@ -170,18 +226,13 @@ struct ArgumentRegistrationTests {
         
         @Test("Cached Instance")
         func cachedInstance() async throws {
-            var calledSet = false
-            var calledGet = false
             var calledFactory = false
             var calledAfterInit = false
-            let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in
+            let factory = Factory<Int, (Resolver, Int)>(.async { _, _ in
                 calledFactory = true
                 return 1
             })
-            let instance = MockInstance<Int>(
-                whenSet: { calledSet = true },
-                whenGet: { calledGet = true; return 1 }
-            )
+            let instance = MockInstance<Int>(whenGet: { 1 })
             let registration = RegistrationWithArgument(
                 factory: factory,
                 isOverridable: true,
@@ -193,32 +244,95 @@ struct ArgumentRegistrationTests {
             
             let result = try await registration.resolve(MockContainer(), argument: 1)
             
-            #expect(calledGet)
-            #expect(calledSet == false)
-            #expect(calledFactory == false)
-            #expect(calledAfterInit == false)
+            #expect(instance.calledGet)
+            #expect(!instance.calledSet)
+            #expect(!calledFactory)
+            #expect(!calledAfterInit)
             #expect(result == 1)
             #expect(registration.instances[1] != nil)
         }
         
-        @Test("Cache Unique Arguments")
-        func cacheUniqueArguments() async throws {
-            fatalError("Implement")
+        @Test("Caches Unique Arguments")
+        func cachesUniqueArguments() async throws {
+            var factoryCount = 0
+            var afterInitCount = 0
+            let factory = Factory<Int, (Resolver, Int)>(.async { _, _ in
+                factoryCount += 1
+                return factoryCount
+            })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            ).afterInit { _, _ in
+                afterInitCount += 1
+            }
+            
+            let result = try await registration.resolve(MockContainer(), argument: 1)
+            let instance1 = registration.instances[1]! as! MockInstance<Int>
+            
+            #expect(instance1.getCount == 0)
+            #expect(instance1.setCount == 1)
+            #expect(factoryCount == 1)
+            #expect(afterInitCount == 1)
+            #expect(result == 1)
+            #expect(registration.instances[1] != nil)
+            
+            let result2 = try await registration.resolve(MockContainer(), argument: 2)
+            let instance2 = registration.instances[2]! as! MockInstance<Int>
+            
+            #expect(instance2.getCount == 0)
+            #expect(instance2.setCount == 1)
+            #expect(factoryCount == 2)
+            #expect(afterInitCount == 2)
+            #expect(result2 == 2)
+            #expect(registration.instances[2] != nil)
         }
         
         @Test("Throws Underlying Error")
         func throwsUnderlyingError() async {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.async { _, _ in throw MockError() })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            await #expect(throws: AstrojectError.underlyingError(MockError())) {
+                _ = try await registration.resolve(MockContainer(), argument: 1)
+            }
         }
         
         @Test("Throws Astroject Error")
         func throwsAstrojectError() async {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.async { _, _ in
+                throw AstrojectError.invalidFactory
+            })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            await #expect(throws: AstrojectError.invalidFactory) {
+                _ = try await registration.resolve(MockContainer(), argument: 1)
+            }
         }
         
         @Test("Throws After Init Error")
         func throwsAfterInitError() async {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.async { _ in 1 })
+            let registration = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            ).afterInit { _, _ in
+                throw MockError()
+            }
+            
+            await #expect(throws: AstrojectError.afterInit(MockError())) {
+                _ = try await registration.resolve(MockContainer(), argument: 1)
+            }
         }
     }
     
@@ -226,72 +340,133 @@ struct ArgumentRegistrationTests {
     struct Equality {
         @Test("Happy Path")
         func happyPath() {
-            fatalError("Implement")
-        }
-        
-        @Test("Instance Type Differs")
-        func whenInstanceTypeDiffers() {
-            fatalError("Implement")
-        }
-        
-        @Test("Instance Value Differs")
-        func whenInstanceValueDiffers() {
-            fatalError("Implement")
-        }
-        
-        @Test("Argument Type Differs")
-        func whenArgumentTypeDiffers() {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let registration1 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            let registration2 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            #expect(registration1.isEqual(to: registration2))
+            #expect(registration1.isEqual(to: registration1))
+            #expect(registration1 == registration2)
+            #expect(registration1 == registration1)
         }
         
         @Test("isOverridable Differs")
         func whenIsOverridableDiffers() {
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let registration1 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            let registration2 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: false,
+                instanceType: MockInstance.self
+            )
+            
+            #expect(!registration1.isEqual(to: registration2))
+            #expect(registration1 != registration2)
         }
         
         @Test("Factory Differs")
         func whenFactoryDiffers() {
-            fatalError("Implement")
+            let factory1 = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let factory2 = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let registration1 = RegistrationWithArgument(
+                factory: factory1,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            let registration2 = RegistrationWithArgument(
+                factory: factory2,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            #expect(!registration1.isEqual(to: registration2))
+            #expect(registration1 != registration2)
+        }
+        
+        @Test("Instance Type Differs")
+        func whenInstanceTypeDiffers() {
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let registration1 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            let registration2 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: Weak.self
+            )
+            
+            #expect(!registration1.isEqual(to: registration2))
+            #expect(registration1 != registration2)
+        }
+        
+        @Test("Instance Value Differs")
+        func whenInstanceValueDiffers() {
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let instance1 = MockInstance<Int>(whenGet: { 1 })
+            let instance2 = MockInstance<Int>(whenGet: { 2 })
+            let registration1 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                argument: 1,
+                instance: instance1
+            )
+            
+            let registration2 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                argument: 1,
+                instance: instance2
+            )
+            
+            #expect(!registration1.isEqual(to: registration2))
+            #expect(registration1 == registration2)
         }
         
         @Test("Cached Instance Sets Differs")
         func whenCachedInstanceSetsDiffer() {
-            fatalError("Implement")
-        }
-        
-        @Test("Cached Instance Differs")
-        func whenCachedInstanceDiffers() {
-            // Comparing when one has cached instances and the other does not.
-            fatalError("Implement")
-        }
-    }
-    
-    @Suite("Thread Safety")
-    struct ThreadSafety {
-        @Test("Concurrent Resolve with Same Argument")
-        func concurrentResolveWithSameArgument() {
-            fatalError("Implement")
-        }
-        
-        @Test("Concurrent Resolve with Different Arguments")
-        func concurrentResolveWithDifferentArgument() {
-            fatalError("Implement")
-        }
-        
-        @Test("Concurrent As")
-        func concurrentAs() {
-            fatalError("Implement")
-        }
-        
-        @Test("Concurrent After Init")
-        func concurrentAfterInit() {
-            fatalError("Implement")
-        }
-        
-        @Test("Stress Test")
-        func stressTest() {
-            // Run thousands of concurrent resolutions with random arguments to stress test race conditions.
-            fatalError("Implement")
+            let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
+            let registration1 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                instanceType: MockInstance.self
+            )
+            
+            let registration2 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                argument: 1,
+                instance: MockInstance()
+            )
+            
+            let registration3 = RegistrationWithArgument(
+                factory: factory,
+                isOverridable: true,
+                argument: 2,
+                instance: MockInstance()
+            )
+            
+            #expect(!registration1.isEqual(to: registration2))
+            #expect(registration1 != registration2)
+            #expect(!registration3.isEqual(to: registration2))
+            #expect(registration3 != registration2)
         }
     }
 }

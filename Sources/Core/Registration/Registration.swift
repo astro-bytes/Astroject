@@ -18,8 +18,6 @@ public final class Registration<Product>: Registrable {
     
     /// The factory used to create instances of the product.
     let factory: Factory<Product, Resolver>
-    // TODO: Comment
-    let queue = DispatchQueue(label: "com.astrobytes.astroject.registration.\(Product.self)")
     
     /// An array of actions to be performed after a product is resolved.
     private(set) var actions: [Action] = []
@@ -27,13 +25,15 @@ public final class Registration<Product>: Registrable {
     /// The instance management strategy for the product.
     private(set) var instance: any Instance<Product>
     
+    /// Indicates whether this registration can be overridden by another.
     public let isOverridable: Bool
     
     /// Initializes a new `Registration` instance.
     ///
-    /// - parameter factory: The factory used to create instances of the product.
-    /// - parameter isOverridable: Indicates whether this registration can be overridden.
-    /// - parameter instance: The instance management strategy for the product.
+    /// - Parameters:
+    ///   - factory: The factory used to create instances of the product.
+    ///   - isOverridable: Indicates whether this registration can be overridden.
+    ///   - instanceType: The type of instance strategy used for managing product lifecycles.
     public init(
         factory: Factory<Product, Resolver>,
         isOverridable: Bool,
@@ -65,26 +65,20 @@ public final class Registration<Product>: Registrable {
     
     /// Resolves and returns an instance of the product asynchronously.
     ///
-    /// This method first checks if an instance already exists for the current context.
-    /// If not, it uses the registered factory to create a new instance, stores it according
-    /// to the instance management strategy, and then runs any defined `afterInit` actions.
-    ///
-    /// - parameter container: The `Container` (acting as a `Resolver`) to use
-    ///                        for resolving dependencies within the factory.
-    /// - parameter context: The resolution context, used to isolate instances across scopes.
+    /// - Parameters:
+    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
+    ///   - context: The resolution context, used to isolate instances across scopes.
     /// - Returns: An instance of the `Product`.
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(
         _ container: Container,
         with context: Context = .current
     ) async throws -> Product {
-        if let product = instance.get(for: context) {
-            return product
-        } else {
+        guard let product = instance.get(for: context) else {
             do {
                 let product: Product = try await factory(container)
                 instance.set(product, for: context)
-                try runActions(container, product: product)
+                try runActions(for: product, in: container)
                 return product
             } catch let error as AstrojectError {
                 throw error
@@ -92,30 +86,26 @@ public final class Registration<Product>: Registrable {
                 throw AstrojectError.underlyingError(error)
             }
         }
+        
+        return product
     }
     
     /// Resolves and returns an instance of the product synchronously.
     ///
-    /// This method first checks if an instance already exists for the current context.
-    /// If not, it uses the registered factory to create a new instance, stores it according
-    /// to the instance management strategy, and then runs any defined `afterInit` actions.
-    ///
-    /// - parameter container: The `Container` (acting as a `Resolver`) to use for resolving
-    ///                        dependencies within the factory.
-    /// - parameter context: The resolution context, used to isolate instances across scopes.
+    /// - Parameters:
+    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
+    ///   - context: The resolution context, used to isolate instances across scopes.
     /// - Returns: An instance of the `Product`.
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(
         _ container: Container,
         with context: Context = .current
     ) throws -> Product {
-        if let product = instance.get(for: context) {
-            return product
-        } else {
+        guard let product = instance.get(for: context) else {
             do {
                 let product: Product = try factory(container)
                 instance.set(product, for: context)
-                try runActions(container, product: product)
+                try runActions(for: product, in: container)
                 return product
             } catch let error as AstrojectError {
                 throw error
@@ -123,29 +113,11 @@ public final class Registration<Product>: Registrable {
                 throw AstrojectError.underlyingError(error)
             }
         }
-    }
-    
-    /// Executes all registered `afterInit` actions for a given product.
-    ///
-    /// This method iterates through the `actions` array and executes each `Action` closure,
-    /// passing the container and the newly resolved product.
-    ///
-    /// - Parameters:
-    ///   - container: The `Container` to pass to the actions.
-    ///   - product: The product instance on which to perform the actions.
-    /// - Throws: `AstrojectError.afterInit` if any of the actions throw an error.
-    public func runActions(_ container: Container, product: Product) throws {
-        do {
-            try actions.forEach { try $0(container, product) }
-        } catch {
-            throw AstrojectError.afterInit(error)
-        }
+        
+        return product
     }
     
     /// Changes the instance management strategy for this registration.
-    ///
-    /// This allows modifying how instances are cached and reused, for example switching
-    /// between `Weak`, `Graph`, or other `Instance` implementations.
     ///
     /// - Parameter instance: The type of `Instance` to use.
     /// - Returns: The updated `Registration` instance.
@@ -157,8 +129,6 @@ public final class Registration<Product>: Registrable {
     
     /// Adds a post-initialization action to be run after a product is created.
     ///
-    /// These actions can be used for additional setup, such as dependency injection or lifecycle hooks.
-    ///
     /// - Parameter action: A closure that accepts the resolver and the newly created product.
     /// - Returns: The updated `Registration` instance.
     @discardableResult
@@ -166,12 +136,10 @@ public final class Registration<Product>: Registrable {
         actions.append(action)
         return self
     }
-    
+}
+
+extension Registration: Equatable where Product: Equatable {
     /// Compares this registration with another for equality within a specific resolution context.
-    ///
-    /// Unlike the standard `==` operator, which avoids resolution state, this method compares the actual
-    /// resolved instances (if available) in a given `Context`. This is useful for testing or debugging scenarios
-    /// where it's important to know whether two registrations yield the same instance under the same context.
     ///
     /// - Parameters:
     ///   - other: The other `Registration` instance to compare against.
@@ -179,21 +147,36 @@ public final class Registration<Product>: Registrable {
     /// - Returns: `true` if both registrations have the same instance (in the given context),
     ///            use the same instance management strategy, have the same `isOverridable` flag,
     ///            and were created with the same factory; otherwise, `false`.
-    public func isEqual(to other: Registration<Product>, in context: Context = .current) -> Bool where Product: Equatable {
+    public func isEqual(to other: Registration<Product>, in context: Context = .current) -> Bool {
         instance.get(for: context) == other.instance.get(for: context) &&
         self == other
     }
-}
-
-extension Registration: Equatable where Product: Equatable {
+    
     /// Checks if two registrations are equal.
     ///
-    /// - parameter lhs: The left-hand side registration.
-    /// - parameter rhs: The right-hand side registration.
+    /// - Parameters:
+    ///   - lhs: The left-hand side registration.
+    ///   - rhs: The right-hand side registration.
     /// - Returns: `true` if the registrations are equal, `false` otherwise.
     public static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
         type(of: lhs.instance) == type(of: rhs.instance) &&
         lhs.isOverridable == rhs.isOverridable &&
         lhs.factory == rhs.factory
+    }
+}
+
+extension Registration {
+    /// Executes all registered `afterInit` actions for a given product.
+    ///
+    /// - Parameters:
+    ///   - container: The `Container` to pass to the actions.
+    ///   - product: The product instance on which to perform the actions.
+    /// - Throws: `AstrojectError.afterInit` if any of the actions throw an error.
+    func runActions(for product: Product, in container: Container) throws {
+        do {
+            try actions.forEach { try $0(container, product) }
+        } catch {
+            throw AstrojectError.afterInit(error)
+        }
     }
 }
