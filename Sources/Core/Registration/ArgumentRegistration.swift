@@ -1,5 +1,5 @@
 //
-//  RegistrationWithArgument.swift
+//  ArgumentRegistration.swift
 //  Astroject
 //
 //  Created by Porter McGary on 5/18/25.
@@ -11,7 +11,7 @@ import Foundation
 ///
 /// This class extends `Registrable` to handle dependencies that need an argument during resolution.
 /// It stores the factory, instance management strategy, and post-initialization actions.
-public final class RegistrationWithArgument<Product, Argument: Hashable>: Registrable {
+public final class ArgumentRegistration<Product, Argument: Hashable>: Registrable {
     
     public typealias Action = (Resolver, Product) throws -> Void
     public typealias Arguments = (Resolver, Argument)
@@ -35,7 +35,7 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     /// Indicates whether this registration can be overridden by another with the same key.
     public let isOverridable: Bool
     
-    /// Initializes a new `RegistrationWithArgument` instance with the necessary components.
+    /// Initializes a new `ArgumentRegistration` instance with the necessary components.
     ///
     /// - Parameters:
     ///   - factory: The `Factory` responsible for creating product instances.
@@ -152,7 +152,7 @@ public final class RegistrationWithArgument<Product, Argument: Hashable>: Regist
     }
 }
 
-extension RegistrationWithArgument {
+extension ArgumentRegistration {
     /// Sets a product instance for a specific argument and context, managed by the determined instance strategy.
     ///
     /// - Parameters:
@@ -184,7 +184,7 @@ extension RegistrationWithArgument {
     }
 }
 
-extension RegistrationWithArgument: Equatable where Product: Equatable {
+extension ArgumentRegistration: Equatable where Product: Equatable {
     /// Checks if two registrations are equal by comparing instance values in the given context.
     ///
     /// This comparison includes checking instance equality for each argument key.
@@ -194,7 +194,7 @@ extension RegistrationWithArgument: Equatable where Product: Equatable {
     ///   - context: The resolution context to retrieve instance values.
     /// - Returns: `true` if all instances and metadata match; otherwise `false`.
     public func isEqual(
-        to other: RegistrationWithArgument<Product, Argument>,
+        to other: ArgumentRegistration<Product, Argument>,
         in context: Context = .current
     ) -> Bool {
         guard instances.allSatisfy({ (argument, instance) -> Bool in
@@ -208,15 +208,15 @@ extension RegistrationWithArgument: Equatable where Product: Equatable {
     /// Checks if two registrations are equal.
     ///
     /// This function compares the instance management strategy, overridable status,
-    /// factory, and argument type of two `RegistrationWithArgument` instances to
+    /// factory, and argument type of two `ArgumentRegistration` instances to
     /// determine if they are equal.
     ///
     /// - parameter lhs: The left-hand side registration.
     /// - parameter rhs: The right-hand side registration.
     /// - Returns: `true` if the registrations are equal, `false` otherwise.
     public static func == (
-        lhs: RegistrationWithArgument<Product, Argument>,
-        rhs: RegistrationWithArgument<Product, Argument>
+        lhs: ArgumentRegistration<Product, Argument>,
+        rhs: ArgumentRegistration<Product, Argument>
     ) -> Bool {
         lhs.instances.keys == rhs.instances.keys &&
         lhs.instanceType == rhs.instanceType &&

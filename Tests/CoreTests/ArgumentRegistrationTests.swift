@@ -14,7 +14,7 @@ struct ArgumentRegistrationTests {
     @Test("Initializer")
     func initializer() {
         let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in 1 })
-        let registration = RegistrationWithArgument(
+        let registration = ArgumentRegistration(
             factory: factory,
             isOverridable: true,
             instanceType: MockInstance.self
@@ -30,7 +30,7 @@ struct ArgumentRegistrationTests {
     @Test("Sets New Instance")
     func setsNewInstance() throws {
         let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in 1 })
-        let registration = RegistrationWithArgument(
+        let registration = ArgumentRegistration(
             factory: factory,
             isOverridable: true,
             instanceType: Weak.self
@@ -46,7 +46,7 @@ struct ArgumentRegistrationTests {
     @Test("After Init Adds Action")
     func afterInitAddsAction() {
         let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in 1 })
-        let registration = RegistrationWithArgument(
+        let registration = ArgumentRegistration(
             factory: factory,
             isOverridable: true,
             instanceType: MockInstance.self
@@ -67,7 +67,7 @@ struct ArgumentRegistrationTests {
                 calledFactory = true
                 return 1
             })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -95,7 +95,7 @@ struct ArgumentRegistrationTests {
                 return 1
             })
             let instance = MockInstance<Int>(whenGet: { 1 })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 argument: 1,
@@ -122,7 +122,7 @@ struct ArgumentRegistrationTests {
                 factoryCount += 1
                 return factoryCount
             })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -152,7 +152,7 @@ struct ArgumentRegistrationTests {
         @Test("Throws Underlying Error")
         func throwsUnderlyingError() {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in throw MockError() })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -168,7 +168,7 @@ struct ArgumentRegistrationTests {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _, _ in
                 throw AstrojectError.invalidFactory
             })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -182,7 +182,7 @@ struct ArgumentRegistrationTests {
         @Test("Throws After Init Error")
         func throwsAfterInitError() {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -206,7 +206,7 @@ struct ArgumentRegistrationTests {
                 calledFactory = true
                 return 1
             })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -233,7 +233,7 @@ struct ArgumentRegistrationTests {
                 return 1
             })
             let instance = MockInstance<Int>(whenGet: { 1 })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 argument: 1,
@@ -260,7 +260,7 @@ struct ArgumentRegistrationTests {
                 factoryCount += 1
                 return factoryCount
             })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -292,7 +292,7 @@ struct ArgumentRegistrationTests {
         @Test("Throws Underlying Error")
         func throwsUnderlyingError() async {
             let factory = Factory<Int, (Resolver, Int)>(.async { _, _ in throw MockError() })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -308,7 +308,7 @@ struct ArgumentRegistrationTests {
             let factory = Factory<Int, (Resolver, Int)>(.async { _, _ in
                 throw AstrojectError.invalidFactory
             })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -322,7 +322,7 @@ struct ArgumentRegistrationTests {
         @Test("Throws After Init Error")
         func throwsAfterInitError() async {
             let factory = Factory<Int, (Resolver, Int)>(.async { _ in 1 })
-            let registration = RegistrationWithArgument(
+            let registration = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -341,13 +341,13 @@ struct ArgumentRegistrationTests {
         @Test("Happy Path")
         func happyPath() {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
-            let registration1 = RegistrationWithArgument(
+            let registration1 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
             )
             
-            let registration2 = RegistrationWithArgument(
+            let registration2 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -362,13 +362,13 @@ struct ArgumentRegistrationTests {
         @Test("isOverridable Differs")
         func whenIsOverridableDiffers() {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
-            let registration1 = RegistrationWithArgument(
+            let registration1 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
             )
             
-            let registration2 = RegistrationWithArgument(
+            let registration2 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: false,
                 instanceType: MockInstance.self
@@ -382,13 +382,13 @@ struct ArgumentRegistrationTests {
         func whenFactoryDiffers() {
             let factory1 = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
             let factory2 = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
-            let registration1 = RegistrationWithArgument(
+            let registration1 = ArgumentRegistration(
                 factory: factory1,
                 isOverridable: true,
                 instanceType: MockInstance.self
             )
             
-            let registration2 = RegistrationWithArgument(
+            let registration2 = ArgumentRegistration(
                 factory: factory2,
                 isOverridable: true,
                 instanceType: MockInstance.self
@@ -401,13 +401,13 @@ struct ArgumentRegistrationTests {
         @Test("Instance Type Differs")
         func whenInstanceTypeDiffers() {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
-            let registration1 = RegistrationWithArgument(
+            let registration1 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
             )
             
-            let registration2 = RegistrationWithArgument(
+            let registration2 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: Weak.self
@@ -422,14 +422,14 @@ struct ArgumentRegistrationTests {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
             let instance1 = MockInstance<Int>(whenGet: { 1 })
             let instance2 = MockInstance<Int>(whenGet: { 2 })
-            let registration1 = RegistrationWithArgument(
+            let registration1 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 argument: 1,
                 instance: instance1
             )
             
-            let registration2 = RegistrationWithArgument(
+            let registration2 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 argument: 1,
@@ -443,20 +443,20 @@ struct ArgumentRegistrationTests {
         @Test("Cached Instance Sets Differs")
         func whenCachedInstanceSetsDiffer() {
             let factory = Factory<Int, (Resolver, Int)>(.sync { _ in 1 })
-            let registration1 = RegistrationWithArgument(
+            let registration1 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 instanceType: MockInstance.self
             )
             
-            let registration2 = RegistrationWithArgument(
+            let registration2 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 argument: 1,
                 instance: MockInstance()
             )
             
-            let registration3 = RegistrationWithArgument(
+            let registration3 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
                 argument: 2,

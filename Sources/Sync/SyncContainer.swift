@@ -64,7 +64,7 @@ public final class SyncContainer: Container, @unchecked Sendable {
         // Create a unique key for the registration, including the argument type.
         let key = RegistrationKey(factory: factory, name: name)
         // Create a registration instance that holds the factory, the overridable setting, and the argument type.
-        let registration = RegistrationWithArgument(
+        let registration = ArgumentRegistration(
             factory: factory,
             isOverridable: isOverridable,
             instanceType: Graph.self
@@ -262,7 +262,7 @@ extension SyncContainer {
         // Now, cast and resolve based on whether an argument was provided
         if let argumentValue = argument {
             // If an argument was provided, try to resolve it as an argumented registration
-            guard let registration = registration as? RegistrationWithArgument<Product, Argument> else {
+            guard let registration = registration as? ArgumentRegistration<Product, Argument> else {
                 // This means a registration for the product type and name exists,
                 // but it wasn't registered with the expected argument type.
                 throw AstrojectError.noRegistrationFound(key: key)
