@@ -319,7 +319,7 @@ Once defined, you can use your custom instance during registration:
 
 ```Swift
 let container = Container()
-try container.register(Int.self) {  42 }.as(ExampleInstance())
+try container.register(Int.self) { 42 }.as(ExampleInstance())
 
 let value = try await container.resolve(Int.self)
 print("Resolved Int with ExampleInstance: \(value)") // Output: Resolved Int with ExampleInstance: 42

@@ -19,6 +19,7 @@ class MockAssembly: Assembly {
     
     func preloaded() throws {
         preloadedCalled = true
+        try whenPreloaded()
     }
     
     func assemble(container: Container) throws {

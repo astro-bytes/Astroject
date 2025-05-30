@@ -1113,5 +1113,4 @@ extension AsyncContainerTests {
             #expect(didRegister)
         }
     }
-    
 }
