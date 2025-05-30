@@ -7,35 +7,16 @@ on:
     branches: [ "main" ]
 
 jobs:
-  project:
+  lint:
     runs-on: macos-latest
+    strategy:
+      matrix:
+        dir: [Sources, Tests, Examples]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install SwiftLint
-        uses: norio-nomura/action-swiftlint@v1
-      - name: Run SwiftLint in Sources
-        run: swiftlint --strict --config .swiftlint-ci.yml
-        working-directory: Sources
+      - uses: actions/checkout@v3
 
-  tests:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install SwiftLint
-        uses: norio-nomura/action-swiftlint@v1
-      - name: Run SwiftLint in Tests
-        run: swiftlint --strict --config .swiftlint-ci.yml
-        working-directory: Tests
-
-  examples:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install SwiftLint
-        uses: norio-nomura/action-swiftlint@v1
-      - name: Run SwiftLint in Examples
-        run: swiftlint --strict --config .swiftlint-ci.yml
-        working-directory: Examples
+      - name: Run SwiftLint in ${{ matrix.dir }}
+        uses: swift-actions/swiftlint@v1
+        with:
+          args: --strict --config .swiftlint-ci.yml
+          working-directory: ${{ matrix.dir }}
