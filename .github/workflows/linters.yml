@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install SwiftLint
-        uses: norio-nomura/action-swiftlint@v3
+        uses: norio-nomura/action-swiftlint@v1
       - name: Run SwiftLint in Sources
         run: swiftlint --strict --config .swiftlint-ci.yml
         working-directory: Sources
@@ -24,7 +24,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install SwiftLint
-        uses: norio-nomura/action-swiftlint@v3
+        uses: norio-nomura/action-swiftlint@v1
       - name: Run SwiftLint in Tests
         run: swiftlint --strict --config .swiftlint-ci.yml
         working-directory: Tests
@@ -35,7 +35,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install SwiftLint
-        uses: norio-nomura/action-swiftlint@v3
+        uses: norio-nomura/action-swiftlint@v1
       - name: Run SwiftLint in Examples
         run: swiftlint --strict --config .swiftlint-ci.yml
         working-directory: Examples
