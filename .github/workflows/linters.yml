@@ -10,32 +10,32 @@ jobs:
   project:
     runs-on: macos-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    - name: Run SwiftLint
-      uses: norio-nomura/action-swiftlint@v3
-      working-directory: Sources
-      with:
-        args: --strict --config .swiftlint-ci.yml
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install SwiftLint
+        uses: norio-nomura/action-swiftlint@v3
+      - name: Run SwiftLint in Sources
+        run: swiftlint --strict --config .swiftlint-ci.yml
+        working-directory: Sources
 
   tests:
     runs-on: macos-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    - name: Run SwiftLint
-      uses: norio-nomura/action-swiftlint@v3
-      working-directory: Tests
-      with:
-        args: --strict --config .swiftlint-ci.yml
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install SwiftLint
+        uses: norio-nomura/action-swiftlint@v3
+      - name: Run SwiftLint in Tests
+        run: swiftlint --strict --config .swiftlint-ci.yml
+        working-directory: Tests
 
   examples:
     runs-on: macos-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    - name: Run SwiftLint
-      uses: norio-nomura/action-swiftlint@v3
-      working-directory: Examples
-      with:
-        args: --strict --config .swiftlint-ci.yml
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install SwiftLint
+        uses: norio-nomura/action-swiftlint@v3
+      - name: Run SwiftLint in Examples
+        run: swiftlint --strict --config .swiftlint-ci.yml
+        working-directory: Examples
