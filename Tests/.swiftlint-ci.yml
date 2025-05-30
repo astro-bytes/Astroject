@@ -1,6 +1,9 @@
+parent_config: ../.swiftlint-base.yml
+
 disabled_rules:
   - identifier_name
   - force_cast
   - type_name
   - nesting
   - type_body_length
+  - todo

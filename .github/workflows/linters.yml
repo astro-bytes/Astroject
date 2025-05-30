@@ -7,26 +7,32 @@ on:
     branches: [ "main" ]
 
 jobs:
-  swiftlint:
+  project:
     runs-on: macos-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-
-    - name: Install Homebrew (if needed)
-      run: |
-        if ! which brew > /dev/null; then
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo "HOMEBREW_PREFIX=/opt/homebrew" >> $GITHUB_ENV
-          echo "HOMEBREW_ROOT=/opt/homebrew" >> $GITHUB_ENV
-          echo "/opt/homebrew/bin" >> $GITHUB_PATH
-        fi
-
-    - name: Update Homebrew and Install SwiftLint
-      run: |
-        brew update
-        brew install swiftlint
-
     - name: Run SwiftLint
+      uses: norio-nomura/action-swiftlint@v3
       run: swiftlint --strict --config .swiftlint-ci.yml
+      working-directory: Sources
+
+  tests:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Run SwiftLint
+      uses: norio-nomura/action-swiftlint@v3
+      run: swiftlint --strict --config .swiftlint-ci.yml
+      working-directory: Tests
+
+  examples:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Run SwiftLint
+      uses: norio-nomura/action-swiftlint@v3
+      run: swiftlint --strict --config .swiftlint-ci.yml
+      working-directory: Examples

@@ -1,0 +1,8 @@
+disabled_rules: # rules to exclude from running
+  - trailing_whitespace
+  - file_length
+
+opt_in_rules: # some rules are disabled by default, so you need to opt-in
+  - redundant_void_return
+
+line_length: 120 # max line length

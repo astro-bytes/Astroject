@@ -1,9 +1,4 @@
-disabled_rules: # rules to exclude from running
-  - trailing_whitespace
-  - file_length
-
-opt_in_rules: # some rules are disabled by default, so you need to opt-in
-  - redundant_void_return
+parent_config: ./swiftlint-base.yml
 
 included: # paths to include during linting. Takes precedence over `excluded`.
   - Sources
@@ -15,5 +10,3 @@ excluded: # paths to ignore during linting. Takes precedence over `included`.
   - Pods
   - .build
   - Docs
-
-line_length: 120 # max line length
