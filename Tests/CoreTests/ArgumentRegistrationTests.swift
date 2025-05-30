@@ -33,7 +33,7 @@ struct ArgumentRegistrationTests {
         let registration = ArgumentRegistration(
             factory: factory,
             isOverridable: true,
-            instanceType: Weak.self
+            instanceType: Singleton.self
         ).as(MockInstance.self)
         
         #expect(registration.instances.isEmpty)
@@ -410,7 +410,7 @@ struct ArgumentRegistrationTests {
             let registration2 = ArgumentRegistration(
                 factory: factory,
                 isOverridable: true,
-                instanceType: Weak.self
+                instanceType: Singleton.self
             )
             
             #expect(!registration1.isEqual(to: registration2))

@@ -1,0 +1,46 @@
+//
+//  TransientTests.swift
+//  Astroject
+//
+//  Created by Porter McGary on 5/30/25.
+//
+
+import Testing
+@testable import Mocks
+@testable import AstrojectCore
+
+@Suite("Transient Tests")
+struct TransientTests {
+    @Test("Set Has No Effect")
+    func setHasNoEffect() {
+        let transient = Transient<Int>()
+        let context = Context.fresh()
+        
+        transient.set(67, for: context)
+        transient.set(42, for: .fresh())
+        
+        #expect(transient.get(for: .fresh()) == nil)
+        #expect(transient.get(for: context) == nil)
+    }
+    
+    @Test("Get Returns Nil")
+    func getReturnsNil() {
+        let transient = Transient<Int>()
+        
+        #expect(transient.get(for: .fresh()) == nil)
+    }
+    
+    @Test("Release has No Effect")
+    func releaseHasNoEffect() {
+        let transient = Transient<Int>()
+        let context = Context.fresh()
+        
+        transient.set(67, for: context)
+        
+        transient.release(for: context)
+        transient.release(for: .fresh())
+        transient.releaseAll()
+        
+        #expect(transient.get(for: context) == nil)
+    }
+}

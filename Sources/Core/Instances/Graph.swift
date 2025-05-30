@@ -11,12 +11,12 @@ import Foundation
 /// The `Graph` class provides a mechanism to store, retrieve, and release instances of a generic `Product` type.
 /// It ensures thread safety for all operations using a private serial dispatch queue, making it suitable
 /// for environments where multiple threads might access or modify the stored products concurrently.
-public final class Graph<Product>: Instance {
+public final class Graph<Product>: Instance, @unchecked Sendable {
     /// The private storage dictionary where `Product` instances are held.
     ///
     /// Each product is stored with a `UUID` as its key, which is typically derived from a `Context` object.
     /// Access to this dictionary is synchronized via `serialQueue` to prevent data corruption from concurrent access.
-    private var storage: [UUID: Product] = [:]
+    private(set) var storage: [UUID: Product] = [:]
     /// A private serial dispatch queue used to synchronize access to the `storage` dictionary.
     ///
     /// All operations that read from or write to `storage` are performed within this queue

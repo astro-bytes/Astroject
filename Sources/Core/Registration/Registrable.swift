@@ -59,17 +59,6 @@ public extension Registrable {
         return self.as(Singleton.self)
     }
     
-    /// Specifies that the registered product should be a **weak** instance.
-    ///
-    /// A weak instance means that the container will hold a weak reference to the
-    /// product. If no other strong references exist, the instance can be deallocated.
-    ///
-    /// - Returns: The modified `Registrable` instance for chaining.
-    @discardableResult
-    func asWeak() -> Self {
-        return self.as(Weak.self)
-    }
-    
     /// Specifies that a **new instance** of the product should be created **each time** it is resolved.
     ///
     /// This is often referred to as a "transient" or "factory" scope.
@@ -90,5 +79,18 @@ public extension Registrable {
     @discardableResult
     func asGraph() -> Self {
         return self.as(Graph.self)
+    }
+}
+
+public extension Registrable where Product: AnyObject {
+    /// Specifies that the registered product should be a **weak** instance.
+    ///
+    /// A weak instance means that the container will hold a weak reference to the
+    /// product. If no other strong references exist, the instance can be deallocated.
+    ///
+    /// - Returns: The modified `Registrable` instance for chaining.
+    @discardableResult
+    func asWeak() -> Self {
+        return self.as(Weak.self)
     }
 }

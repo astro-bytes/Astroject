@@ -32,7 +32,7 @@ struct RegistrationTests {
         let registration = Registration(
             factory: factory,
             isOverridable: true,
-            instanceType: Weak.self
+            instanceType: Singleton.self
         ).as(MockInstance.self)
         
         #expect(type(of: registration.instance) == MockInstance<Int>.self)
@@ -328,7 +328,7 @@ struct RegistrationTests {
             let registration2 = Registration(
                 factory: factory,
                 isOverridable: true,
-                instanceType: Weak.self
+                instanceType: Singleton.self
             )
             
             #expect(!registration1.isEqual(to: registration2))

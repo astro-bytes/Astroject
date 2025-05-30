@@ -12,7 +12,7 @@ import Foundation
 /// The `Resolver` protocol is used to define the interface for resolving dependencies
 /// within a dependency injection container.
 /// Implementations of this protocol are responsible for providing instances of registered types.
-public protocol Resolver {
+public protocol Resolver: AnyObject {
     /// Resolves a product type asynchronously with an optional name.
     ///
     /// This function resolves a dependency of the specified `productType` with an optional `name`.

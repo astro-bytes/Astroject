@@ -13,7 +13,7 @@ import Foundation
 /// It acts as both a registration point for types and a resolver for their instances.
 /// Conformance to `Sendable` ensures that `Container` implementations can be safely
 /// used across concurrent environments.
-public protocol Container: Resolver, Sendable {
+public protocol Container: AnyObject, Resolver, Sendable {
     /// Registers a factory for a product that does not require an argument for resolution.
     ///
     /// Use this method to bind a `productType` to a `factory` closure. When the product

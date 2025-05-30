@@ -13,7 +13,7 @@ import Foundation
 /// It ensures that only one instance of the product is created and stored throughout the application's lifecycle.
 public class Singleton<Product>: Instance {
     /// The stored product instance.
-    private var product: Product?
+    private(set) var product: Product?
     
     /// Initializes a new `Singleton` instance.
     public required init() {}
