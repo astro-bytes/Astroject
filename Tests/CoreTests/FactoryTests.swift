@@ -1,60 +1,120 @@
 //
 //  FactoryTests.swift
-//  CoreTests
+//  Astroject
 //
-//  Created by Porter McGary on 3/4/25.
+//  Created by Porter McGary on 5/30/25.
 //
 
-import Foundation
 import Testing
+@testable import Mocks
 @testable import AstrojectCore
 
-@Suite("Factory")
+@Suite("Factory Tests")
 struct FactoryTests {
-    @Test("Init")
-    func initialization() {
-        let factory = Factory { 10 }
-        #expect(factory != Factory { 20 }) // Ensure UUIDs are different
-    }
+    typealias F = Factory<Int, String>
     
     @Test("Equality")
-    func equality() {
-        let factory1 = Factory { 10 }
-        let factory2 = Factory { 10 }
-        #expect(factory1 != factory2) // UUIDs are different, so not equal
+    func whenAllIsEqual() {
+        let syncBlock: F.Block = .sync { _ in 1 }
+        let asyncBlock: F.Block = .async { _ in 1 }
+        let factory1 = F(syncBlock)
+        let factory2 = F(asyncBlock)
+        let factory3 = F(asyncBlock)
+        
+        #expect(factory1 != factory2)
+        #expect(factory2 != factory3)
+        #expect(factory1 == factory1)
     }
     
-    @Test("Call as Function")
-    func functionCall() async throws {
-        let resolver = MockResolver()
-        let factory = Factory { resolver in
-            try await resolver.resolve(Int.self, name: nil) + 5
+    @Suite("Async Tests")
+    struct AsyncTests {
+        @Test("Rethrows Errors Async")
+        func whenUnderlyingErrors_rethrowError() async throws {
+            let block1: F.Block = .async { _ in throw MockError() }
+            let block2: F.Block = .sync { _ in throw MockError() }
+            let factory1 = F(block1)
+            let factory2 = F(block2)
+            
+            await #expect(throws: MockError.self) {
+                _ = try await factory1("")
+            }
+            
+            await #expect(throws: MockError.self) {
+                _ = try await factory2("")
+            }
         }
         
-        let result = try await factory(resolver)
-        #expect(result == 47)
+        @Test("Factory Overloaded Call As Function")
+        func factory_overloadCallAsFunction() async throws {
+            let block1: F.Block = .sync { _ in 1 }
+            let block2: F.Block = .async { _ in 2 }
+            let factory1 = F(block1)
+            let factory2 = F(block2)
+            
+            let result1 = try await factory1("")
+            let result2 = try await factory2("")
+            
+            #expect(result1 == 1)
+            #expect(result2 == 2)
+        }
+        
+        @Test("Block Overloaded Call As Function")
+        func block_overloadCallAsFunction() async throws {
+            let block1: F.Block = .sync { _ in 1 }
+            let block2: F.Block = .async { _ in 2 }
+            
+            let result1 = try await block1("")
+            let result2 = try await block2("")
+            
+            #expect(result1 == 1)
+            #expect(result2 == 2)
+        }
     }
     
-    @Test("Call in Resolver")
-    func callWithResolver() async throws {
-        let resolver = MockResolver()
-        let factory = Factory { resolver in
-            try await resolver.resolve(String.self, name: nil) + " Appended"
+    @Suite("Sync Tests")
+    struct SyncTests {
+        @Test("Rethrows Errors Sync")
+        func whenUnderlyingError_rethrowError() throws {
+            let block1: F.Block = .async { _ in throw MockError() }
+            let block2: F.Block = .sync { _ in throw MockError() }
+            let factory1 = F(block1)
+            let factory2 = F(block2)
+            
+            #expect(throws: AstrojectError.invalidFactory) {
+                _ = try factory1("")
+            }
+            
+            #expect(throws: MockError.self) {
+                _ = try factory2("")
+            }
         }
         
-        let result = try await factory(resolver)
-        #expect(result == "Test String Appended")
-    }
-    
-    @Test("Throws Errors")
-    func throwsError() async throws {
-        let resolver = MockResolver()
-        let factory = Factory { resolver in
-            try await resolver.resolve(Double.self, name: nil)
+        @Test("Factory Overloaded Call As Function")
+        func factory_overloadCallAsFunction() throws {
+            let block1: F.Block = .sync { _ in 1 }
+            let block2: F.Block = .async { _ in 2 }
+            let factory1 = F(block1)
+            let factory2 = F(block2)
+            
+            let result1 = try factory1("")
+            #expect(result1 == 1)
+            
+            #expect(throws: AstrojectError.invalidFactory) {
+                _ = try factory2("")
+            }
         }
         
-        await #expect(throws: resolver.error) {
-            try await factory(resolver)
+        @Test("Block Overloaded Call As Function")
+        func block_overloadCallAsFunction() throws {
+            let block1: F.Block = .sync { _ in 1 }
+            let block2: F.Block = .async { _ in 2 }
+            
+            let result1 = try block1("")
+            #expect(result1 == 1)
+            
+            #expect(throws: AstrojectError.invalidFactory) {
+                _ = try block2("")
+            }
         }
     }
 }
