@@ -12,3 +12,4 @@ excluded:
   - Carthage
   - .build
   - .swiftpm
+  - .scripts
