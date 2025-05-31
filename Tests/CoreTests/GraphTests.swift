@@ -112,7 +112,7 @@ struct GraphTests {
     func threadSafety() async {
         let graph = Graph<Int>()
         var contexts = [Context]()
-        await withTaskGroup { group in
+        await withTaskGroup(of: Void.self) { group in
             for index in 0..<500 {
                 let context = Context.fresh()
                 contexts.append(context)
@@ -122,7 +122,7 @@ struct GraphTests {
             }
         }
         
-        await withTaskGroup { group in
+        await withTaskGroup(of: Void.self) { group in
             for index in 0..<500 {
                 let context = contexts[index]
                 group.addTask {
