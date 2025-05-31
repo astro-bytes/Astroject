@@ -6,6 +6,3 @@ opt_in_rules:
   - redundant_void_return
 
 line_length: 120
-
-todo:
-  severity: warning
