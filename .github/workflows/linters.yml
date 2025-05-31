@@ -18,6 +18,6 @@ jobs:
       - name: Run SwiftLint in ${{ matrix.dir }}
         uses: norio-nomura/action-swiftlint@3.2.1
         with:
-          args: --strict --config .swiftlint-ci.yml
+          args: --strict
         env: 
           WORKING_DIRECTORY: ${{ matrix.dir }}

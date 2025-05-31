@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  tests:
     runs-on: macos-latest
 
     steps:
@@ -19,4 +19,4 @@ jobs:
       - name: List Xcode Versions
         run: xcodebuild -showsdks
       - name: Run tests
-        run: swift test
+        run: swift tests

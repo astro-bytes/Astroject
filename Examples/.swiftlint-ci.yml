@@ -1,4 +1,0 @@
-parent_config: ../.swiftlint-base.yml
-
-disabled_rules:
-  - todo

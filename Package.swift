@@ -20,22 +20,16 @@ let package = Package(
 //        .library(name: "Astroject-Nexus", targets: ["Nexus"]),
 //        .library(name: "Astroject-Singularity", targets: ["Singularity"])
     ],
-    dependencies: [
-        // Development dependency for linting
-        .package(url: "https://github.com/realm/SwiftLint.git", from: "0.58.2")
-    ],
     targets: [
         // Core framework targets
         .target(
             name: "AstrojectCore",
-            path: "Sources/Core",
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+            path: "Sources/Core"
         ),
         .target(
             name: "AstrojectAsync",
             dependencies: ["AstrojectCore"],
-            path: "Sources/Async",
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+            path: "Sources/Async"
         ),
         .target(
             name: "Mocks",
@@ -58,8 +52,7 @@ let package = Package(
         .target(
             name: "AstrojectSync",
             dependencies: ["AstrojectCore"],
-            path: "Sources/Sync",
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+            path: "Sources/Sync"
         ),
 
         // Test targets for each framework component
