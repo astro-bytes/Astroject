@@ -19,4 +19,4 @@ jobs:
       - name: List Xcode Versions
         run: xcodebuild -showsdks
       - name: Run tests
-        run: swift tests
+        run: swift test
