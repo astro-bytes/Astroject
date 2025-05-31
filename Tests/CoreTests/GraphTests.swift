@@ -21,8 +21,8 @@ struct GraphTests {
     @Test("Get with Context")
     func getWithContext() {
         let graph = Graph<Int>()
-        let context1 = Context.fresh()
-        let context2 = Context.fresh()
+        let context1 = ResolutionContext.fresh()
+        let context2 = ResolutionContext.fresh()
         
         graph.set(1, for: context1)
         graph.set(2, for: context2)
@@ -35,15 +35,15 @@ struct GraphTests {
     func getWithUnknownContext() {
         let graph = Graph<Int>()
         
-        graph.set(1, for: Context.fresh())
+        graph.set(1, for: ResolutionContext.fresh())
         
-        #expect(graph.get(for: Context.fresh()) == nil)
+        #expect(graph.get(for: ResolutionContext.fresh()) == nil)
     }
     
     @Test("Get After Overrided")
     func getAfterOverride() {
         let graph = Graph<Int>()
-        let context = Context.fresh()
+        let context = ResolutionContext.fresh()
         
         graph.set(1, for: context)
         graph.set(2, for: context)
@@ -54,8 +54,8 @@ struct GraphTests {
     @Test("Set with Unique Context")
     func setWithUniqueContext() {
         let graph = Graph<Int>()
-        let context1 = Context.fresh()
-        let context2 = Context.fresh()
+        let context1 = ResolutionContext.fresh()
+        let context2 = ResolutionContext.fresh()
         
         graph.set(1, for: context1)
         graph.set(2, for: context2)
@@ -67,7 +67,7 @@ struct GraphTests {
     @Test("Set with Same Context")
     func setOverridesWithSameContext() {
         let graph = Graph<Int>()
-        let context = Context.fresh()
+        let context = ResolutionContext.fresh()
         
         graph.set(1, for: context)
         graph.set(2, for: context)
@@ -78,15 +78,15 @@ struct GraphTests {
     @Test("Release With Context")
     func releaseWithContext() {
         let graph = Graph<Int>()
-        let context = Context.fresh()
+        let context = ResolutionContext.fresh()
         
         graph.set(1, for: context)
-        graph.set(2, for: Context.fresh())
-        graph.set(3, for: Context.fresh())
-        graph.set(4, for: Context.fresh())
-        graph.set(5, for: Context.fresh())
+        graph.set(2, for: ResolutionContext.fresh())
+        graph.set(3, for: ResolutionContext.fresh())
+        graph.set(4, for: ResolutionContext.fresh())
+        graph.set(5, for: ResolutionContext.fresh())
         
-        graph.release(for: Context.fresh())
+        graph.release(for: ResolutionContext.fresh())
         #expect(graph.storage.count == 5)
         
         graph.release(for: context)
@@ -98,11 +98,11 @@ struct GraphTests {
     func releaseAll() {
         let graph = Graph<Int>()
         
-        graph.set(1, for: Context.fresh())
-        graph.set(2, for: Context.fresh())
-        graph.set(3, for: Context.fresh())
-        graph.set(4, for: Context.fresh())
-        graph.set(5, for: Context.fresh())
+        graph.set(1, for: ResolutionContext.fresh())
+        graph.set(2, for: ResolutionContext.fresh())
+        graph.set(3, for: ResolutionContext.fresh())
+        graph.set(4, for: ResolutionContext.fresh())
+        graph.set(5, for: ResolutionContext.fresh())
         
         graph.releaseAll()
         #expect(graph.storage.isEmpty)
@@ -111,10 +111,10 @@ struct GraphTests {
     @Test("Thread Safety")
     func threadSafety() async {
         let graph = Graph<Int>()
-        var contexts = [Context]()
+        var contexts = [ResolutionContext]()
         await withTaskGroup(of: Void.self) { group in
             for index in 0..<500 {
-                let context = Context.fresh()
+                let context = ResolutionContext.fresh()
                 contexts.append(context)
                 group.addTask {
                     graph.set(index, for: context)
@@ -136,7 +136,7 @@ struct GraphTests {
     @Test("Memory References")
     func classReference() {
         let graph = Graph<Classes.ObjectD>()
-        let context = Context.fresh()
+        let context = ResolutionContext.fresh()
         let expected = Classes.ObjectD()
         
         graph.set(expected, for: context)

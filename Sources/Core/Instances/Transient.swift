@@ -15,9 +15,9 @@ public class Transient<Product>: Instance {
     /// Initializes a new `Transient` instance.
     public required init() {}
     
-    public func get(for: Context) -> Product? { nil }
+    public func get(for: any Context) -> Product? { nil }
     
-    public func set(_ product: Product, for: Context) {}
+    public func set(_ product: Product, for: any Context) {}
     
-    public func release(for: Context?) {}
+    public func release(for: (any Context)?) {}
 }

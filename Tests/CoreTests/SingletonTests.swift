@@ -22,7 +22,7 @@ struct SingletonTest {
     func whenSetFirstTime_setValue() {
         let singleton = Singleton<Int>()
         
-        singleton.set(1, for: Context.fresh())
+        singleton.set(1, for: ResolutionContext.fresh())
         
         #expect(singleton.product == 1)
     }
@@ -30,11 +30,11 @@ struct SingletonTest {
     @Test("Setting does not Override")
     func whenSetAgain_doNothing() {
         let singleton = Singleton<Int>()
-        let context = Context.fresh()
+        let context = ResolutionContext.fresh()
         
         singleton.set(1, for: context)
         singleton.set(2, for: context)
-        singleton.set(3, for: Context.fresh())
+        singleton.set(3, for: ResolutionContext.fresh())
         
         #expect(singleton.product == 1)
     }
@@ -42,7 +42,7 @@ struct SingletonTest {
     @Test("Get")
     func whenValueSet_returnValue() {
         let singleton = Singleton<Int>()
-        let context = Context.fresh()
+        let context = ResolutionContext.fresh()
         
         singleton.set(1, for: context)
         
@@ -53,18 +53,18 @@ struct SingletonTest {
     func whenNothingIsSet_returnNil() {
         let singleton = Singleton<Int>()
         
-        #expect(singleton.get(for: Context.fresh()) == nil)
+        #expect(singleton.get(for: ResolutionContext.fresh()) == nil)
     }
     
     @Test("Release Does Nothing")
     func whenRelease_doNothing() {
         let singleton = Singleton<Int>()
-        let context = Context.fresh()
+        let context = ResolutionContext.fresh()
         
         singleton.set(1, for: context)
         
         singleton.release(for: context)
-        singleton.release(for: Context.fresh())
+        singleton.release(for: ResolutionContext.fresh())
         singleton.releaseAll()
         
         #expect(singleton.product == 1)

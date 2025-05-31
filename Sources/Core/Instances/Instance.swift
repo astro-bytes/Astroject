@@ -27,18 +27,18 @@ public protocol Instance<Product> {
     /// - Parameter context: The `Context` object containing information pertinent to the instance's retrieval,
     ///   such as a `graphID` for scoped instances.
     /// - Returns: The `Product` instance if found, otherwise `nil`.
-    func get(for context: Context) -> Product?
+    func get(for context: any Context) -> Product?
     
     /// Stores or updates a product instance within the instance manager for a given context.
     /// - Parameters:
     ///   - product: The `Product` instance to be stored.
     ///   - context: The `Context` object used to associate the product with a specific scope or identifier.
-    func set(_ product: Product, for context: Context)
+    func set(_ product: Product, for context: any Context)
     
     /// Releases (removes) a product instance, or all instances, from the instance manager.
     /// - Parameter context: An optional `Context` object. If provided, only the product associated
     ///   with this context's `graphID` is released. If `nil`, all managed instances are released.
-    func release(for context: Context?)
+    func release(for context: (any Context)?)
 }
 
 public extension Instance {

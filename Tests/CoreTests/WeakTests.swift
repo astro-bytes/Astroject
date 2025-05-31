@@ -23,11 +23,11 @@ struct WeakTests {
     @Test("Set")
     func whenSet_setValue() {
         let weak = Weak<D>()
-        let context = Context.fresh()
+        let context = MockContext.fresh()
         let expected = D()
         weak.set(expected, for: context)
         weak.set(D(), for: context)
-        weak.set(D(), for: .fresh())
+        weak.set(D(), for: MockContext.fresh())
         
         #expect(weak.product === expected)
     }
@@ -35,24 +35,24 @@ struct WeakTests {
     @Test("Get")
     func whenGetAndValueExists_returnValue() {
         let weak = Weak<D>()
-        let context = Context.fresh()
+        let context = MockContext.fresh()
         let expected = D()
         
         weak.set(expected, for: context)
         weak.set(D(), for: context)
-        weak.set(D(), for: .fresh())
+        weak.set(D(), for: MockContext.fresh())
         
-        #expect(weak.get(for: .fresh()) === expected)
+        #expect(weak.get(for: MockContext.fresh()) === expected)
         #expect(weak.get(for: context) === expected)
     }
     
     @Test("Release")
     func whenReleaseAndValueExists_removeValue() {
         let weak = Weak<D>()
-        let context = Context.fresh()
+        let context = MockContext.fresh()
         
         weak.set(D(), for: context)
-        weak.release(for: .fresh())
+        weak.release(for: MockContext.fresh())
         #expect(weak.product == nil)
         
         weak.set(D(), for: context)
@@ -69,9 +69,9 @@ struct WeakTests {
         let weak = Weak<D>()
         let expected = D()
         
-        weak.set(D(), for: .fresh())
-        weak.release(for: .fresh())
-        weak.set(expected, for: .fresh())
+        weak.set(D(), for: MockContext.fresh())
+        weak.release(for: MockContext.fresh())
+        weak.set(expected, for: MockContext.fresh())
         
         #expect(weak.product === expected)
     }
@@ -81,7 +81,7 @@ struct WeakTests {
         let weak = Weak<D>()
         var expected: D? = D()
         
-        weak.set(expected!, for: .fresh())
+        weak.set(expected!, for: MockContext.fresh())
         #expect(weak.product === expected)
         
         expected = nil
@@ -96,7 +96,7 @@ struct WeakTests {
         do {
             let temp = D()
             ref = temp
-            `weak`.set(temp, for: .fresh())
+            `weak`.set(temp, for: MockContext.fresh())
         }
         
         // ref should now be nil, because `temp` is out of scope

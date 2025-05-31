@@ -160,7 +160,7 @@ extension AsyncContainer: Resolver {
         productType type: Product.Type,
         name: String?
     ) async throws -> Product {
-        try await manageContext {
+        try await manageContext(ResolutionContext.currentContext) {
             try await initiateResolution(type, name: name, argument: Never?(nil))
         }
     }
@@ -170,7 +170,7 @@ extension AsyncContainer: Resolver {
         name: String?,
         argument: Argument
     ) async throws -> Product {
-        try await manageContext {
+        try await manageContext(ResolutionContext.currentContext) {
             try await initiateResolution(type, name: name, argument: argument)
         }
     }
@@ -232,7 +232,8 @@ extension AsyncContainer {
             )
         }
         
-        let graph = Context.current.graph
+        let context = ResolutionContext.currentContext
+        let graph = context.graph
         
         // Check for circular dependency
         if graph.contains(key) {
@@ -240,7 +241,7 @@ extension AsyncContainer {
         }
         
         // Push onto the task-local resolution path
-        return try await Context.$current.withValue(Context.current.push(key)) {
+        return try await ResolutionContext.current.withValue(context.push(key)) {
             let resolvedProduct: Product = try await findAndResolve(for: key, with: argument)
             // Notify behaviors after successful resolution
             serialQueue.sync {
@@ -315,18 +316,19 @@ extension AsyncContainer {
     /// - Parameter body: A throwing closure that performs the actual resolution logic.
     /// - Returns: The resolved product instance.
     /// - Throws: Any error thrown by the `body` closure.
-    func manageContext<T>(body: () async throws -> T) async throws -> T {
-        let currentContext = Context.current
-        
+    func manageContext<T, C: Context>(
+        _ currentContext: C,
+        body: () async throws -> T
+    ) async throws -> T {
         if currentContext.depth == 0 {
             // Top-level resolution: create fresh context with new graph ID and empty path
-            return try await Context.$current.withValue(Context.fresh()) {
+            return try await C.current.withValue(C.fresh()) {
                 try await body()
             }
         } else {
             // Nested resolution: increment depth but keep same graphID and continue path
             let nextContext = currentContext.next()
-            return try await Context.$current.withValue(nextContext) {
+            return try await C.current.withValue(nextContext) {
                 try await body()
             }
         }

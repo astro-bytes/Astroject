@@ -9,7 +9,9 @@ import Foundation
 import AstrojectCore
 
 // Mock Behavior for testing
-class MockBehavior: Behavior {
+class MockBehavior: Behavior, Identifiable {
+    let id: UUID = .init()
+    
     var callsDidRegister = false
     var callsDidResolve = false
     
@@ -34,5 +36,11 @@ class MockBehavior: Behavior {
     ) {
         callsDidRegister = true
         whenDidRegister()
+    }
+}
+
+extension MockBehavior: Equatable {
+    static func == (lhs: MockBehavior, rhs: MockBehavior) -> Bool {
+        lhs.id == rhs.id
     }
 }

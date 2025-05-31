@@ -58,7 +58,7 @@ struct Classes: Assembly {
         }
     }
     
-    class ObjectG: Equatable {
+    class ObjectG: Equatable, Hashable {
         static func == (lhs: Classes.ObjectG, rhs: Classes.ObjectG) -> Bool {
             lhs.id == rhs.id && lhs.int == rhs.int
         }
@@ -66,6 +66,11 @@ struct Classes: Assembly {
         let id: UUID = .init()
         let int: Int
         init(int: Int = 1) { self.int = int }
+        
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+            hasher.combine(int)
+        }
     }
     
     func assemble(container: any Container) throws {

@@ -33,19 +33,19 @@ class MockInstance<Product>: Instance {
         self.whenRelease = whenRelease
     }
     
-    func set(_ product: Product, for context: Context) {
+    func set(_ product: Product, for context: any Context) {
         setCount += 1
         calledSet = true
         whenSet()
     }
     
-    func get(for context: Context) -> Product? {
+    func get(for context: any Context) -> Product? {
         getCount += 1
         calledGet = true
         return whenGet()
     }
     
-    func release(for context: Context?) {
+    func release(for context: (any Context)?) {
         releaseCount += 1
         calledRelease = true
         whenRelease()

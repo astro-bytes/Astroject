@@ -118,6 +118,7 @@ public final class SyncContainer: Container, @unchecked Sendable {
         // Remove all key-value pairs from the registrations dictionary in a thread-safe way.
         serialQueue.sync {
             registrations.removeAll()
+            behaviors.removeAll()
         }
     }
     
@@ -135,7 +136,7 @@ extension SyncContainer: Resolver {
         productType type: Product.Type,
         name: String?
     ) throws -> Product {
-        try manageContext {
+        try manageContext(ResolutionContext.currentContext) {
             try initiateResolution(type, name: name, argument: Never?(nil))
         }
     }
@@ -145,7 +146,7 @@ extension SyncContainer: Resolver {
         name: String?,
         argument: Argument
     ) throws -> Product {
-        try manageContext {
+        try manageContext(ResolutionContext.currentContext) {
             try initiateResolution(type, name: name, argument: argument)
         }
     }
@@ -154,7 +155,7 @@ extension SyncContainer: Resolver {
         productType type: Product.Type,
         name: String?
     ) async throws -> Product {
-        try manageContext {
+        try manageContext(ResolutionContext.currentContext) {
             try initiateResolution(type, name: name, argument: Never?(nil))
         }
     }
@@ -164,7 +165,7 @@ extension SyncContainer: Resolver {
         name: String?,
         argument: Argument
     ) async throws -> Product {
-        try manageContext {
+        try manageContext(ResolutionContext.currentContext) {
             try initiateResolution(type, name: name, argument: argument)
         }
     }
@@ -209,7 +210,8 @@ extension SyncContainer {
             )
         }
         
-        let graph = Context.current.graph
+        let context = ResolutionContext.currentContext
+        let graph = context.graph
         
         // Check for circular dependency
         if graph.contains(key) {
@@ -217,7 +219,7 @@ extension SyncContainer {
         }
         
         // Push onto the task-local resolution path
-        return try Context.$current.withValue(Context.current.push(key)) {
+        return try ResolutionContext.current.withValue(context.push(key)) {
             try findAndResolve(for: key, with: argument)
         }
     }
@@ -287,18 +289,16 @@ extension SyncContainer {
     /// - Parameter body: A throwing closure that performs the actual resolution logic.
     /// - Returns: The resolved product instance.
     /// - Throws: Any error thrown by the `body` closure.
-    func manageContext<T>(body: () throws -> T) throws -> T {
-        let currentContext = Context.current
-        
+    func manageContext<T, C: Context>(_ currentContext: C, body: () throws -> T) throws -> T {
         if currentContext.depth == 0 {
             // Top-level resolution: create fresh context with new graph ID and empty path
-            return try Context.$current.withValue(Context.fresh()) {
+            return try C.current.withValue(C.fresh()) {
                 try body()
             }
         } else {
             // Nested resolution: increment depth but keep same graphID and continue path
             let nextContext = currentContext.next()
-            return try Context.$current.withValue(nextContext) {
+            return try C.current.withValue(nextContext) {
                 try body()
             }
         }

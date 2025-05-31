@@ -7,95 +7,64 @@
 
 import Foundation
 
-/// A structure representing the current resolution context within a dependency graph.
+/// A protocol representing the resolution context within a dependency injection graph.
 ///
-/// `Context` is used to track the depth of dependency resolution and to provide a unique
-/// identifier (`graphID`) for instances managed within a `Graph` instance management scope.
-/// It conforms to `Sendable` to allow safe usage across concurrent tasks.
-public struct Context: Sendable {
-    /// A `TaskLocal` variable that holds the current `Context` for the executing task.
-    ///
-    /// This allows for implicit passing of the context through a call stack,
-    /// making it convenient to access the current resolution context without
-    /// explicitly passing it as a function argument. It defaults to a new, empty context.
-    @TaskLocal public static var current: Context = .init()
-    /// The current depth of the dependency resolution.
-    ///
-    /// This property tracks how many levels deep the current dependency resolution
-    /// is within the graph. A `depth` of 0 typically indicates the initial context,
-    /// while incrementing values indicate nested resolutions.
-    public private(set) var depth: Int = 0
-    /// A unique identifier for the current graph resolution scope.
-    ///
-    /// This `UUID` is used by `Graph` instance management to store and retrieve
-    /// instances specific to the current resolution path, ensuring that instances
-    /// within a given "graph" or "scope" are consistent.
-    public private(set) var graphID: UUID = UUID()
-    /// The current resolution path, represented as an array of `RegistrationKey`s.
-    ///
-    /// This array tracks the sequence of dependencies being resolved, which is crucial
-    /// for detecting and preventing **circular dependencies**. Each key represents a
-    /// dependency currently being constructed in the resolution graph.
-    public private(set) var graph: [RegistrationKey] = []
+/// `Context` is used to track the resolution state as dependencies are resolved,
+/// including nesting depth, a unique graph identifier, and the current resolution path.
+/// Conforming types must be `Sendable` to support usage in concurrent environments.
+public protocol Context: Sendable {
     
-    /// Initializes a new `Context` instance with specified depth, graph ID, and resolution graph.
+    /// The current resolution context for the executing task.
     ///
-    /// - Parameters:
-    ///   - depth: The current depth of the resolution process. Defaults to 0 for an initial context.
-    ///   - graphID: A unique identifier for the current resolution graph. Defaults to a new `UUID`.
-    ///   - graph: The array representing the current resolution path. Defaults to an empty array.
-    private init(depth: Int = 0, graphID: UUID = UUID(), graph: [RegistrationKey] = []) {
-        self.depth = depth
-        self.graphID = graphID
-        self.graph = graph
-    }
+    /// This property allows for implicit propagation of context during resolution,
+    /// typically implemented using `@TaskLocal`. It enables tracking resolution state
+    /// without explicitly passing the context through each method.
+    static var current: TaskLocal<Self> { get }
     
-    /// Creates a new `Context` by incrementing the depth and retaining the current `graphID`.
+    /// Creates a new, fresh resolution context.
     ///
-    /// This method is used when resolving a dependency that is nested within the current
-    /// resolution process, maintaining the same graph scope but indicating a deeper level.
+    /// This is used to start a new top-level resolution graph. It should reset the depth
+    /// and assign a new unique graph identifier, isolating it from any existing context.
     ///
-    /// - Returns: A new `Context` instance with an incremented `depth` and the same `graphID`.
-    public func next() -> Context {
-        return Context(depth: depth + 1, graphID: graphID, graph: graph)
-    }
+    /// - Returns: A fresh `Context` instance ready to track a new resolution cycle.
+    static func fresh() -> Self
     
-    /// Creates a new, fresh `Context` with a depth of 1 and a new, unique `graphID`.
+    /// The current depth of the resolution process.
     ///
-    /// This method is typically called to start a new, top-level dependency resolution process,
-    /// establishing a new `graphID` for any `Graph`-scoped instances.
-    ///
-    /// - Returns: A new `Context` instance with `depth` initialized to 1 and a newly generated `graphID`.
-    public static func fresh() -> Context {
-        return Context(depth: 1, graphID: UUID())
-    }
+    /// Indicates how deep into the dependency graph the current resolution call stack is.
+    /// A depth of 0 typically means no resolution has started.
+    var depth: Int { get }
     
-    /// Pushes a `RegistrationKey` onto the current resolution graph (path).
+    /// The unique identifier associated with the current resolution graph.
     ///
-    /// This method creates a new `Context` with the provided `RegistrationKey` appended
-    /// to the `graph` array. This is used to track the dependency being resolved
-    /// and is essential for detecting circular dependencies.
-    ///
-    /// - Parameter key: The `RegistrationKey` to push onto the graph.
-    /// - Returns: A new `Context` instance with the updated resolution graph.
-    public func push(_ key: RegistrationKey) -> Context {
-        var newGraph = graph
-        newGraph.append(key)
-        return Context(depth: depth, graphID: graphID, graph: newGraph)
-    }
+    /// Used to scope `Graph`-managed instances to a specific resolution cycle.
+    var graphID: UUID { get }
     
-    /// Pops the last `RegistrationKey` from the current resolution graph (path).
+    /// The current resolution path as an ordered list of registration keys.
     ///
-    /// This method creates a new `Context` with the last `RegistrationKey` removed
-    /// from the `graph` array. This signifies that the resolution of the last dependency
-    /// in the path has completed, and the context is returning to a shallower level.
+    /// This array is used to track which dependencies are actively being resolved.
+    /// It can be used to detect circular dependencies.
+    var graph: [RegistrationKey] { get }
+    
+    /// Returns a new `Context` representing a deeper resolution level.
     ///
-    /// - Returns: A new `Context` instance with the updated resolution graph.
-    public func pop() -> Context {
-        var newGraph = graph
-        if !newGraph.isEmpty {
-            newGraph.removeLast()
-        }
-        return Context(depth: depth, graphID: graphID, graph: newGraph)
-    }
+    /// Typically used when beginning to resolve a nested dependency.
+    ///
+    /// - Returns: A copy of the current context with incremented depth.
+    func next() -> Self
+    
+    /// Returns a new `Context` with a given key pushed onto the resolution path.
+    ///
+    /// This method is used to track the current dependency being resolved.
+    ///
+    /// - Parameter key: The `RegistrationKey` to append.
+    /// - Returns: A new `Context` with the updated path.
+    func push(_ key: RegistrationKey) -> Self
+    
+    /// Returns a new `Context` with the most recently pushed key removed.
+    ///
+    /// Indicates that resolution of the most recent dependency has completed.
+    ///
+    /// - Returns: A new `Context` with the path truncated by one element.
+    func pop() -> Self
 }

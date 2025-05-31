@@ -25,19 +25,19 @@ public final class Graph<Product>: Instance, @unchecked Sendable {
     
     public init() {}
     
-    public func get(for context: Context) -> Product? {
+    public func get(for context: any Context) -> Product? {
         serialQueue.sync {
             storage[context.graphID]
         }
     }
     
-    public func set(_ product: Product, for context: Context) {
+    public func set(_ product: Product, for context: any Context) {
         serialQueue.sync {
             storage[context.graphID] = product
         }
     }
     
-    public func release(for context: Context?) {
+    public func release(for context: (any Context)?) {
         guard let context = context else {
             serialQueue.sync {
                 storage.removeAll()

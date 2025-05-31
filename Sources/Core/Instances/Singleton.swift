@@ -18,14 +18,14 @@ public class Singleton<Product>: Instance {
     /// Initializes a new `Singleton` instance.
     public required init() {}
     
-    public func get(for: Context) -> Product? {
+    public func get(for: any Context) -> Product? {
         self.product
     }
     
-    public func set(_ product: Product, for: Context) {
+    public func set(_ product: Product, for: any Context) {
         guard self.product == nil else { return }
         self.product = product
     }
     
-    public func release(for: Context?) {}
+    public func release(for: (any Context)?) {}
 }

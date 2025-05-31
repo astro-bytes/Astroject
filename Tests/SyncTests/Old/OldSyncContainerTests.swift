@@ -747,7 +747,7 @@ extension OldSyncContainerTests {
             
             // Register a simple type that captures the current graphID
             try container.register(UUID.self) {
-                let graphID = Context.current.graphID
+                let graphID = ResolutionContext.currentContext.graphID
                 graphIDs.append(graphID)
                 return graphID
             }
@@ -773,14 +773,14 @@ extension OldSyncContainerTests {
             class O2 {}
             
             try container.register(O2.self) {
-                capturedGraphIDs.append(Context.current.graphID)
+                capturedGraphIDs.append(ResolutionContext.currentContext.graphID)
                 return O2()
             }
             
             try container.register(O1.self) { resolver in
                 _ = try resolver.resolve(O2.self)
                 _ = try resolver.resolve(O2.self)
-                capturedGraphIDs.append(Context.current.graphID)
+                capturedGraphIDs.append(ResolutionContext.currentContext.graphID)
                 return O1()
             }
             

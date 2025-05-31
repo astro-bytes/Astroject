@@ -86,7 +86,7 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     public func resolve(
         _ container: Container,
         argument: Argument,
-        in context: Context = .current
+        in context: any Context = ResolutionContext.currentContext
     ) async throws -> Product {
         guard let product = instances[argument]?.get(for: context) else {
             do {
@@ -113,7 +113,7 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     public func resolve(
         _ container: Container,
         argument: Argument,
-        in context: Context = .current
+        in context: any Context = ResolutionContext.currentContext
     ) throws -> Product {
         guard let product = instances[argument]?.get(for: context) else {
             do {
@@ -160,7 +160,12 @@ extension ArgumentRegistration {
     ///   - argument: The argument key under which to store the product instance.
     ///   - context: The context relevant for instance management.
     ///   - container: The container used for executing post-initialization actions.
-    func set(_ product: Product, with argument: Argument, in context: Context, in container: Container) throws {
+    func set(
+        _ product: Product,
+        with argument: Argument,
+        in context: any Context,
+        in container: Container
+    ) throws {
         let instance = instanceType.init()
         instance.set(product, for: context)
         self.instances[argument] = instance
@@ -195,7 +200,7 @@ extension ArgumentRegistration: Equatable where Product: Equatable {
     /// - Returns: `true` if all instances and metadata match; otherwise `false`.
     public func isEqual(
         to other: ArgumentRegistration<Product, Argument>,
-        in context: Context = .current
+        in context: any Context = ResolutionContext.currentContext
     ) -> Bool {
         guard instances.allSatisfy({ (argument, instance) -> Bool in
             guard let otherInstance = other.instances[argument] else { return false }

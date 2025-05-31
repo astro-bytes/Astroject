@@ -14,12 +14,12 @@ struct TransientTests {
     @Test("Set Has No Effect")
     func whenSet_doNothing() {
         let transient = Transient<Int>()
-        let context = Context.fresh()
+        let context = MockContext.fresh()
         
         transient.set(67, for: context)
-        transient.set(42, for: .fresh())
+        transient.set(42, for: MockContext.fresh())
         
-        #expect(transient.get(for: .fresh()) == nil)
+        #expect(transient.get(for: MockContext.fresh()) == nil)
         #expect(transient.get(for: context) == nil)
     }
     
@@ -27,18 +27,18 @@ struct TransientTests {
     func whenGet_returnNil() {
         let transient = Transient<Int>()
         
-        #expect(transient.get(for: .fresh()) == nil)
+        #expect(transient.get(for: MockContext.fresh()) == nil)
     }
     
     @Test("Release has No Effect")
     func whenRelease_doNothing() {
         let transient = Transient<Int>()
-        let context = Context.fresh()
+        let context = MockContext.fresh()
         
         transient.set(67, for: context)
         
         transient.release(for: context)
-        transient.release(for: .fresh())
+        transient.release(for: MockContext.fresh())
         transient.releaseAll()
         
         #expect(transient.get(for: context) == nil)

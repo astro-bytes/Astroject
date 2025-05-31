@@ -72,7 +72,7 @@ public final class Registration<Product>: Registrable {
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(
         _ container: Container,
-        with context: Context = .current
+        with context: any Context = ResolutionContext.currentContext
     ) async throws -> Product {
         guard let product = instance.get(for: context) else {
             do {
@@ -99,7 +99,7 @@ public final class Registration<Product>: Registrable {
     /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
     public func resolve(
         _ container: Container,
-        with context: Context = .current
+        with context: any Context = ResolutionContext.currentContext
     ) throws -> Product {
         guard let product = instance.get(for: context) else {
             do {
@@ -147,7 +147,10 @@ extension Registration: Equatable where Product: Equatable {
     /// - Returns: `true` if both registrations have the same instance (in the given context),
     ///            use the same instance management strategy, have the same `isOverridable` flag,
     ///            and were created with the same factory; otherwise, `false`.
-    public func isEqual(to other: Registration<Product>, in context: Context = .current) -> Bool {
+    public func isEqual(
+        to other: Registration<Product>,
+        in context: any Context = ResolutionContext.currentContext
+    ) -> Bool {
         instance.get(for: context) == other.instance.get(for: context) &&
         self == other
     }
