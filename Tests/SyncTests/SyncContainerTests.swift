@@ -149,7 +149,11 @@ struct SyncContainerTests {
             let block = Factory<Int, (Resolver, Int)>.Block.sync { _, arg in arg }
             let factory1 = Factory<Int, (Resolver, Int)>(block)
             let factory2 = Factory<Int, (Resolver, Int)>(block)
-            let key = RegistrationKey(factoryType: Factory<Int, Resolver>.SyncBlock.self, productType: Int.self, argumentType: Int.self)
+            let key = RegistrationKey(
+                factoryType: Factory<Int, Resolver>.SyncBlock.self, 
+                productType: Int.self, 
+                argumentType: Int.self
+            )
             let registration1 = ArgumentRegistration(factory: factory1, isOverridable: true,  instanceType: Graph.self)
             let registration2 = ArgumentRegistration(factory: factory2, isOverridable: true, instanceType: Graph.self)
             
