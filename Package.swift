@@ -34,20 +34,17 @@ let package = Package(
         .target(
             name: "Mocks",
             dependencies: ["AstrojectCore"],
-            path: "Sources/Mocks", // Added path for Mocks target
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+            path: "Sources/Mocks"
         ),
 //        .target(
 //            name: "Nexus",
 //            dependencies: ["AstrojectCore"],
-//            path: "Sources/Nexus", // Added path for Nexus target
-//            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+//            path: "Sources/Nexus"
 //        ),
 //        .target(
 //            name: "Singularity",
 //            dependencies: ["AstrojectCore"],
-//            path: "Sources/Singularity", // Added path for Singularity target
-//            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+//            path: "Sources/Singularity"
 //        ),
         .target(
             name: "AstrojectSync",
@@ -59,30 +56,25 @@ let package = Package(
         .testTarget(
             name: "AsyncTests",
             dependencies: ["AstrojectCore", "AstrojectAsync", "Mocks"],
-            path: "Tests/AsyncTests", // Added path for AsyncTests
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+            path: "Tests/AsyncTests"
         ),
         .testTarget(
             name: "CoreTests",
             dependencies: ["AstrojectCore", "Mocks"],
-            path: "Tests/CoreTests", // Added path for CoreTests
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+            path: "Tests/CoreTests"
         ),
 //        .testTarget(
 //            name: "NexusTests",
-//            dependencies: ["Nexus"],
-//            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+//            dependencies: ["Nexus"]
 //        ),
 //        .testTarget(
 //            name: "SingularityTests",
-//            dependencies: ["Singularity"],
-//            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+//            dependencies: ["Singularity"]
 //        ),
         .testTarget(
             name: "SyncTests",
             dependencies: ["AstrojectCore", "AstrojectSync", "Mocks"],
-            path: "Tests/SyncTests", // Added path for SyncTests
-            plugins: [.plugin(name: "SwiftLintBuildToolPlugin", package: "SwiftLint")]
+            path: "Tests/SyncTests"
         )
     ]
 )
