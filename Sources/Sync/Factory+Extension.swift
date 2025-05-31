@@ -24,7 +24,7 @@ public extension Factory where Arguments == Resolver {
     init(_ block: @escaping (Resolver) throws -> Product) {
         self.init(.sync(block))
     }
-
+    
     /// Initializes a `Factory` with a synchronous block that takes no arguments.
     ///
     /// This initializer is for straightforward synchronous dependency creation where
@@ -55,7 +55,7 @@ public extension Factory {
         let block = Factory<Product, (Resolver, Argument)>.Block.sync(block)
         self.init(block)
     }
-
+    
     /// Initializes a `Factory` with a synchronous block that takes only an `Argument`.
     ///
     /// This initializer is for synchronous dependency creation where the product's instance
@@ -69,7 +69,7 @@ public extension Factory {
         let block = Factory<Product, (Resolver, Argument)>.Block.sync({ _, argument in
             try block(argument)
         })
-
+        
         self.init(block)
     }
 }

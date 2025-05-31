@@ -27,7 +27,7 @@ struct RegistrationTests {
     }
     
     @Test("Sets New Instance")
-    func setsNewInstance() {
+    func whenUsingAs_setsNewInstance() {
         let factory = Factory<Int, Resolver>(.sync { _ in 1 })
         let registration = Registration(
             factory: factory,
@@ -39,7 +39,7 @@ struct RegistrationTests {
     }
     
     @Test("After Init Adds Action")
-    func afterInitAddsAction() {
+    func whenUsingAfterInit_AddAction() {
         let factory = Factory<Int, Resolver>(.sync { _ in 1 })
         let registration = Registration(
             factory: factory,
@@ -55,7 +55,7 @@ struct RegistrationTests {
     @Suite("Sync Resolution")
     struct SyncResolution {
         @Test("No Cached Instance")
-        func noCachedInstance() throws {
+        func whenNoCachedInstance_createNewCachedInstance() throws {
             var calledFactory = false
             var calledAfterInit = false
             let instance = MockInstance<Int>()
@@ -81,7 +81,7 @@ struct RegistrationTests {
         }
         
         @Test("Cached Instance")
-        func cachedInstance() throws {
+        func whenCachedInstance_returnCache() throws {
             var calledFactory = false
             var calledAfterInit = false
             let factory = Factory<Int, Resolver>(.sync { _ in
@@ -107,7 +107,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws Underlying Error")
-        func throwsUnderlyingError() {
+        func whenUnderlyingError_throwError() {
             let factory = Factory<Int, Resolver>(.sync { _ in throw MockError() })
             let registration = Registration(
                 factory: factory,
@@ -121,7 +121,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws Astroject Error")
-        func throwsAstrojectError() {
+        func whenAstrojectError_throwError() {
             let factory = Factory<Int, Resolver>(.sync { _ in
                 throw AstrojectError.invalidFactory
             })
@@ -137,7 +137,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws After Init Error")
-        func throwsAfterInitError() {
+        func whenAfterInitError_throwError() {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration = Registration(
                 factory: factory,
@@ -156,7 +156,7 @@ struct RegistrationTests {
     @Suite("Async Resolution")
     struct AsyncResolution {
         @Test("No Cached Instance")
-        func noCachedInstance() async throws {
+        func whenNoCachedInstance_createNewCachedInstance() async throws {
             var calledFactory = false
             var calledAfterInit = false
             let instance = MockInstance<Int>()
@@ -182,7 +182,7 @@ struct RegistrationTests {
         }
         
         @Test("Cached Instance")
-        func cachedInstance() async throws {
+        func whenCachedInstance_returnCache() async throws {
             var calledFactory = false
             var calledAfterInit = false
             let instance = MockInstance<Int>(whenGet: { 1 })
@@ -208,7 +208,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws Underlying Error")
-        func throwsUnderlyingError() async {
+        func whenUnderlyingError_throwError() async {
             let factory = Factory<Int, Resolver>(.sync { _ in throw MockError() })
             let registration = Registration(
                 factory: factory,
@@ -222,7 +222,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws Astroject Error")
-        func throwsAstrojectError() async {
+        func whenAstrojectError_throwError() async {
             let factory = Factory<Int, Resolver>(.sync { _ in
                 throw AstrojectError.invalidFactory
             })
@@ -238,7 +238,7 @@ struct RegistrationTests {
         }
         
         @Test("Throws After Init Error")
-        func throwsAfterInitError() async {
+        func whenAfterInitError_throwError() async {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration = Registration(
                 factory: factory,
@@ -257,7 +257,7 @@ struct RegistrationTests {
     @Suite("Equality")
     struct Equality {
         @Test("Happy Path")
-        func whenHappyPath() {
+        func whenAllIsEqual() {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration1 = Registration(
                 factory: factory,

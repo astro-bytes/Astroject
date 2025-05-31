@@ -10,11 +10,11 @@ import AstrojectCore
 /// A dependency injection container that manages registrations and resolves dependencies.
 public final class SyncContainer: Container, @unchecked Sendable {
     /// A serial dispatch queue used to ensure thread-safe access to the container's internal state.
-    ///  This prevents race conditions when multiple threads try to access or modify the `registrations` dictionary.
+    /// This prevents race conditions when multiple threads try to access or modify the `registrations` dictionary.
     private let serialQueue: DispatchQueue = .init(label: "com.astrobytes.astroject.sync.container")
     /// A dictionary that stores the registrations of different product types. The key is a `RegistrationKey`
     /// that uniquely identifies a registration, and the value is the corresponding `Registrable` instance.
-    ///  `Registrable` encapsulates the factory and other registration-related information.
+    /// `Registrable` encapsulates the factory and other registration-related information.
     private(set) var registrations: [RegistrationKey: any Registrable] = [:]
     /// An array to hold different behaviors that can observe and interact with the container's lifecycle,
     /// such as when registrations are added.  Behaviors can be used for cross-cutting concerns

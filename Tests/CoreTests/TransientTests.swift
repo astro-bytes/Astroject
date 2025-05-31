@@ -12,7 +12,7 @@ import Testing
 @Suite("Transient Tests")
 struct TransientTests {
     @Test("Set Has No Effect")
-    func setHasNoEffect() {
+    func whenSet_doNothing() {
         let transient = Transient<Int>()
         let context = Context.fresh()
         
@@ -24,14 +24,14 @@ struct TransientTests {
     }
     
     @Test("Get Returns Nil")
-    func getReturnsNil() {
+    func whenGet_returnNil() {
         let transient = Transient<Int>()
         
         #expect(transient.get(for: .fresh()) == nil)
     }
     
     @Test("Release has No Effect")
-    func releaseHasNoEffect() {
+    func whenRelease_doNothing() {
         let transient = Transient<Int>()
         let context = Context.fresh()
         

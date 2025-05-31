@@ -21,7 +21,7 @@ struct WeakTests {
     }
     
     @Test("Set")
-    func set() {
+    func whenSet_setValue() {
         let weak = Weak<D>()
         let context = Context.fresh()
         let expected = D()
@@ -33,7 +33,7 @@ struct WeakTests {
     }
     
     @Test("Get")
-    func get() {
+    func whenGetAndValueExists_returnValue() {
         let weak = Weak<D>()
         let context = Context.fresh()
         let expected = D()
@@ -47,7 +47,7 @@ struct WeakTests {
     }
     
     @Test("Release")
-    func release() {
+    func whenReleaseAndValueExists_removeValue() {
         let weak = Weak<D>()
         let context = Context.fresh()
         
@@ -65,7 +65,7 @@ struct WeakTests {
     }
     
     @Test("Set Release Set Get")
-    func setReleaseSet() {
+    func whenGetAfterSetReleaseSet_returnSecondValue() {
         let weak = Weak<D>()
         let expected = D()
         
@@ -77,7 +77,7 @@ struct WeakTests {
     }
     
     @Test("Auto Release")
-    func autoRelease() {
+    func whenSetToNilOutOfInstance_weakReferenceIsNil() {
         let weak = Weak<D>()
         var expected: D? = D()
         
@@ -89,7 +89,7 @@ struct WeakTests {
     }
     
     @Test("Auto Release Out of Scope")
-    func autoReleaseOutOfScope() {
+    func whenReleasedFromAllScopes_weakReferenceIsNil() {
         let `weak` = Weak<D>()
         weak var ref: D?
         

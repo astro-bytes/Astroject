@@ -19,7 +19,7 @@ struct SingletonTest {
     }
     
     @Test("Set with Context")
-    func setWithContext() {
+    func whenSetFirstTime_setValue() {
         let singleton = Singleton<Int>()
         
         singleton.set(1, for: Context.fresh())
@@ -28,7 +28,7 @@ struct SingletonTest {
     }
     
     @Test("Setting does not Override")
-    func notOverridable() {
+    func whenSetAgain_doNothing() {
         let singleton = Singleton<Int>()
         let context = Context.fresh()
         
@@ -40,7 +40,7 @@ struct SingletonTest {
     }
     
     @Test("Get")
-    func get() {
+    func whenValueSet_returnValue() {
         let singleton = Singleton<Int>()
         let context = Context.fresh()
         
@@ -50,14 +50,14 @@ struct SingletonTest {
     }
     
     @Test("Get when Nothing is Set")
-    func getWhenNothingIsSet() {
+    func whenNothingIsSet_returnNil() {
         let singleton = Singleton<Int>()
         
         #expect(singleton.get(for: Context.fresh()) == nil)
     }
     
     @Test("Release Does Nothing")
-    func releaseDoesNothing() {
+    func whenRelease_doNothing() {
         let singleton = Singleton<Int>()
         let context = Context.fresh()
         

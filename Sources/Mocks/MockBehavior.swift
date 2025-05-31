@@ -10,6 +10,9 @@ import AstrojectCore
 
 // Mock Behavior for testing
 class MockBehavior: Behavior {
+    var callsDidRegister = false
+    var callsDidResolve = false
+    
     var whenDidRegister: () -> Void = {}
     var whenDidResolve: () -> Void = {}
     
@@ -19,15 +22,17 @@ class MockBehavior: Behavior {
         as registration: any Registrable<Product>,
         with name: String?
     ) {
+        callsDidResolve = true
         whenDidResolve()
     }
-
+    
     func didRegister<Product>(
         type: Product.Type,
         to container: Container,
         as registration: any Registrable<Product>,
         with name: String?
     ) {
+        callsDidRegister = true
         whenDidRegister()
     }
 }

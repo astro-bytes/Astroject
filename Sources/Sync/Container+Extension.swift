@@ -41,7 +41,7 @@ public extension Container {
             })
         )
     }
-
+    
     /// Registers a synchronous factory for a product that takes no arguments.
     ///
     /// Use this for straightforward synchronous dependency creation where no `Resolver`
@@ -70,7 +70,7 @@ public extension Container {
             })
         )
     }
-
+    
     /// Registers a synchronous factory for a product that requires both a `Resolver` and a specific `Argument`.
     ///
     /// This is useful when the creation of a dependency depends on both the container
@@ -104,7 +104,7 @@ public extension Container {
             })
         )
     }
-
+    
     /// Registers a synchronous factory for a product that takes only a specific `Argument`.
     ///
     /// Use this for synchronous dependency creation where the product's instance depends
@@ -137,7 +137,7 @@ public extension Container {
             })
         )
     }
-
+    
     /// Registers a synchronous factory for a product that takes no arguments, even when an `argumentType` is specified.
     ///
     /// This overload is useful when you want to use the argument-specific registration mechanism

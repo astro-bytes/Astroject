@@ -9,7 +9,7 @@ import XCTest
 @testable import Mocks
 @testable import AstrojectSync
 
-class PerformanceTests: XCTestCase {
+class OldPerformanceTests: XCTestCase {
     let iterations = 1_000
     
     func testRegistrationPerformance() throws {

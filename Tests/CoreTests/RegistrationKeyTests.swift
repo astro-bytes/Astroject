@@ -68,7 +68,7 @@ struct RegistrationKeyTests {
     @Suite("Equality")
     struct Equality {
         @Test("Happy Path")
-        func happyPath() {
+        func whenAllIsEqual() {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let key1 = RegistrationKey(factory: factory)
             let key2 = RegistrationKey(factory: factory)
