@@ -16,7 +16,7 @@ let package = Package(
         // Libraries for the Astroject framework
         .library(name: "Astroject", targets: ["AstrojectCore"]),
         .library(name: "Astroject-Async", targets: ["AstrojectCore", "AstrojectAsync"]),
-        .library(name: "Astroject-Sync", targets: ["AstrojectCore", "AstrojectSync"]),
+        .library(name: "Astroject-Sync", targets: ["AstrojectCore", "AstrojectSync"])
 //        .library(name: "Astroject-Nexus", targets: ["Nexus"]),
 //        .library(name: "Astroject-Singularity", targets: ["Singularity"])
     ],

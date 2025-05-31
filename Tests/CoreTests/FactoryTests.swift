@@ -76,7 +76,7 @@ struct FactoryTests {
         let result1 = try factory1("")
         #expect(result1 == 1)
         
-        #expect(throws: AstrojectError.invalidFactory){
+        #expect(throws: AstrojectError.invalidFactory) {
             _ = try factory2("")
         }
     }
@@ -135,7 +135,7 @@ struct FactoryTests {
             let result1 = try block1("")
             #expect(result1 == 1)
             
-            #expect(throws: AstrojectError.invalidFactory){
+            #expect(throws: AstrojectError.invalidFactory) {
                 _ = try block2("")
             }
         }
