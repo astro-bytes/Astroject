@@ -1,10 +1,11 @@
-# Astroject
+<div align="center">
+  <img width="628" alt="astroject-logo" src="https://github.com/user-attachments/assets/b7d09641-537e-4b48-9f2a-b2cb692e4e7f"/>
+</div>
 
-<!-- TODO: Insert Astroject Image-->
+<br>
 
-A lightweight and flexible dependency injection container for Swift.
-
-
+<div align="center">
+  
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/astro-bytes/astroject?style=flat-square)](https://github.com/astro-bytes/astroject/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg?style=flat-square)](https://swift.org)
@@ -15,6 +16,10 @@ A lightweight and flexible dependency injection container for Swift.
 [![Platform - visionOS](https://img.shields.io/badge/platform-visionOS%201%2B-purple.svg?style=flat-square)](https://developer.apple.com/visionos/)
 [![Build Status](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml)
 [![Lint Status](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml)
+
+</div>
+
+---
 
 Astroject is a modern, lightweight, and robust dependency injection (DI) framework designed for Swift applications across all platforms. It simplifies the management of object dependencies, promoting cleaner, more modular, and testable code. With a focus on thread safety and intuitive APIs, Astroject empowers developers to build complex applications with confidence. 
 
@@ -236,11 +241,11 @@ In this example, we register Int.self twice. The second registration will silent
 let container = Container()
 
 // First registration: Int will return 42
-try container.register(Int.self) { _ in 42 }
+try container.register(Int.self) {  42 }
 print("Initial Int value (should be 42): \(try await container.resolve(Int.self))") // Output: Initial Int value (should be 42): 42
 
 // Second registration for the same type: Int now returns 99
-try container.register(Int.self) { _ in 99 }
+try container.register(Int.self) {  99 }
 print("Overridden Int value (should be 99): \(try await container.resolve(Int.self))") // Output: Overridden Int value (should be 99): 99
 ```
 #### Protecting Registrations
@@ -253,12 +258,12 @@ Simply set isOverridable to false during registration:
 let container = Container()
 
 // This registration is explicitly marked as non-overridable
-try container.register(Int.self, isOverridable: false) { _ in 42 }
+try container.register(Int.self, isOverridable: false) {  42 }
 print("Protected Int value: \(try await container.resolve(Int.self))") // Output: Protected Int value: 42
 
 // Attempting to register another Int will now throw an error
 do {
-    try container.register(Int.self) { _ in 99 }
+    try container.register(Int.self) {  99 }
     print("This line will not be reached.")
 } catch AstrojectError.alreadyRegistered(let type, let name) {
     print("Error: Registration for \(type) with name \(name ?? "nil") already exists and cannot be overridden.")
@@ -314,7 +319,7 @@ Once defined, you can use your custom instance during registration:
 
 ```Swift
 let container = Container()
-try container.register(Int.self) { _ in 42 }.as(ExampleInstance())
+try container.register(Int.self) { 42 }.as(ExampleInstance())
 
 let value = try await container.resolve(Int.self)
 print("Resolved Int with ExampleInstance: \(value)") // Output: Resolved Int with ExampleInstance: 42
@@ -366,7 +371,7 @@ let container = Container()
 container.add(LoggingBehavior()) // Add the behavior to the container
 
 // When you register something, the behavior's didRegister method will be called:
-try container.register(Int.self, name: "answer") { _ in 42 }
+try container.register(Int.self, name: "answer") {  42 }
 // Output: Astroject: Registered Int with name: 'answer'
 
 try container.register(String.self) { "Hello, Astroject!" }
@@ -396,8 +401,8 @@ class MyAssembly: Assembly {
     // This is where you register your dependencies for this module
     func assemble(container: Container) {
         // We use try? here for brevity in example, in real code you'd handle errors
-        try? container.register(String.self, name: "greeting") { _ in "Hello from Astroject Assembly!" }
-        try? container.register(Int.self) { _ in 123 }
+        try? container.register(String.self, name: "greeting") {  "Hello from Astroject Assembly!" }
+        try? container.register(Int.self) {  123 }
     }
 
     // This hook runs AFTER assemble() is called and all registrations are processed

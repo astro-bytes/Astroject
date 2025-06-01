@@ -1,19 +1,15 @@
-disabled_rules: # rules to exclude from running
+disabled_rules:
   - trailing_whitespace
   - file_length
 
-opt_in_rules: # some rules are disabled by default, so you need to opt-in
+opt_in_rules:
   - redundant_void_return
 
-included: # paths to include during linting. Takes precedence over `excluded`.
-  - Sources
-  - Tests
-  - Playground
+line_length: 120
 
-excluded: # paths to ignore during linting. Takes precedence over `included`.
-  - Carthage
+excluded:
   - Pods
+  - Carthage
   - .build
-  - Docs
-
-line_length: 120 # max line length
+  - .swiftpm
+  - .scripts
