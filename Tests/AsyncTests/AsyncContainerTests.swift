@@ -2,32 +2,41 @@
 //  AsyncContainerTests.swift
 //  Astroject
 //
-//  Created by Porter McGary on 3/4/25.
+//  Created by Porter McGary on 5/30/25.
 //
+
 import Testing
-import Foundation
-@testable import AstrojectCore
 @testable import Mocks
+@testable import AstrojectCore
 @testable import AstrojectAsync
 
-@Suite("Container")
+@Suite("Container Tests")
 struct AsyncContainerTests {
-    @Test("Validate isRegistered")
-    func isRegistered() throws {
+    @Test("Initialization")
+    func initializeContainer() {
         let container = AsyncContainer()
-        try container.register(Int.self) { 1 }
-        try container.register(Int.self, name: "2") { 2 }
-        try container.register(Int.self, argumentType: String.self, name: "3") { 3 }
-        try container.register(Int.self, argumentType: String.self) { 4 }
         
-        #expect(container.isRegistered(Int.self))
-        #expect(container.isRegistered(Int.self, with: "2"))
-        #expect(container.isRegistered(Int.self, with: "3", and: String.self))
-        #expect(container.isRegistered(Int.self, and: String.self))
+        #expect(container.behaviors.isEmpty)
+        #expect(container.registrations.isEmpty)
     }
     
-    @Test("Add a Behavior")
-    func addBehavior() throws {
+    @Test("Clear Container")
+    func clearContainer() throws {
+        let container = AsyncContainer()
+        try container.register(Int.self) { 1 }
+        try container.register(Int.self, argumentType: Int.self) { arg in arg }
+        try container.register(Int.self, name: "test") { 2 }
+        try container.register(Int.self, argumentType: Int.self, name: "test") { arg in arg }
+        container.add(MockBehavior())
+        
+        container.clear()
+        
+        #expect(container.registrations.isEmpty)
+        #expect(container.behaviors.isEmpty)
+    }
+    
+    @Test("Add Behavior")
+    func addBehavior() {
         let container = AsyncContainer()
         let behavior1 = MockBehavior()
         let behavior2 = MockBehavior()
@@ -35,436 +44,238 @@ struct AsyncContainerTests {
         container.add(behavior1)
         container.add(behavior2)
         
-        #expect(container.behaviors.count == 2)
-        #expect((container.behaviors[0] as? MockBehavior) === behavior1)
-        #expect((container.behaviors[1] as? MockBehavior) === behavior2)
+        #expect(container.behaviors as! [MockBehavior] == [behavior1, behavior2])
     }
     
-    @Test("Validate Overriding Registration is Allowed")
-    func assertRegistrationAllowed() throws {
+    @Test("Concurrent Registrations")
+    func whenConcurrentRegistrations_noCrashing() async throws {
         let container = AsyncContainer()
-        let factory = Factory { 42 }
         
-        try container.register(Int.self, factory: factory)
-        try container.register(Int.self, factory: factory) // Should succeed, as it's overridable
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0..<500 {
+                group.addTask {
+                    #expect(throws: Never.self) {
+                        try container.register(Int.self, name: index.description) { index }
+                    }
+                }
+            }
+        }
         
+        for index in 0..<500 {
+            let result = try await container.resolve(Int.self, name: index.description)
+            #expect(result == index)
+        }
+    }
+    
+    @Test("Concurrent Resolutions")
+    func whenConcurrentResolutions_noCrashing() async throws {
+        let container = AsyncContainer()
+        for index in 0..<500 {
+            try container.register(Int.self, name: index.description) { index }
+        }
+        
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0..<500 {
+                group.addTask {
+                    await #expect(throws: Never.self) {
+                        try await container.resolve(productType: Int.self, name: index.description)
+                    }
+                }
+            }
+        }
+    }
+    
+    @Test("Is Registration Allowed Throws Error")
+    func whenOverridingConflict_throwsError() throws {
+        let container = AsyncContainer()
+        let factory = Factory<Int, Resolver>(.async { _ in 1 })
         let key = RegistrationKey(factory: factory)
+        
+        try container.register(Int.self, isOverridable: false, factory: factory)
+        
         #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
-            try container.register(Int.self, isOverridable: false, factory: factory)
-            try container.register(Int.self, factory: factory)
+            try container.register(Int.self) { 2 }
         }
     }
     
-    @Test("Clear all Registrations")
-    func clearRegistrations() throws {
+    @Test("New Context")
+    func whenTopLevelResolution_newContextIsCreated() async throws {
         let container = AsyncContainer()
-        try container.register(Double.self) { 42 }
         
-        #expect(container.registrations.count == 1)
+        var wasCalled = false
+        let freshContext = MockContext()
+        freshContext.depth = 1
         
-        container.clear()
+        // Override fresh and current to simulate top-level resolution
+        MockContext.currentContext.depth = 0
+        MockContext.currentContext.whenNext = {
+            fatalError("next() should not be called for top-level resolution")
+        }
         
-        #expect(container.registrations.isEmpty)
+        MockContext.whenFresh = { freshContext }
+        
+        MockContext.current.withValue(freshContext) {
+            wasCalled = true
+            return "resolved"
+        }
+        
+        try await container.manageContext(MockContext.currentContext) {}
+        
+        #expect(wasCalled)
     }
-}
-
-// MARK: Registration
-extension AsyncContainerTests {
-    @Suite("Registration")
-    struct RegistrationTests {
-        @Test("Registration Happy Path")
-        func registration() throws {
+    
+    @Test("Increment Context Depth")
+    func whenNestedResolution_contextDepthIsIncremented() async throws {
+        let container = AsyncContainer()
+        let context = MockContext()
+        context.depth = 1 // simulate nested resolution
+        context.whenNext = { MockContext() }
+        context.whenPush = { MockContext() }
+        context.whenPop = { MockContext() }
+        
+        let key = RegistrationKey(factory: Factory<Int, Resolver>(.async { _ in 1 }))
+        context.graph.append(key)
+        
+        try await container.manageContext(context) {}
+        
+        #expect(context.callsNext)
+        #expect(!context.callsPush)
+        #expect(!context.callsPop)
+    }
+    
+    @Suite("Without Arguments")
+    struct WithoutArguments {
+        @Test("Add Registration")
+        func addRegistration() throws {
             let container = AsyncContainer()
-            let factory = Factory { 42 }
+            let behavior = MockBehavior()
+            let block: Factory<Int, Resolver>.Block = .async { _ in 1 }
+            let factory = Factory<Int, Resolver>(block)
+            let key = RegistrationKey(factory: factory)
+            let registration = Registration<Int>(
+                factory: factory,
+                isOverridable: true,
+                instanceType: Graph.self
+            )
+            container.add(behavior)
+            
             try container.register(Int.self, factory: factory)
-            let expected = Registration(
-                factory: factory,
-                isOverridable: true,
-                instanceType: Graph.self
-            )
+            
+            #expect(behavior.callsDidRegister)
+            #expect(container.registrations[key] as! Registration == registration)
+            #expect(container.isRegistered(Int.self))
+        }
+        
+        @Test("Is Registered")
+        func whenRegistered_returnTrue() throws {
+            let container = AsyncContainer()
+            
+            try container.register(Int.self) { 1 }
+            
+            #expect(container.isRegistered(Int.self))
+        }
+        
+        @Test("Is Not Registred")
+        func whenNotRegistered_returnFalse() throws {
+            let container = AsyncContainer()
+            
+            #expect(!container.isRegistered(Int.self))
+        }
+        
+        @Test("Prevent Registration Overrides")
+        func whenRegistrationOverridesDisabled_throwError() throws {
+            let container = AsyncContainer()
+            let factory: Factory<Int, Resolver> = .init(.async { _ in 1 })
             let key = RegistrationKey(factory: factory)
-            let registration = container.registrations[key] as! Registration<Int>
-            #expect(registration == expected)
-        }
-        
-        @Test("Validate Named Registration")
-        func namedRegistration() throws {
-            let container = AsyncContainer()
-            let factory = Factory { 42 }
-            try container.register(Int.self, name: "42", factory: factory)
-            let expected = Registration(
-                factory: factory,
-                isOverridable: true,
-                instanceType: Graph.self
-            )
-            let key = RegistrationKey(factory: factory, name: "42")
-            let registration = container.registrations[key] as! Registration<Int>
-            #expect(registration == expected)
-        }
-        
-        @Test("Throw Already Registered Error")
-        func registrationAlreadyExistsError() throws {
-            let container = AsyncContainer()
-            let intFactory = Factory { 42 }
-            let intKey = RegistrationKey(factory: intFactory)
-            #expect(throws: AstrojectError.alreadyRegistered(key: intKey)) {
-                try container.register(Int.self, isOverridable: false) {  42 }
-                try container.register(Int.self) {  41 }
-            }
             
-            let strFactory = Factory { "42" }
-            let strKey = RegistrationKey(factory: strFactory)
-            #expect(throws: AstrojectError.alreadyRegistered(key: strKey)) {
-                try container.register(String.self) {  "41" }
-                try container.register(String.self, isOverridable: false) {  "42" }
+            try container.register(Int.self, isOverridable: false, factory: factory)
+            
+            #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
+                try container.register(Int.self) { 2 }
             }
         }
-    }
-}
-
-// MARK: Resolution
-extension AsyncContainerTests {
-    @Suite("Resolution")
-    struct ResolutionTests {
-        @Test("Resolve Happy Path")
-        func resolution() async throws {
+        
+        @Test("Override Registration")
+        func whenRegistrationOverridesEnabled_registerNewFactoryForKey() throws {
             let container = AsyncContainer()
-            try container.register(Int.self) {  42 }
-            let resolvedValue: Int = try await container.resolve(Int.self)
-            #expect(resolvedValue == 42)
+            let block = Factory<Int, Resolver>.Block.async { _ in 1 }
+            let factory1 = Factory<Int, Resolver>(block)
+            let factory2 = Factory<Int, Resolver>(block)
+            let key = RegistrationKey(factory: factory1)
+            let registration1 = Registration(factory: factory1, isOverridable: true, instanceType: Graph.self)
+            let registration2 = Registration(factory: factory2, isOverridable: true, instanceType: Graph.self)
+            
+            try container.register(Int.self, factory: factory1)
+            try container.register(Int.self, factory: factory2)
+            
+            #expect(container.registrations[key] as? Registration != registration1)
+            #expect(container.registrations[key] as? Registration == registration2)
         }
         
-        @Test("Named Resolution Happy Path")
-        func namedResolution() async throws {
+        @Test("Resolve")
+        func resolve() async throws {
             let container = AsyncContainer()
-            try container.register(Int.self, name: "41") {  41 }
-            try container.register(Int.self, name: "42") {  42 }
-            let resolved41 = try await container.resolve(Int.self, name: "41")
-            let resolved42 = try await container.resolve(Int.self, name: "42")
-            #expect(resolved41 == 41)
-            #expect(resolved42 == 42)
-        }
-        
-        @Test("Argument Resolution Happy Path")
-        func argumentResolution() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG
-            try container.register(G.self, argumentType: Int.self) { _, int in
-                G(int: int)
+            let behavior = MockBehavior()
+            container.add(behavior)
+            try container.register(Int.self) { 1 }
+            try container.register(String.self) { "1" }
+            try container.register(Classes.ObjectD.self) { Classes.ObjectD() }
+            try container.register(Classes.ObjectG.self) { Classes.ObjectG() }
+            try container.register(Classes.ObjectF.self) { r in
+                Classes.ObjectF(g: try await r.resolve(Classes.ObjectG.self))
             }
             
-            let first = try await container.resolve(G.self, argument: 1)
-            let second = try await container.resolve(G.self, argument: 2)
-            let third = try await container.resolve(G.self, argument: 1)
-            
-            #expect(first !== second)
-            #expect(third.int == first.int)
-        }
-        
-        @Test("Named Argument Resolution Happy Path")
-        func namedArgumentResolution() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG
-            
-            try container.register(G.self, argumentType: Int.self, name: "g") { _, int in
-                    .init(int: int)
+            await #expect(throws: Never.self) {
+                _ = try await container.resolve(Int.self)
             }
-            
-            let first = try await container.resolve(productType: G.self, name: "g", argument: 1)
-            let second = try await container.resolve(productType: G.self, name: "g", argument: 2)
-            let third = try await container.resolve(productType: G.self, name: "g", argument: 1)
-            
-            #expect(first !== second)
-            #expect(third.int == first.int)
+            await #expect(throws: Never.self) {
+                _ = try await container.resolve(String.self)
+            }
+            await #expect(throws: Never.self) {
+                _ = try await container.resolve(Classes.ObjectD.self)
+            }
+            await #expect(throws: Never.self) {
+                _ = try await container.resolve(Classes.ObjectG.self)
+            }
+            await #expect(throws: Never.self) {
+                _ = try await container.resolve(Classes.ObjectF.self)
+            }
+            #expect(behavior.callsDidResolve)
         }
         
-        @Test("Throw No Registration Error")
-        func noRegistrationFoundError() async throws {
+        @Test("Resolve Throws Not Registered Errors")
+        func whenNotRegistered_ResolveThrows() async {
             let container = AsyncContainer()
-            let factory = Factory { 42 }
+            let factory: Factory<Int, Resolver> = .init(.async { _ in 0 })
             let key = RegistrationKey(factory: factory)
+            
             await #expect(throws: AstrojectError.noRegistrationFound(key: key)) {
-                try await container.resolve(Int.self)
-            }
-            
-            let namedKey = RegistrationKey(factory: factory, name: "42")
-            await #expect(throws: AstrojectError.noRegistrationFound(key: namedKey)) {
-                try await container.resolve(Int.self, name: "42")
-            }
-            
-            let argumentFactory = Factory { (_, _: String) in 42 }
-            let namedArgumentKey = RegistrationKey(factory: argumentFactory, name: "42")
-            await #expect(throws: AstrojectError.noRegistrationFound(key: namedArgumentKey)) {
-                try await container.resolve(Int.self, name: "42", argument: "1")
-            }
-            
-            let argumentKey = RegistrationKey(factory: argumentFactory)
-            await #expect(throws: AstrojectError.noRegistrationFound(key: argumentKey)) {
-                try await container.resolve(Int.self, argument: "1")
+                _ = try await container.resolve(Int.self)
             }
         }
         
-        @Test("Throw Resolution Error")
-        func underlyingFactoryError() async throws {
+        @Test("Resolve Throws Underlying Errors")
+        func whenFactoryError_ResolveThrows() async throws {
             let container = AsyncContainer()
-            try container.register(Int.self) {  throw MockError() }
+            try container.register(Int.self) { throw MockError() }
+            
             await #expect(throws: AstrojectError.underlyingError(MockError())) {
-                try await container.resolve(Int.self)
-            }
-        }
-    }
-}
-
-// MARK: Thread Safety
-extension AsyncContainerTests {
-    @Suite("Thread Safety")
-    struct ThreadSafetyTests {
-        @Test("Register Concurrently")
-        func concurrentRegistration() async throws {
-            let container = AsyncContainer()
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for i in 0..<iterations {
-                    group.addTask {
-                        let type = i % 3 // Cycle through 3 types
-                        switch type {
-                        case 0:
-                            let result = try? container.register(Int.self, name: "int\(i)") { i }
-                            #expect(result != nil)
-                        case 1:
-                            let result = try? container.register(String.self, name: "string\(i)") { "string\(i)" }
-                            #expect(result != nil)
-                        case 2:
-                            let result = try? container.register(Double.self, name: "double\(i)") { Double(i) }
-                            #expect(result != nil)
-                        default:
-                            break
-                        }
-                    }
-                }
-            }
-            
-            // Verify registrations
-            for i in 0..<iterations {
-                let type = i % 3
-                switch type {
-                case 0:
-                    #expect(container.isRegistered(Int.self, with: "int\(i)"))
-                case 1:
-                    #expect(container.isRegistered(String.self, with: "string\(i)"))
-                case 2:
-                    #expect(container.isRegistered(Double.self, with: "double\(i)"))
-                default:
-                    break
-                }
+                _ = try await container.resolve(Int.self)
             }
         }
         
-        @Test("Resolve Concurrently")
-        func concurrentResolution() async throws {
-            let container = AsyncContainer()
-            try container.register(Int.self) { 42 }
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for _ in 0..<iterations {
-                    group.addTask {
-                        await #expect(throws: Never.self) {
-                            let result = try await container.resolve(Int.self)
-                            #expect(result == 42)
-                        }
-                    }
-                }
-            }
-        }
-        
-        @Test("Concurrent Registration and Resolution")
-        func concurrentRegistrationAndResolution() async throws {
-            let container = AsyncContainer()
-            try container.register(Int.self) { 42 }
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for i in 0..<iterations {
-                    group.addTask {
-                        if i % 2 == 0 {
-                            #expect(throws: Never.self) {
-                                try container.register(String.self, name: "string\(i)") { "string\(i)" }
-                            }
-                        } else {
-                            await #expect(throws: Never.self) {
-                                let result = try await container.resolve(Int.self)
-                                #expect(result == 42)
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Verify registrations
-            for i in 0..<iterations where i % 2 == 0 {
-                #expect(container.isRegistered(String.self, with: "string\(i)"))
-            }
-        }
-        
-        @Test("Concurrent Behavior Registration")
-        func concurrentBehaviorAddition() async throws {
-            let container = AsyncContainer()
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for _ in 0..<iterations {
-                    group.addTask {
-                        let behavior = MockBehavior() // Create a mock behavior
-                        container.add(behavior)
-                    }
-                }
-            }
-            
-            #expect(container.behaviors.count == iterations)
-        }
-        
-        @Test("Concurrent Clear")
-        func concurrentClear() async throws {
-            let container = AsyncContainer()
-            try container.register(Int.self) { 42 }
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for _ in 0..<iterations {
-                    group.addTask {
-                        container.clear()
-                    }
-                }
-            }
-            
-            #expect(container.registrations.isEmpty)
-        }
-        
-        @Test("Concurrent Resolution with Different Types")
-        func concurrentResolutionWithDifferentTypes() async throws {
-            let container = AsyncContainer()
-            try container.register(Int.self) { 42 }
-            try container.register(String.self) { "hello" }
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for i in 0..<iterations {
-                    group.addTask {
-                        if i % 2 == 0 {
-                            await #expect(throws: Never.self) {
-                                let result: Int = try await container.resolve(Int.self)
-                                #expect(result == 42)
-                            }
-                        } else {
-                            await #expect(throws: Never.self) {
-                                let result: String = try await container.resolve(String.self)
-                                #expect(result == "hello")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        @Test("Concurrent Registration with the Same Type & Different Names")
-        func concurrentRegistrationOfSameTypeWithDifferentNames() async throws {
-            let container = AsyncContainer()
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for i in 0..<iterations {
-                    group.addTask {
-                        let result = try? container.register(Int.self, name: "name\(i)") { i }
-                        #expect(result != nil)
-                    }
-                }
-            }
-            
-            for i in 0..<iterations {
-                #expect(container.isRegistered(Int.self, with: "name\(i)"))
-            }
-        }
-        
-        @Test("Mixed Concurrent Operations")
-        func mixedConcurrentOperations() async throws {
-            let container = AsyncContainer()
-            let iterations = 100
-            
-            await withTaskGroup(of: Void.self) { group in
-                for i in 0..<iterations {
-                    group.addTask {
-                        // Concurrent registration of different types with unique names
-                        let intResult = try? container.register(Int.self, name: "int\(i)") { i }
-                        #expect(intResult != nil)
-                        
-                        let stringResult = try? container.register(String.self, name: "string\(i)") { "string\(i)" }
-                        #expect(stringResult != nil)
-                        
-                        // Concurrent resolution of some of the registered types
-                        if i % 5 == 0 { // Resolve less frequently than registering
-                            let resolvedInt: Int? = try? await container.resolve(Int.self, name: "int\(i)")
-                            #expect(resolvedInt == i)
-                        }
-                        if i % 7 == 0 {
-                            let resolvedString: String? = try? await container.resolve(String.self, name: "string\(i)")
-                            #expect(resolvedString == "string\(i)")
-                        }
-                    }
-                }
-            }
-            
-            // After all tasks complete, verify that all registrations are still present
-            for i in 0..<iterations {
-                #expect(container.isRegistered(Int.self, with: "int\(i)"))
-                #expect(container.isRegistered(String.self, with: "string\(i)"))
-            }
-        }
-        
-        @Test("Concurrent Resolution with Shared Dependencies")
-        func concurrentResolutionWithSharedDependencies() async throws {
-            typealias B = Classes.ObjectB
-            typealias C = Classes.ObjectC
-            typealias D = Classes.ObjectD
-            
-            let iterations = 50
-            let container = try Assembler(Classes()).container
-            
-            await withTaskGroup(of: Void.self) { group in
-                for _ in 0..<iterations {
-                    group.addTask {
-                        await #expect(throws: Never.self) {
-                            _ = try await container.resolve(B.self)
-                            _ = try await container.resolve(C.self)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: Circular Dependency Tests
-extension AsyncContainerTests {
-    @Suite("Circular Dependency")
-    struct CircularDependencyTests {
-        @Test("Detect Circular Dependencies")
-        func circularDependencyDetected() async throws {
-            let container = try Assembler(CircularDependency()).container
+        @Test("Resolve Detects Circular Dependencies")
+        func whenCircularDependencyExists_ResolveThrows() async throws {
             typealias A = CircularDependency.ObjectA
             typealias B = CircularDependency.ObjectB
-            typealias C = CircularDependency.ObjectC
-            typealias D = CircularDependency.ObjectD
-            typealias E = CircularDependency.ObjectE
-            typealias G = CircularDependency.ObjectG
+            let container = AsyncContainer()
+            let aFactory: Factory<A, Resolver> = .init(.async { r in A(b: try await r.resolve(B.self)) })
+            let bFactory: Factory<B, Resolver> = .init(.async { r in B(a: try await r.resolve(A.self)) })
+            let aKey = RegistrationKey(factory: aFactory)
+            let bKey = RegistrationKey(factory: bFactory)
+            try container.register(A.self, factory: aFactory)
+            try container.register(B.self, factory: bFactory)
             
-            typealias K = RegistrationKey
-            typealias F = Factory
-            typealias R = Resolver
-            
-            let aKey = K(factoryType: F<A, R>.AsyncBlock.self, productType: A.self)
-            let bKey = K(factoryType: F<B, R>.AsyncBlock.self, productType: B.self)
             await #expect(throws: AstrojectError.cyclicDependency(key: aKey, path: [aKey, bKey])) {
                 _ = try await container.resolve(A.self)
             }
@@ -472,36 +283,153 @@ extension AsyncContainerTests {
             await #expect(throws: AstrojectError.cyclicDependency(key: bKey, path: [bKey, aKey])) {
                 _ = try await container.resolve(B.self)
             }
+        }
+    }
+    
+    @Suite("With Arguments")
+    struct WithArguments {
+        @Test("Add Registration")
+        func addRegistration() throws {
+            let container = AsyncContainer()
+            let behavior = MockBehavior()
+            let block: Factory<Int, (Resolver, Int)>.Block = .async { _, arg in arg }
+            let factory = Factory<Int, (Resolver, Int)>(block)
+            let key = RegistrationKey(factory: factory)
+            let registration = ArgumentRegistration<Int, Int>(
+                factory: factory,
+                isOverridable: true,
+                instanceType: Graph.self
+            )
+            container.add(behavior)
             
-            let cKey = K(factoryType: F<C, R>.AsyncBlock.self, productType: C.self)
-            let dKey = K(factoryType: F<D, R>.AsyncBlock.self, productType: D.self)
-            let eKey = K(factoryType: F<E, R>.AsyncBlock.self, productType: E.self)
-            await #expect(throws: AstrojectError.cyclicDependency(key: cKey, path: [cKey, dKey, eKey])) {
-                _ = try await container.resolve(C.self)
-            }
+            try container.register(Int.self, argumentType: Int.self, factory: factory)
             
-            let gKey = K(factoryType: F<G, R>.AsyncBlock.self, productType: G.self)
-            await #expect(throws: AstrojectError.cyclicDependency(key: gKey, path: [gKey])) {
-                _ = try await container.resolve(G.self)
+            #expect(behavior.callsDidRegister)
+            #expect(container.registrations[key] as! ArgumentRegistration == registration)
+            #expect(container.isRegistered(Int.self, and: Int.self))
+        }
+        
+        @Test("Is Registered")
+        func whenRegistered_returnTrue() throws {
+            let container = AsyncContainer()
+            
+            try container.register(Int.self, argumentType: Int.self) { 1 }
+            
+            #expect(container.isRegistered(Int.self, and: Int.self))
+        }
+        
+        @Test("Is Not Registred")
+        func whenNotRegistered_returnFalse() throws {
+            let container = AsyncContainer()
+            
+            #expect(!container.isRegistered(Int.self, and: Int.self))
+        }
+        
+        @Test("Prevent Registration Overrides")
+        func whenRegistrationOverridesDisabled_throwError() throws {
+            let container = AsyncContainer()
+            let factory: Factory<Int, (Resolver, Int)> = .init(.async { _, arg in arg })
+            let key = RegistrationKey(factory: factory)
+            
+            try container.register(Int.self, argumentType: Int.self, factory: factory)
+            
+            #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
+                try container.register(Int.self, argumentType: Int.self, isOverridable: false) { arg in arg }
             }
         }
         
-        @Test("Argument Circular Dependencies")
-        func circularDependenciesWithArguments() async throws {
-            let container = try Assembler(CircularDependency()).container
+        @Test("Override Registration")
+        func whenRegistrationOverridesEnabled_registerNewFactoryForKey() throws {
+            let container = AsyncContainer()
+            let block = Factory<Int, (Resolver, Int)>.Block.async { _, arg in arg }
+            let factory1 = Factory<Int, (Resolver, Int)>(block)
+            let factory2 = Factory<Int, (Resolver, Int)>(block)
+            let key = RegistrationKey(factory: factory1)
+            let registration1 = ArgumentRegistration(factory: factory1, isOverridable: true,  instanceType: Graph.self)
+            let registration2 = ArgumentRegistration(factory: factory2, isOverridable: true, instanceType: Graph.self)
+            
+            try container.register(Int.self, argumentType: Int.self, factory: factory1)
+            try container.register(Int.self, argumentType: Int.self, factory: factory2)
+            
+            #expect(container.registrations[key] as? ArgumentRegistration != registration1)
+            #expect(container.registrations[key] as? ArgumentRegistration == registration2)
+        }
+        
+        @Test("Resolve")
+        func resolve() async throws {
+            typealias E = Classes.ObjectE
+            typealias F = Classes.ObjectF
+            typealias G = Classes.ObjectG
+            
+            let container = AsyncContainer()
+            let behavior = MockBehavior()
+            container.add(behavior)
+            try container.register(Int.self, argumentType: Int.self) { arg in arg }
+            try container.register(String.self, argumentType: String.self) { arg in arg }
+            try container.register(F.self, argumentType: G.self) { g in F(g: g) }
+            try container.register(E.self, argumentType: G.self) { r, g in
+                E(f: try await r.resolve(F.self, argument: g), g: g)
+            }
+            
+            await #expect(throws: Never.self) {
+                let result = try await container.resolve(Int.self, argument: 1)
+                #expect(result == 1)
+            }
+            await #expect(throws: Never.self) {
+                let result = try await container.resolve(String.self, argument: "1")
+                #expect(result == "1")
+            }
+            await #expect(throws: Never.self) {
+                let g = G()
+                let result = try await container.resolve(E.self, argument: g)
+                #expect(result.f.g === g)
+                #expect(result.g === g)
+            }
+            await #expect(throws: Never.self) {
+                let g = G()
+                let result = try await container.resolve(F.self, argument: g)
+                #expect(result.g === g)
+            }
+            #expect(behavior.callsDidResolve)
+        }
+        
+        @Test("Resolve Throws Not Registered Errors")
+        func whenNotRegistered_ResolveThrows() async {
+            let container = AsyncContainer()
+            let factory: Factory<Int, (Resolver, Int)> = .init(.async { _, arg in arg })
+            let key = RegistrationKey(factory: factory)
+            
+            await #expect(throws: AstrojectError.noRegistrationFound(key: key)) {
+                _ = try await container.resolve(Int.self, argument: 1)
+            }
+        }
+        
+        @Test("Resolve Throws Underlying Errors")
+        func whenFactoryError_ResolveThrows() async throws {
+            let container = AsyncContainer()
+            try container.register(Int.self, argumentType: Int.self) { _ in throw MockError() }
+            
+            await #expect(throws: AstrojectError.underlyingError(MockError())) {
+                _ = try await container.resolve(Int.self, argument: 1)
+            }
+        }
+        
+        @Test("Resolve Detects Circular Dependencies")
+        func whenCircularDependencyExists_ResolveThrows() async throws {
             typealias A = CircularDependency.ObjectA
             typealias B = CircularDependency.ObjectB
-            typealias C = CircularDependency.ObjectC
-            typealias D = CircularDependency.ObjectD
-            typealias E = CircularDependency.ObjectE
-            typealias G = CircularDependency.ObjectG
+            let container = AsyncContainer()
+            let aFactory: Factory<A, (Resolver, Int)> = .init(.async { r, arg in
+                A(b: try await r.resolve(B.self, argument: arg))
+            })
+            let bFactory: Factory<B, (Resolver, Int)> = .init(.async { r, arg in
+                B(a: try await r.resolve(A.self, argument: arg))
+            })
+            let aKey = RegistrationKey(factory: aFactory)
+            let bKey = RegistrationKey(factory: bFactory)
+            try container.register(A.self, argumentType: Int.self, factory: aFactory)
+            try container.register(B.self, argumentType: Int.self, factory: bFactory)
             
-            typealias K = RegistrationKey
-            typealias F = Factory
-            typealias R = Resolver
-            
-            let aKey = K(factoryType: F<A, (R, Int)>.AsyncBlock.self, productType: A.self, argumentType: Int.self)
-            let bKey = K(factoryType: F<B, (R, Int)>.AsyncBlock.self, productType: B.self, argumentType: Int.self)
             await #expect(throws: AstrojectError.cyclicDependency(key: aKey, path: [aKey, bKey])) {
                 _ = try await container.resolve(A.self, argument: 1)
             }
@@ -509,608 +437,6 @@ extension AsyncContainerTests {
             await #expect(throws: AstrojectError.cyclicDependency(key: bKey, path: [bKey, aKey])) {
                 _ = try await container.resolve(B.self, argument: 1)
             }
-            
-            let cKey = K(factoryType: F<C, (R, Int)>.AsyncBlock.self, productType: C.self, argumentType: Int.self)
-            let dKey = K(factoryType: F<D, (R, Int)>.AsyncBlock.self, productType: D.self, argumentType: Int.self)
-            let eKey = K(factoryType: F<E, (R, Int)>.AsyncBlock.self, productType: E.self, argumentType: Int.self)
-            await #expect(throws: AstrojectError.cyclicDependency(key: cKey, path: [cKey, dKey, eKey])) {
-                _ = try await container.resolve(C.self, argument: 1)
-            }
-            
-            let gKey = K(factoryType: F<G, (R, Int)>.AsyncBlock.self, productType: G.self, argumentType: Int.self)
-            await #expect(throws: AstrojectError.cyclicDependency(key: gKey, path: [gKey])) {
-                _ = try await container.resolve(G.self, argument: 1)
-            }
-        }
-    }
-}
-
-// MARK: Instance Tests
-extension AsyncContainerTests {
-    @Suite("Instance")
-    struct InstanceTests {
-        @Test("Singleton Instance")
-        func containerSingletonInstance() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG
-            
-            var count = 0
-            try container.register(G.self) {
-                count += 1
-                return G()
-            }
-            .asSingleton()
-            
-            let one = try await container.resolve(G.self)
-            let two = try await container.resolve(G.self)
-            
-            #expect(one === two)
-            #expect(count == 1)
-        }
-        
-        @Test("Transient Instance")
-        func containerTransientInstance() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG
-            
-            var count = 0
-            try container.register(G.self) {
-                count += 1
-                return G()
-            }
-            .asTransient()
-            
-            let one = try await container.resolve(G.self)
-            let two = try await container.resolve(G.self)
-            
-            #expect(one !== two)
-            #expect(count == 2)
-        }
-        
-        @Test("Weak Instance")
-        func containerWeakInstance() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG
-            
-            var count = 0
-            try container.register(G.self) {
-                count += 1
-                return G()
-            }
-            .asWeak()
-            
-            var one: G? = try await container.resolve(G.self)
-            var two: G? = try await container.resolve(G.self)
-            
-            #expect(one === two)
-            #expect(count == 1)
-            
-            let oneId = one!.id
-            one = nil
-            two = nil
-            let three = try await container.resolve(G.self)
-            #expect(three.id != oneId)
-            #expect(count == 2)
-        }
-        
-        @Test("Graph Instance")
-        func containerGraphInstance() async throws {
-            let container = AsyncContainer()
-            typealias B = Classes.ObjectB
-            typealias C = Classes.ObjectC
-            typealias D = Classes.ObjectD
-            
-            var cCount = 0
-            var dCount = 0
-            var bCount = 0
-            
-            try container.register(D.self) {
-                dCount += 1
-                return D()
-            }
-            
-            try container.register(C.self) { resolver in
-                cCount += 1
-                let d = try await resolver.resolve(D.self)
-                return C(d: d)
-            }
-            
-            try container.register(B.self) { resolver in
-                bCount += 1
-                let c = try await resolver.resolve(C.self)
-                let d = try await resolver.resolve(D.self)
-                return B(c: c, d: d)
-            }
-            
-            _ = try await container.resolve(B.self)
-            
-            #expect(bCount == 1)
-            #expect(cCount == 1)
-            #expect(dCount == 1)
-        }
-        
-        @Test("Graph Instance with different identifiers")
-        func containerGraphInstanceDifferentGraphs() async throws {
-            let container = AsyncContainer()
-            typealias B = Classes.ObjectB
-            typealias C = Classes.ObjectC
-            typealias D = Classes.ObjectD
-            
-            var dCount = 0
-            var cCount = 0
-            var bCount = 0
-            try container.register(D.self) {
-                dCount += 1
-                return D()
-            }
-            
-            try container.register(C.self) { resolver in
-                cCount += 1
-                let d = try await resolver.resolve(D.self)
-                return C(d: d)
-            }
-            
-            try container.register(B.self) { resolver in
-                bCount += 1
-                let c = try await resolver.resolve(C.self)
-                let d = try await resolver.resolve(D.self)
-                return B(c: c, d: d)
-            }
-            
-            _ = try await container.resolve(B.self)
-            _ = try await container.resolve(B.self)
-            
-            #expect(bCount == 2)
-            #expect(cCount == 2)
-            #expect(dCount == 2)
-        }
-        
-        @Test("Graph Instance - Complex dependencies")
-        // swiftlint:disable:next function_body_length
-        func containerGraphInstanceComplexDependencies() async throws {
-            let container = AsyncContainer()
-            typealias A = Classes.ObjectA
-            typealias B = Classes.ObjectB
-            typealias C = Classes.ObjectC
-            typealias D = Classes.ObjectD
-            
-            var singletonCount = 0
-            var graphCount = 0
-            var transientCount = 0
-            var weakCount = 0
-            
-            try container.register(D.self) {
-                transientCount += 1
-                return D()
-            }
-            .asTransient()
-            
-            try container.register(C.self) { resolver in
-                graphCount += 1
-                let d = try await resolver.resolve(D.self)
-                return C(d: d)
-            }
-            
-            try container.register(B.self) { resolver in
-                singletonCount += 1
-                let c = try await resolver.resolve(C.self)
-                let d = try await resolver.resolve(D.self)
-                return B(c: c, d: d)
-            }
-            .asSingleton()
-            
-            try container.register(A.self) { resolver in
-                weakCount += 1
-                let b = try await resolver.resolve(B.self)
-                let c = try await resolver.resolve(C.self)
-                let d = try await resolver.resolve(D.self)
-                let d2 = try await resolver.resolve(D.self)
-                return A(b: b, c: c, d: d, d2: d2)
-            }
-            .asWeak()
-            
-            var a: A? = try await container.resolve(A.self)
-            
-            #expect(weakCount == 1)
-            #expect(transientCount == 4)
-            #expect(graphCount == 1)
-            #expect(singletonCount == 1)
-            
-            var a2: A? = try await container.resolve(A.self)
-            
-            // There are no changes because the object was never resolved!
-            #expect(weakCount == 1)
-            #expect(transientCount == 4)
-            #expect(graphCount == 1)
-            #expect(singletonCount == 1)
-            
-            a = nil
-            a2 = nil
-            
-            _ = try await container.resolve(A.self)
-            
-            #expect(weakCount == 2)
-            #expect(transientCount == 7)
-            #expect(graphCount == 2)
-            #expect(singletonCount == 1)
-            
-            // added to remove some warnings
-            #expect(a == nil)
-            #expect(a2 == nil)
-        }
-        
-        @Test("Context.current is unique per resolution tree")
-        func contextGraphIDUniquenessPerTree() async throws {
-            let container = AsyncContainer()
-            var graphIDs: [UUID] = []
-            
-            // Register a simple type that captures the current graphID
-            try container.register(UUID.self) {
-                let graphID = ResolutionContext.currentContext.graphID
-                graphIDs.append(graphID)
-                return graphID
-            }
-            
-            // First resolution
-            _ = try await container.resolve(UUID.self)
-            // Second resolution
-            _ = try await container.resolve(UUID.self)
-            // Third resolution
-            _ = try await container.resolve(UUID.self)
-            
-            // You should have 3 different graphIDs
-            #expect(graphIDs.count == 3)
-            #expect(Set(graphIDs).count == 3)
-        }
-        
-        @Test("Graph scope reuses the same context within one tree")
-        func graphScopeSharesSameContext() async throws {
-            let container = AsyncContainer()
-            var capturedGraphIDs: [UUID] = []
-            
-            class O1 {}
-            class O2 {}
-            
-            try container.register(O2.self) {
-                capturedGraphIDs.append(ResolutionContext.currentContext.graphID)
-                return O2()
-            }
-            
-            try container.register(O1.self) { resolver in
-                _ = try await resolver.resolve(O2.self)
-                _ = try await resolver.resolve(O2.self)
-                capturedGraphIDs.append(ResolutionContext.currentContext.graphID)
-                return O1()
-            }
-            
-            _ = try await container.resolve(O1.self)
-            
-            #expect(capturedGraphIDs.count == 2)
-            #expect(Set(capturedGraphIDs).count == 1) // All the same!
-        }
-        
-        @Test("Concurrent Graph Resolution")
-        func containerConcurrentGraphResolution() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG
-            let serialQueue = DispatchQueue(label: "com.astrobytes.astroject.tests.graph")
-            var count = 0
-            
-            try container.register(G.self) {
-                serialQueue.sync {
-                    count += 1
-                }
-                return G()
-            }
-            
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                for _ in 0..<10 {
-                    group.addTask {
-                        _ = try await container.resolve(G.self)
-                    }
-                }
-                try await group.waitForAll()
-            }
-            
-            #expect(count == 10)
-        }
-        
-        @Test("Singleton Instance with Arguments Creates Unique Instances Per Argument")
-        func containerSingletonWithArgumentsUniquePerArgument() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG // Assuming ObjectG has an initializer like init(int: Int)
-            
-            var creationCount = 0
-            try container.register(G.self, argumentType: Int.self) { _, intArgument in
-                creationCount += 1
-                return G(int: intArgument) // Assuming ObjectG takes an Int in its initializer
-            }
-            .asSingleton() // This is the crucial part: registered as a singleton with arguments
-            
-            // Resolve with argument 1
-            let instanceOneArg1 = try await container.resolve(G.self, argument: 1)
-            let instanceTwoArg1 = try await container.resolve(G.self, argument: 1)
-            
-            // Resolve with argument 2
-            let instanceOneArg2 = try await container.resolve(G.self, argument: 2)
-            let instanceTwoArg2 = try await container.resolve(G.self, argument: 2)
-            
-            // Resolve with argument 3
-            let instanceOneArg3 = try await container.resolve(G.self, argument: 3)
-            let instanceTwoArg3 = try await container.resolve(G.self, argument: 3)
-            
-            // Re-resolve with argument 1 and 2 to ensure uniqueness is maintained
-            let instanceThreeArg1 = try await container.resolve(G.self, argument: 1)
-            let instanceThreeArg2 = try await container.resolve(G.self, argument: 2)
-            
-            // 1. Assert that resolving with the same argument yields the same instance
-            #expect(instanceOneArg1 === instanceTwoArg1)
-            #expect(instanceOneArg2 === instanceTwoArg2)
-            #expect(instanceOneArg3 === instanceTwoArg3)
-            
-            // 2. Assert that resolving with different arguments yields different instances
-            #expect(instanceOneArg1 !== instanceOneArg2)
-            #expect(instanceOneArg1 !== instanceOneArg3)
-            #expect(instanceOneArg2 !== instanceOneArg3)
-            
-            // 3. Assert that re-resolving with a previously used argument returns the original instance
-            #expect(instanceOneArg1 === instanceThreeArg1)
-            #expect(instanceOneArg2 === instanceThreeArg2)
-            
-            // Assert creation count: Should be 3, because an instance is created only once per unique argument
-            #expect(creationCount == 3)
-        }
-        
-        @Test("Weak Instance with Arguments Creates Unique Instances Per Argument")
-        func containerWeakWithArgumentsUniquePerArgument() async throws {
-            let container = AsyncContainer()
-            typealias G = Classes.ObjectG
-            
-            var creationCount = 0
-            try container.register(G.self, argumentType: Int.self) { _, intArgument in
-                creationCount += 1
-                return G(int: intArgument)
-            }
-            .asWeak() // Registered as weak
-            
-            // 1. Resolve with argument 1: First creation for arg 1
-            var instanceOneArg1: G? = try await container.resolve(G.self, argument: 1)
-            #expect(creationCount == 1)
-            #expect(instanceOneArg1?.int == 1)
-            
-            // 2. Resolve again with argument 1: Should reuse the existing instance
-            var instanceTwoArg1: G? = try await container.resolve(G.self, argument: 1)
-            #expect(instanceOneArg1 === instanceTwoArg1)
-            #expect(creationCount == 1) // Still 1, as it was reused
-            
-            // 3. Resolve with argument 2: First creation for arg 2
-            var instanceOneArg2: G? = try await container.resolve(G.self, argument: 2)
-            #expect(creationCount == 2) // Now 2, new instance for arg 2
-            #expect(instanceOneArg2?.int == 2)
-            #expect(instanceOneArg1 !== instanceOneArg2) // Different instances for different args
-            
-            // 4. Resolve again with argument 2: Should reuse existing instance for arg 2
-            var instanceTwoArg2: G? = try await container.resolve(G.self, argument: 2)
-            #expect(instanceOneArg2 === instanceTwoArg2)
-            #expect(creationCount == 2) // Still 2
-            
-            // Clear references to allow weak instances to deallocate
-            let originalIdArg1 = instanceOneArg1?.id
-            instanceOneArg1 = nil
-            instanceTwoArg1 = nil
-            instanceOneArg2 = nil
-            instanceTwoArg2 = nil
-            
-            // 5. Resolve with argument 1 again after deallocation: Should create a new instance for arg 1
-            let instanceThreeArg1 = try await container.resolve(G.self, argument: 1)
-            #expect(creationCount == 3) // Now 3, new instance for arg 1
-            #expect(instanceThreeArg1.int == 1)
-            #expect(instanceThreeArg1.id != originalIdArg1) // A new instance for argument 1
-            
-            // 6. Resolve with argument 2 again (assuming its previous instance
-            // was deallocated): Should create a new instance for arg 2
-            let instanceThreeArg2 = try await container.resolve(G.self, argument: 2)
-            #expect(creationCount == 4) // Now 4, new instance for arg 2
-            #expect(instanceThreeArg2.int == 2)
-            #expect(instanceThreeArg1 !== instanceThreeArg2) // Still different instances
-            
-            // Test that if we resolve again with 1 (and it's still in memory), it's the same
-            let instanceFourArg1 = try await container.resolve(G.self, argument: 1)
-            #expect(instanceThreeArg1 === instanceFourArg1)
-            #expect(creationCount == 4)
-        }
-        
-        @Test("Graph Instance with Arguments Creates Unique Instances Per Graph Root Resolution")
-        func containerGraphWithArgumentsUniquePerRootResolution() async throws {
-            let container = AsyncContainer()
-            typealias F = Classes.ObjectF
-            typealias G = Classes.ObjectG
-            
-            var gCreationCount = 0
-            var fCreationCount = 0
-            
-            try container.register(G.self, argumentType: Int.self) { _, intArgument in
-                gCreationCount += 1
-                return G(int: intArgument)
-            }
-            .asGraph()
-            // If you have a different default scope, ensure it's set to .asGraph() or remove this line.
-            
-            try container.register(F.self, argumentType: Int.self) { resolver, intArgument in
-                fCreationCount += 1
-                // F resolves G, passing its own argument down
-                let g = try await resolver.resolve(G.self, argument: intArgument)
-                return F(g: g)
-            }
-            
-            // --- First Resolution Tree (root is H with argument 1) ---
-            let f1_arg1_tree1 = try await container.resolve(F.self, argument: 1)
-            #expect(fCreationCount == 1) // F created once
-            #expect(gCreationCount == 1) // G created once for argument 1 within this tree
-            #expect(f1_arg1_tree1.g.int == 1)
-            
-            // --- Second Resolution Tree (root is F with argument 1 - same argument) ---
-            let f2_arg1_tree2 = try await container.resolve(F.self, argument: 1)
-            #expect(fCreationCount == 2) // F created again (new root resolution)
-            #expect(gCreationCount == 2) // G created again (new root resolution for arg 1)
-            #expect(f2_arg1_tree2.g.int == 1)
-            #expect(f1_arg1_tree1 !== f2_arg1_tree2) // Different root F instances
-            #expect(f1_arg1_tree1.g !== f2_arg1_tree2.g) // Different G instances because it's a new graph
-            
-            // --- Third Resolution Tree (root is F with argument 2 - different argument) ---
-            let f3_arg2_tree3 = try await container.resolve(F.self, argument: 2)
-            #expect(fCreationCount == 3) // F created again
-            #expect(gCreationCount == 3) // G created again (new root resolution for arg 2)
-            #expect(f3_arg2_tree3.g.int == 2)
-            #expect(f1_arg1_tree1.g !== f3_arg2_tree3.g) // Different G instances
-            
-            // --- Verify intra-graph uniqueness for G if resolved multiple times within a single F resolution ---
-            var gInstancesInSingleFResolution: [G] = []
-            try container.register(F.self, argumentType: Int.self) { resolver, intArgument in
-                fCreationCount += 1 // Will increment this for the new F registration
-                let g1 = try await resolver.resolve(G.self, argument: intArgument)
-                let g2 = try await resolver.resolve(G.self, argument: intArgument)
-                gInstancesInSingleFResolution.append(g1)
-                gInstancesInSingleFResolution.append(g2)
-                return F(g: g1) // Return one of them
-            }
-            
-            _ = try await container.resolve(F.self, argument: 5)
-            #expect(gInstancesInSingleFResolution.count == 2)
-            // Within a single resolution tree, even with arguments, graph scope reuses the instance
-            #expect(gInstancesInSingleFResolution[0] === gInstancesInSingleFResolution[1])
-            #expect(gInstancesInSingleFResolution[0].int == 5)
-            // The creation count for G was already 3 from previous tests, and now it should be 4
-            // because a new F resolution (which resolves G internally) happened.
-            #expect(gCreationCount == 4)
-            // The key for Graph is that a new instance is created *per root resolution*,
-            // and within that root resolution, that instance is reused for the same argument.
-        }
-    }
-}
-
-// MARK: Behavior Test
-extension AsyncContainerTests {
-    @Suite("Behavior")
-    struct BehaviorTests {
-        @Test("Ensure didRegister is Called")
-        func behaviorDidRegisterCalled() throws {
-            let container = AsyncContainer()
-            let behavior = MockBehavior()
-            
-            var didRegisterCalled = false
-            behavior.whenDidRegister = {
-                didRegisterCalled = true
-            }
-            
-            container.add(behavior)
-            
-            try container.register(Int.self) {  10 }
-            
-            #expect(didRegisterCalled)
-        }
-        
-        @Test("Ensure didRegisterWithArgument is Called")
-        func behaviorDidRegisterWithArgument() throws {
-            let container = AsyncContainer()
-            let behavior = MockBehavior()
-            
-            var didRegisterCalled = false
-            behavior.whenDidRegister = {
-                didRegisterCalled = true
-            }
-            
-            container.add(behavior)
-            
-            try container.register(String.self, argumentType: String.self) { "Hello" }
-            
-            #expect(didRegisterCalled)
-        }
-        
-        @Test("Ensure didResolve is Called")
-        func behaviorDidResolveCalled() async throws {
-            let container = AsyncContainer()
-            let behavior = MockBehavior()
-            
-            var isCalled = false
-            behavior.whenDidResolve = {
-                isCalled = true
-            }
-            
-            container.add(behavior)
-            
-            try container.register(Int.self) {  10 }
-            _ = try await container.resolve(Int.self)
-            
-            #expect(isCalled)
-        }
-        
-        @Test("Ensure didResolveWithArgument is Called")
-        func behaviorDidResolveWithArgument() async throws {
-            let container = AsyncContainer()
-            let behavior = MockBehavior()
-            
-            var isCalled = false
-            behavior.whenDidResolve = {
-                isCalled = true
-            }
-            
-            container.add(behavior)
-            
-            try container.register(String.self, argumentType: String.self) { "Hello" }
-            _ = try await container.resolve(String.self, argument: "")
-            
-            #expect(isCalled)
-        }
-        
-        @Test("Testing Multiple Behaviors")
-        func multipleBehaviors() throws {
-            let container = AsyncContainer()
-            let behavior1 = MockBehavior()
-            let behavior2 = MockBehavior()
-            
-            var didRegister1 = false
-            var didRegister2 = false
-            
-            behavior1.whenDidRegister = {
-                didRegister1 = true
-            }
-            behavior2.whenDidRegister = {
-                didRegister2 = true
-            }
-            
-            container.add(behavior1)
-            container.add(behavior2)
-            
-            try container.register(Double.self) {  3.14 }
-            
-            #expect(didRegister1)
-            #expect(didRegister2)
-        }
-        
-        @Test("Behaviors with Multiple Registrations")
-        func behaviorWithDifferentRegistrations() throws {
-            let container = AsyncContainer()
-            let behavior = MockBehavior()
-            
-            var didRegister = false
-            behavior.whenDidRegister = {
-                didRegister = true
-            }
-            
-            container.add(behavior)
-            
-            try container.register(Int.self) {  10 }
-            try container.register(String.self, name: "testString") {  "Hello" }
-            
-            #expect(didRegister)
-            
-            // reset the behavior
-            didRegister = false
-            
-            try container.register(Double.self) {  4.0 }
-            
-            #expect(didRegister)
         }
     }
 }

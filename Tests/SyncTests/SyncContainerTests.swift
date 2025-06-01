@@ -215,6 +215,8 @@ struct SyncContainerTests {
         @Test("Resolve")
         func resolve() throws {
             let container = SyncContainer()
+            let behavior = MockBehavior()
+            container.add(behavior)
             try container.register(Int.self) { 1 }
             try container.register(String.self) { "1" }
             try container.register(Classes.ObjectD.self) { Classes.ObjectD() }
@@ -238,6 +240,7 @@ struct SyncContainerTests {
             #expect(throws: Never.self) {
                 _ = try container.resolve(Classes.ObjectF.self)
             }
+            #expect(behavior.callsDidResolve)
         }
         
         @Test("Resolve Throws Not Registered Errors")
@@ -359,6 +362,8 @@ struct SyncContainerTests {
             typealias G = Classes.ObjectG
             
             let container = SyncContainer()
+            let behavior = MockBehavior()
+            container.add(behavior)
             try container.register(Int.self, argumentType: Int.self) { arg in arg }
             try container.register(String.self, argumentType: String.self) { arg in arg }
             try container.register(F.self, argumentType: G.self) { g in F(g: g) }
@@ -385,6 +390,7 @@ struct SyncContainerTests {
                 let result = try container.resolve(F.self, argument: g)
                 #expect(result.g === g)
             }
+            #expect(behavior.callsDidResolve)
         }
         
         @Test("Resolve Throws Not Registered Errors")

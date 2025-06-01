@@ -143,6 +143,7 @@ public final class AsyncContainer: Container, @unchecked Sendable {
         // Remove all key-value pairs from the registrations dictionary in a thread-safe way.
         serialQueue.sync {
             registrations.removeAll()
+            behaviors.removeAll()
         }
     }
     
