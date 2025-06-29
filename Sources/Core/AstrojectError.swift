@@ -118,6 +118,7 @@ public enum AstrojectError: LocalizedError {
         case .invalidArgument:
             return "The argument passed during resolution could not be cast to the expected type."
         case .invalidForwarding:
+            // swiftlint:disable:next line_length
             return "The product type registered under this key does not conform to or cannot be cast to the forwarded interface."
         }
     }
@@ -141,8 +142,10 @@ public enum AstrojectError: LocalizedError {
             // swiftlint:disable:next line_length
             return "Review the code within the registration action (e.g., your `postInitAction` closure) for potential errors."
         case .invalidArgument:
+            // swiftlint:disable:next line_length
             return "Ensure the argument provided matches the type used during registration. For example, if you registered a dependency with an `Int` argument, passing a `String` will result in this error."
         case .invalidForwarding:
+            // swiftlint:disable:next line_length
             return "Ensure that the registered product type conforms to the forwarded protocol or base class. If using a protocol, the registered concrete type must implement it."
         }
     }

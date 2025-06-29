@@ -307,18 +307,18 @@ extension AsyncContainer {
         }
         
         if let argumentValue = argument {
-            guard let p = try await registration.resolve(self, argument: argumentValue) as? Product else {
+            guard let temp = try await registration.resolve(self, argument: argumentValue) as? Product else {
                 throw AstrojectError.noRegistrationFound(key: key)
             }
             
-            product = p
+            product = temp
         } else {
             // attempt to resolve the registration
-            guard let p = try await registration.resolve(self) as? Product else {
+            guard let temp = try await registration.resolve(self) as? Product else {
                 throw AstrojectError.noRegistrationFound(key: key)
             }
             
-            product = p
+            product = temp
         }
         
         serialQueue.sync {

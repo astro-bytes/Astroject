@@ -10,26 +10,6 @@ import Testing
 @testable import Mocks
 @testable import AstrojectCore
 
-/**
- ## TODO: Integration Tests (optional)
- 
- - **Full assembly lifecycle**
- - Use mock `Assembly` implementations that record method calls.
- - Verify `preloaded`, `assemble`, and `loaded` called in correct order.
- - Verify dependencies registered in `assemble` are resolvable via `resolver`.
- 
- - **Multiple assemblies with side effects**
- - Test multiple assemblies registering different services.
- - Verify all registrations exist in the container after assembly.
- 
- - **Re-application**
- - Applying same assembly multiple times calls lifecycle methods each time.
- - Confirm no residual state causes failures.
- 
- - **Performance**
- - Test `run(assemblies:)` completes within reasonable time for many assemblies.
- 
- */
 @Suite("Assembler Tests")
 struct AssemblerTests {
     @Test("Init with Container")

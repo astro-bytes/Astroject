@@ -86,7 +86,6 @@ public protocol Registrable<Product> {
         in context: any Context
     ) async throws -> Product
     
-    // TODO: UPDATE COMMENT
     /// Forwards the current registration to an additional type.
     ///
     /// This enables multiple types to resolve to the same underlying product instance.

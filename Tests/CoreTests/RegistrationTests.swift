@@ -55,7 +55,11 @@ struct RegistrationTests {
     @Test("Implement Forwards Registration")
     func whenForward_onRegistration() throws {
         let container = MockContainer()
-        let registration = Registration<Int>(factory: .init(.sync({ _ in 1 })), isOverridable: true, instance: MockInstance())
+        let registration = Registration<Int>(
+            factory: .init(.sync({ _ in 1 })),
+            isOverridable: true,
+            instance: MockInstance()
+        )
         container.whenRegister = { registration }
         try container.register(Classes.ObjectD.self, factory: .init(.sync { _ in .init() }))
             .implements(Protocols.Dinosaur.self)

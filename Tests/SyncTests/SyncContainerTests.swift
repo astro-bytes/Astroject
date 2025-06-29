@@ -55,7 +55,9 @@ struct SyncContainerTests {
             for index in 0..<500 {
                 group.addTask {
                     #expect(throws: Never.self) {
-                        try container.register(Int.self, name: index.description) { index }
+                        try container.register(Int.self, name: index.description) {
+                            index
+                        }
                     }
                 }
             }
@@ -149,7 +151,10 @@ struct SyncContainerTests {
         let registration = try container.register(Classes.ObjectD.self) { Classes.ObjectD() }
         container.forward(Protocols.Dinosaur.self, to: registration)
         
-        let key = RegistrationKey(factoryType: Factory<Protocols.Dinosaur, Resolver>.SyncBlock.self, productType: Protocols.Dinosaur.self)
+        let key = RegistrationKey(
+            factoryType: Factory<Protocols.Dinosaur, Resolver>.SyncBlock.self,
+            productType: Protocols.Dinosaur.self
+        )
         
         #expect(container.registrations.count == 2)
         #expect(container.registrations[key] != nil)
@@ -363,7 +368,7 @@ struct SyncContainerTests {
             let factory1 = Factory<Int, (Resolver, Int)>(block)
             let factory2 = Factory<Int, (Resolver, Int)>(block)
             let key = RegistrationKey(factory: factory1)
-            let registration1 = ArgumentRegistration(factory: factory1, isOverridable: true,  instanceType: Graph.self)
+            let registration1 = ArgumentRegistration(factory: factory1, isOverridable: true, instanceType: Graph.self)
             let registration2 = ArgumentRegistration(factory: factory2, isOverridable: true, instanceType: Graph.self)
             
             try container.register(Int.self, argumentType: Int.self, factory: factory1)
