@@ -14,7 +14,7 @@ import AstrojectCore
 /// to quickly construct an `Assembler` with a default or custom container,
 /// and optionally register one or more `Assembly` instances during initialization.
 public extension Assembler {
-
+    
     /// Creates an `Assembler` using the specified container.
     ///
     /// This initializer is useful when you want to manually configure the container

@@ -57,6 +57,23 @@ public enum AstrojectError: LocalizedError {
     /// - Parameter error: The underlying `Error` that occurred during the registration action.
     case afterInit(Error)
     
+    /// Indicates that the argument passed during resolution was of the wrong type.
+    ///
+    /// This error occurs when the `resolve` function is called with an argument
+    /// that cannot be cast to the type expected by the registration. This usually
+    /// points to a type mismatch in the usage of an `ArgumentRegistration`.
+    case invalidArgument
+    
+    /// Indicates that a registration cannot be forwarded to the specified type.
+    ///
+    /// This error occurs when attempting to forward a registration to a type
+    /// (typically a protocol or superclass) that the registered product type
+    /// does not conform to or inherit from. Forwarding requires type compatibility
+    /// between the original and target types to ensure safe resolution.
+    ///
+    /// - Parameter key: The `RegistrationKey` of the original registration that failed forwarding.
+    case invalidForwarding(key: RegistrationKey)
+    
     /// Provides a user-friendly description of the error.
     public var errorDescription: String? {
         switch self {
@@ -74,6 +91,10 @@ public enum AstrojectError: LocalizedError {
             return "Attempted to resolve an asynchronously/synchronously registered dependency using a synchronous/asynchronous method."
         case .afterInit(let error):
             return "An error occurred during a registration action: \(error.localizedDescription)"
+        case .invalidArgument:
+            return "The provided argument does not match the expected type for this registration."
+        case .invalidForwarding(let key):
+            return "The registration for key '\(key)' cannot be forwarded to the requested type."
         }
     }
     
@@ -94,6 +115,10 @@ public enum AstrojectError: LocalizedError {
         case .afterInit:
             // swiftlint:disable:next line_length
             return "A problem occurred within a closure or operation executed during dependency registration (e.g., a post-initialization action)."
+        case .invalidArgument:
+            return "The argument passed during resolution could not be cast to the expected type."
+        case .invalidForwarding:
+            return "The product type registered under this key does not conform to or cannot be cast to the forwarded interface."
         }
     }
     
@@ -115,6 +140,10 @@ public enum AstrojectError: LocalizedError {
         case .afterInit:
             // swiftlint:disable:next line_length
             return "Review the code within the registration action (e.g., your `postInitAction` closure) for potential errors."
+        case .invalidArgument:
+            return "Ensure the argument provided matches the type used during registration. For example, if you registered a dependency with an `Int` argument, passing a `String` will result in this error."
+        case .invalidForwarding:
+            return "Ensure that the registered product type conforms to the forwarded protocol or base class. If using a protocol, the registered concrete type must implement it."
         }
     }
 }
@@ -131,15 +160,15 @@ extension AstrojectError: Equatable {
     public static func == (lhs: AstrojectError, rhs: AstrojectError) -> Bool {
         switch (lhs, rhs) {
         case (.alreadyRegistered(let lhsKey), .alreadyRegistered(let rhsKey)),
-            (.noRegistrationFound(let lhsKey),
-             .noRegistrationFound(let rhsKey)):
+            (.noRegistrationFound(let lhsKey), .noRegistrationFound(let rhsKey)),
+            (.invalidForwarding(let lhsKey), .invalidForwarding(let rhsKey)):
             // Compare the associated keys for alreadyRegistered and noRegistrationFound errors.
             return lhsKey == rhsKey
         case (.cyclicDependency(let lhsKey, let lhsPath),
               .cyclicDependency(let rhsKey, let rhsPath)):
             // Compare the associated keys and paths for cyclicDependency errors.
             return lhsKey == rhsKey && lhsPath == rhsPath
-        case (.invalidFactory, .invalidFactory):
+        case (.invalidFactory, .invalidFactory), (.invalidArgument, .invalidArgument):
             // invalidInstance and invalidFactory
             // errors are equal if they are the same case.
             return true

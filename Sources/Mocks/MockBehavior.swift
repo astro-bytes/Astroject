@@ -21,17 +21,17 @@ class MockBehavior: Behavior, Identifiable {
     func didResolve<Product>(
         type: Product.Type,
         to container: Container,
-        as registration: any Registrable<Product>,
+        as registration: any Registrable,
         with name: String?
     ) {
         callsDidResolve = true
         whenDidResolve()
     }
     
-    func didRegister<Product>(
-        type: Product.Type,
-        to container: Container,
-        as registration: any Registrable<Product>,
+    func didRegister<Product1, Product2>(
+        type: Product1.Type,
+        to container: any Container,
+        as registration: any Registrable<Product2>,
         with name: String?
     ) {
         callsDidRegister = true

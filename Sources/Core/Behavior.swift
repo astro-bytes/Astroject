@@ -15,14 +15,17 @@ import Foundation
 public protocol Behavior {
     /// Called after a registration has been added to the `Container`.
     ///
+    /// - Note: Most times`Product1` and `Product2` will be the same type, but can be
+    ///         different types when using type forwarding.
+    ///
     /// - parameter type: The type of the product being registered.
     /// - parameter container: The `Container` instance to which the registration was added.
     /// - parameter registration: The `Registrable` instance that was added.
     /// - parameter name: An optional name associated with the registration.
-    func didRegister<Product>(
-        type: Product.Type,
+    func didRegister<Product1, Product2>(
+        type: Product1.Type,
         to container: Container,
-        as registration: any Registrable<Product>,
+        as registration: any Registrable<Product2>,
         with name: String?
     )
     
@@ -40,7 +43,7 @@ public protocol Behavior {
     func didResolve<Product>(
         type: Product.Type,
         to container: Container,
-        as registration: any Registrable<Product>,
+        as registration: any Registrable,
         with name: String?
     )
 }

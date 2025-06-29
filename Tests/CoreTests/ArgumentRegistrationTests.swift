@@ -20,9 +20,11 @@ struct ArgumentRegistrationTests {
             instanceType: MockInstance.self
         )
         
+        let typeComparison = registration.argumentType == Int.self
+        
         #expect(registration.isOverridable)
         #expect(registration.instances.isEmpty)
-        #expect(registration.argumentType == Int.self)
+        #expect(typeComparison)
         #expect(registration.factory == factory)
         #expect(registration.actions.isEmpty)
     }

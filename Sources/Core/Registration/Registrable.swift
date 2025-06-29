@@ -24,6 +24,21 @@ public protocol Registrable<Product> {
     /// the same product type.
     var isOverridable: Bool { get }
     
+    /// The type of argument required to resolve this registration.
+    ///
+    /// This property is used for introspection and type comparison within the container.
+    /// It allows the resolution logic to validate that the argument provided matches the expected type
+    /// at runtime. It is particularly useful for distinguishing between different `ArgumentRegistration`
+    /// types registered under the same product type.
+    var argumentType: Any.Type { get }
+    
+    /// A unique key representing the registration.
+    ///
+    /// The key encodes identifying information for the registration, such as the factory reference
+    /// and any associated name. It is used internally by the container to match and retrieve the
+    /// appropriate registration during resolution.
+    var key: RegistrationKey { get }
+    
     /// Specifies the instance management strategy for the registered product.
     ///
     /// This function allows you to define how instances of the `Product` will be
@@ -44,6 +59,77 @@ public protocol Registrable<Product> {
     /// - Returns: The modified `Registration` instance.
     @discardableResult
     func afterInit(perform action: Action) -> Self
+    
+    /// Resolves and returns an instance of the product synchronously.
+    ///
+    /// - Parameters:
+    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
+    ///   - context: The resolution context, used to isolate instances across scopes.
+    /// - Returns: An instance of the `Product`.
+    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
+    func resolve<Argument>(
+        container: Container,
+        argument: Argument,
+        in context: any Context
+    ) throws -> Product
+    
+    /// Resolves and returns an instance of the product asynchronously.
+    ///
+    /// - Parameters:
+    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
+    ///   - context: The resolution context, used to isolate instances across scopes.
+    /// - Returns: An instance of the `Product`.
+    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
+    func resolve<Argument>(
+        container: Container,
+        argument: Argument,
+        in context: any Context
+    ) async throws -> Product
+    
+    // TODO: UPDATE COMMENT
+    /// Forwards the current registration to an additional type.
+    ///
+    /// This enables multiple types to resolve to the same underlying product instance.
+    /// For example, you can register a concrete type and then call `.implements(MyProtocol.self)`
+    /// to allow resolution by the protocol as well.
+    ///
+    /// - Parameter type: The additional type to forward the registration to.
+    /// - Returns: The modified `Registrable` instance for chaining.
+    @discardableResult
+    func implements<T>(_: T.Type) -> Self
+}
+
+// MARK: Convenience Functions
+public extension Registrable {
+    /// Resolves and returns an instance of the product synchronously.
+    ///
+    /// - Parameters:
+    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
+    ///   - context: The resolution context, used to isolate instances across scopes.
+    /// - Returns: An instance of the `Product`.
+    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
+    func resolve<Argument>(
+        _ container: Container,
+        argument: Argument = Empty(),
+        in context: any Context = ResolutionContext.currentContext
+    ) throws -> Product {
+        try self.resolve(container: container, argument: argument, in: context)
+    }
+    
+    /// Resolves and returns an instance of the product asynchronously.
+    ///
+    /// - Parameters:
+    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
+    ///   - context: The resolution context, used to isolate instances across scopes.
+    /// - Returns: An instance of the `Product`.
+    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
+    func resolve<Argument>(
+        _ container: Container,
+        argument: Argument = Empty(),
+        in context: any Context = ResolutionContext.currentContext
+    ) async throws -> Product {
+        try await self.resolve(container: container, argument: argument, in: context)
+    }
 }
 
 // MARK: Instance's
@@ -87,7 +173,10 @@ public extension Registrable where Product: AnyObject {
     ///
     /// A weak instance means that the container will hold a weak reference to the
     /// product. If no other strong references exist, the instance can be deallocated.
-    ///
+    /// - Warning: The `Product` **MUST** be a class type.
+    ///            If using a Protocol you must register initially with the concrete type
+    ///            then use the `forward` method on the container to forward the
+    ///            registration to the protocol type.
     /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
     func asWeak() -> Self {

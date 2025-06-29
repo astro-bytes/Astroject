@@ -143,6 +143,24 @@ struct SyncContainerTests {
         #expect(!context.callsPop)
     }
     
+    @Test("Forward")
+    func whenForward_successResolution() throws {
+        let container = SyncContainer()
+        let registration = try container.register(Classes.ObjectD.self) { Classes.ObjectD() }
+        container.forward(Protocols.Dinosaur.self, to: registration)
+        
+        let key = RegistrationKey(factoryType: Factory<Protocols.Dinosaur, Resolver>.SyncBlock.self, productType: Protocols.Dinosaur.self)
+        
+        #expect(container.registrations.count == 2)
+        #expect(container.registrations[key] != nil)
+        #expect(throws: Never.self) {
+            try container.resolve(Classes.ObjectD.self)
+        }
+        #expect(throws: Never.self) {
+            try container.resolve(Protocols.Dinosaur.self)
+        }
+    }
+    
     @Suite("Without Arguments")
     struct WithoutArguments {
         @Test("Add Registration")

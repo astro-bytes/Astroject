@@ -100,6 +100,21 @@ public protocol Container: AnyObject, Resolver, Sendable {
     ///
     /// - Parameter behavior: The `Behavior` instance to add.
     func add(_ behavior: Behavior)
+    
+    /// Forwards a registration to an additional conformance type.
+    ///
+    /// This enables the same registered instance to be resolved via multiple types,
+    /// typically a concrete implementation and one or more protocol abstractions.
+    /// For example, after registering a concrete type, you can forward that registration
+    /// to a protocol it conforms to, allowing resolution by the protocol type.
+    ///
+    /// - Parameters:
+    ///   - conformance: The protocol or superclass type to which the registration should be forwarded.
+    ///   - registration: The existing registration to forward from.
+    func forward<Conformance, Product>(
+        _: Conformance.Type,
+        to registration: any Registrable<Product>
+    )
 }
 
 /// ### Default Implementations for `Container`
@@ -142,7 +157,7 @@ public extension Container {
     ///   - isOverridable: A boolean indicating if the registration can be overridden. Defaults to `true`.
     ///   - factory: The factory closure.
     /// - Returns: The `Registrable` instance.
-    /// - Throws: `AstrojectError.alreadyRegistered` if an unoverridable registration exists.
+    /// - Throws: `AstrojectError.alreadyRegistered` if an un-overridable registration exists.
     @discardableResult
     func register<Product, Argument: Hashable>(
         _ productType: Product.Type,

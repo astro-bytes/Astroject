@@ -24,7 +24,7 @@ public extension Factory where Arguments == Resolver {
     init(_ block: @escaping (Resolver) async throws -> Product) {
         self.init(.async(block))
     }
-
+    
     /// Initializes a `Factory` with an asynchronous block that takes no arguments.
     ///
     /// This initializer is for straightforward asynchronous dependency creation where
@@ -55,7 +55,7 @@ public extension Factory {
         let block = Factory<Product, (Resolver, Argument)>.Block.async(block)
         self.init(block)
     }
-
+    
     /// Initializes a `Factory` with an asynchronous block that takes only an `Argument`.
     ///
     /// This initializer is for asynchronous dependency creation where the product's instance
@@ -69,7 +69,7 @@ public extension Factory {
         let block = Factory<Product, (Resolver, Argument)>.Block.async({ _, argument in
             try await block(argument)
         })
-
+        
         self.init(block)
     }
 }

@@ -19,7 +19,7 @@ struct RegistrationKeyTests {
         let namedKey = RegistrationKey(factory: factory, name: "test")
         let r1 = namedKey.productType == Int.self
         let r2 = namedKey.factoryType == F.SyncBlock.self
-        let r3 = namedKey.argumentType == nil
+        let r3 = namedKey.argumentType == Empty.self
         let r4 = namedKey.name == "test"
         
         #expect(r1)
@@ -30,7 +30,7 @@ struct RegistrationKeyTests {
         let key = RegistrationKey(factory: factory)
         let r5 = key.productType == Int.self
         let r6 = key.factoryType == F.SyncBlock.self
-        let r7 = key.argumentType == nil
+        let r7 = key.argumentType == Empty.self
         let r8 = key.name == nil
         
         #expect(r5)

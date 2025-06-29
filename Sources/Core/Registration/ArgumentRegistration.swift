@@ -12,15 +12,19 @@ import Foundation
 /// This class extends `Registrable` to handle dependencies that need an argument during resolution.
 /// It stores the factory, instance management strategy, and post-initialization actions.
 public final class ArgumentRegistration<Product, Argument: Hashable>: Registrable {
-    
     public typealias Action = (Resolver, Product) throws -> Void
     public typealias Arguments = (Resolver, Argument)
     
     /// The factory used to create instances of the product with an argument.
     let factory: Factory<Product, Arguments>
     
-    /// The type of the argument required for this registration.
-    let argumentType: Argument.Type
+    /// The container in which this registration is stored.
+    ///
+    /// It is used primarily to enable operations such as type forwarding (`implements`)
+    /// so that the registration can participate in broader container-level resolution behaviors.
+    /// Although not directly involved in instance creation, it is essential for supporting
+    /// registration metadata and container coordination.
+    let container: any Container
     
     /// An array of actions to be performed after a product is resolved.
     private(set) var actions: [Action] = []
@@ -32,8 +36,9 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     /// resolved by this registration, if an argument-specific instance is not already set.
     private(set) var instanceType: any Instance<Product>.Type
     
-    /// Indicates whether this registration can be overridden by another with the same key.
     public let isOverridable: Bool
+    public let argumentType: Any.Type
+    public let key: RegistrationKey
     
     /// Initializes a new `ArgumentRegistration` instance with the necessary components.
     ///
@@ -42,10 +47,14 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     ///   - isOverridable: A boolean indicating whether this registration can be overridden by subsequent registrations.
     ///   - instanceType: The default instance management strategy to use for products resolved by this registration.
     public init(
+        container: any Container,
+        key: RegistrationKey,
         factory: Factory<Product, Arguments>,
         isOverridable: Bool,
         instanceType: any Instance<Product>.Type
     ) {
+        self.container = container
+        self.key = key
         self.factory = factory
         self.isOverridable = isOverridable
         self.argumentType = Argument.self
@@ -63,11 +72,15 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     ///   - argument: The specific argument key for which to store the provided instance.
     ///   - instance: A pre-initialized instance manager to associate with the argument.
     init(
+        container: any Container,
+        key: RegistrationKey,
         factory: Factory<Product, Arguments>,
         isOverridable: Bool,
         argument: Argument,
         instance: any Instance<Product>
     ) {
+        self.container = container
+        self.key = key
         self.factory = factory
         self.isOverridable = isOverridable
         self.argumentType = type(of: argument)
@@ -75,19 +88,15 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
         self.instances[argument] = instance
     }
     
-    /// Resolves and returns an instance of the product asynchronously, using the provided argument.
-    ///
-    /// - Parameters:
-    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
-    ///   - argument: The argument required by the product's factory.
-    ///   - context: The resolution context to scope the product instance.
-    /// - Returns: An instance of the `Product`.
-    /// - Throws: `AstrojectError` if there's a problem during resolution.
-    public func resolve(
-        _ container: Container,
-        argument: Argument,
-        in context: any Context = ResolutionContext.currentContext
+    public func resolve<A>(
+        container: Container,
+        argument: A,
+        in context: any Context
     ) async throws -> Product {
+        guard let argument = argument as? Argument else {
+            throw AstrojectError.invalidArgument
+        }
+        
         guard let product = instances[argument]?.get(for: context) else {
             do {
                 let product: Product = try await factory((container, argument))
@@ -102,19 +111,15 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
         return product
     }
     
-    /// Resolves and returns an instance of the product synchronously, using the provided argument.
-    ///
-    /// - Parameters:
-    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
-    ///   - argument: The argument required by the product's factory.
-    ///   - context: The resolution context to scope the product instance.
-    /// - Returns: An instance of the `Product`.
-    /// - Throws: `AstrojectError` if there's a problem during resolution.
-    public func resolve(
-        _ container: Container,
-        argument: Argument,
-        in context: any Context = ResolutionContext.currentContext
+    public func resolve<A>(
+        container: Container,
+        argument: A,
+        in context: any Context
     ) throws -> Product {
+        guard let argument = argument as? Argument else {
+            throw AstrojectError.invalidArgument
+        }
+        
         guard let product = instances[argument]?.get(for: context) else {
             do {
                 let product: Product = try factory((container, argument))
@@ -129,10 +134,6 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
         return product
     }
     
-    /// Changes the instance management strategy for this registration.
-    ///
-    /// - Parameter instance: The new instance strategy to use.
-    /// - Returns: The same registration instance for chaining.
     @discardableResult
     public func `as`(_ instance: any Instance<Product>.Type) -> Self {
         guard instance != instanceType else { return self }
@@ -141,13 +142,18 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
         return self
     }
     
-    /// Adds an action to run after the product is initialized.
-    ///
-    /// - Parameter action: The action to perform.
-    /// - Returns: The same registration instance for chaining.
     @discardableResult
     public func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)
+        return self
+    }
+    
+    public func key(with name: String? = nil) -> RegistrationKey {
+        .init(factory: factory, name: name)
+    }
+    
+    public func implements<T>(_ type: T.Type) -> Self {
+        container.forward(type, to: self)
         return self
     }
 }

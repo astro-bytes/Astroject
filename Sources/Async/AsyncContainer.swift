@@ -37,25 +37,29 @@ public final class AsyncContainer: Container, @unchecked Sendable {
         isOverridable: Bool = true,
         factory: Factory<Product, Resolver>
     ) throws -> any Registrable<Product> {
-        // Create a unique key for the registration based on the product type and optional name.
+        // Create a unique key for the registration.
         let key = RegistrationKey(factory: factory, name: name)
+        
         // Create a registration instance that encapsulates the provided factory and the overridable setting.
         let registration = Registration(
+            container: self,
+            key: key,
             factory: factory,
             isOverridable: isOverridable,
             instanceType: Graph.self
         )
+        
         // Before adding the new registration, ensure that it is allowed based on existing registrations.
         try assertRegistrationAllowed(for: key, overridable: isOverridable)
         // Perform the actual registration by adding the key-registration pair to the dictionary
         // within a synchronized block to ensure thread safety.
         serialQueue.sync {
             registrations[key] = registration
-        }
-        // Notify all registered behaviors that a new registration has been added. This allows behaviors
-        // to react to registration events, such as logging or performing additional setup.
-        serialQueue.sync { // Ensure behaviors are notified on the serial queue
-            behaviors.forEach { $0.didRegister(type: productType, to: self, as: registration, with: name) }
+            // Notify all registered behaviors that a new registration has been added. This allows behaviors
+            // to react to registration events, such as logging or performing additional setup.
+            behaviors.forEach {
+                $0.didRegister(type: productType, to: self, as: registration, with: name)
+            }
         }
         // Return the newly created registration.
         return registration
@@ -69,22 +73,24 @@ public final class AsyncContainer: Container, @unchecked Sendable {
         isOverridable: Bool = true,
         factory: Factory<Product, (Resolver, Argument)>
     ) throws -> any Registrable<Product> {
-        // Create a unique key for the registration, including the argument type.
+        // Create a unique key for the registration.
         let key = RegistrationKey(factory: factory, name: name)
+        
         // Create a registration instance that holds the factory, the overridable setting, and the argument type.
         let registration = ArgumentRegistration(
+            container: self,
+            key: key,
             factory: factory,
             isOverridable: isOverridable,
             instanceType: Graph.self
         )
+        
         // Ensure that this registration is allowed based on any existing registrations.
         try assertRegistrationAllowed(for: key, overridable: isOverridable)
         // Add the registration to the dictionary in a thread-safe manner.
         serialQueue.sync {
             registrations[key] = registration
-        }
-        // Notify all registered behaviors about the new registration.
-        serialQueue.sync {
+            // Notify all registered behaviors about the new registration.
             behaviors.forEach {
                 $0.didRegister(type: productType, to: self, as: registration, with: name)
             }
@@ -153,6 +159,27 @@ public final class AsyncContainer: Container, @unchecked Sendable {
             behaviors.append(behavior)
         }
     }
+    
+    public func forward<Conformance, Product>(
+        _ type: Conformance.Type,
+        to registration: any Registrable<Product>
+    ) {
+        let name = registration.key.name
+        
+        let key = RegistrationKey(
+            factoryType: Factory<Conformance, Resolver>.AsyncBlock.self,
+            productType: Conformance.self,
+            argumentType: registration.argumentType,
+            name: name
+        )
+        
+        serialQueue.sync {
+            registrations[key] = registration
+            behaviors.forEach {
+                $0.didRegister(type: type, to: self, as: registration, with: name)
+            }
+        }
+    }
 }
 
 // MARK: Conform to Resolver
@@ -162,7 +189,7 @@ extension AsyncContainer: Resolver {
         name: String?
     ) async throws -> Product {
         try await manageContext(ResolutionContext.currentContext) {
-            try await initiateResolution(type, name: name, argument: Never?(nil))
+            try await initiateResolution(type, name: name, argument: Empty?(nil))
         }
     }
     
@@ -268,19 +295,7 @@ extension AsyncContainer {
         for key: RegistrationKey,
         with argument: Argument?
     ) async throws -> Product {
-        // Helper function to notify behaviors after successful resolution.
-        func didRegister(_ registration: any Registrable<Product>) {
-            serialQueue.sync {
-                behaviors.forEach {
-                    $0.didResolve(
-                        type: Product.self,
-                        to: self,
-                        as: registration,
-                        with: key.name
-                    )
-                }
-            }
-        }
+        let product: Product
         
         // Retrieve registration based on the key
         let registration = serialQueue.sync {
@@ -291,23 +306,33 @@ extension AsyncContainer {
             throw AstrojectError.noRegistrationFound(key: key)
         }
         
-        // Now, cast and resolve based on whether an argument was provided
-        if let argumentValue = argument, type(of: argumentValue) != Never.self {
-            // If an argument was provided, try to resolve it as an argumented registration
-            guard let registration = registration as? ArgumentRegistration<Product, Argument> else {
-                // This means a registration for the product type and name exists,
-                // but it wasn't registered with the expected argument type.
+        if let argumentValue = argument {
+            guard let p = try await registration.resolve(self, argument: argumentValue) as? Product else {
                 throw AstrojectError.noRegistrationFound(key: key)
             }
-            return try await registration.resolve(self, argument: argumentValue)
+            
+            product = p
         } else {
-            // If no argument was provided, try to resolve it as a non-argumented registration
-            guard let registration = registration as? Registration<Product> else {
-                // Similar to above, registration exists but was actually registered with an argument.
+            // attempt to resolve the registration
+            guard let p = try await registration.resolve(self) as? Product else {
                 throw AstrojectError.noRegistrationFound(key: key)
             }
-            return try await registration.resolve(self)
+            
+            product = p
         }
+        
+        serialQueue.sync {
+            behaviors.forEach {
+                $0.didResolve(
+                    type: Product.self,
+                    to: self,
+                    as: registration,
+                    with: key.name
+                )
+            }
+        }
+        
+        return product
     }
     
     /// A generic helper function to manage the `Context` for resolution calls.

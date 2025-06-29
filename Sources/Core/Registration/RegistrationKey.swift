@@ -22,7 +22,7 @@ public struct RegistrationKey: Sendable {
     /// An optional type of the argument used for registrations that require arguments.
     /// This is used to differentiate between registrations of the same product type
     /// with different argument types. If a registration does not take an argument, this will be `nil`.
-    public let argumentType: Any.Type?
+    public let argumentType: Any.Type
     /// An optional name associated with the registration.
     public let name: String?
     
@@ -36,29 +36,12 @@ public struct RegistrationKey: Sendable {
     public init<Factory, Product, Argument>(
         factoryType: Factory.Type,
         productType: Product.Type,
-        argumentType: Argument.Type,
+        argumentType: Argument.Type = Empty.self,
         name: String? = nil
     ) {
         self.factoryType = factoryType
         self.productType = productType
         self.argumentType = argumentType
-        self.name = name
-    }
-    
-    /// Initializes a `RegistrationKey` for a registration that does not take an argument.
-    ///
-    /// - Parameters:
-    ///   - factoryType: The type of the factory block (e.g., `Factory<Product, Resolver>.SyncBlock.self`).
-    ///   - productType: The type of the product being registered.
-    ///   - name: An optional name for the registration.
-    public init<Factory, Product>(
-        factoryType: Factory.Type,
-        productType: Product.Type,
-        name: String? = nil
-    ) {
-        self.factoryType = factoryType
-        self.productType = productType
-        self.argumentType = nil
         self.name = name
     }
     
@@ -133,10 +116,7 @@ extension RegistrationKey: Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(ObjectIdentifier(self.factoryType))
         hasher.combine(ObjectIdentifier(self.productType))
-        
-        if let argumentType {
-            hasher.combine(ObjectIdentifier(argumentType))
-        }
+        hasher.combine(ObjectIdentifier(self.argumentType))
         
         if let name {
             hasher.combine(name)

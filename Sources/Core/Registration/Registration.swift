@@ -13,11 +13,19 @@ import Foundation
 /// It holds the factory used to create instances, the instance management strategy,
 /// and any post-initialization actions.
 public final class Registration<Product>: Registrable {
-    
+    public typealias Argument = Empty
     public typealias Action = (Resolver, Product) throws -> Void
     
     /// The factory used to create instances of the product.
     let factory: Factory<Product, Resolver>
+    
+    /// The container in which this registration is stored.
+    ///
+    /// It is used primarily to enable operations such as type forwarding (`implements`)
+    /// so that the registration can participate in broader container-level resolution behaviors.
+    /// Although not directly involved in instance creation, it is essential for supporting
+    /// registration metadata and container coordination.
+    let container: any Container
     
     /// An array of actions to be performed after a product is resolved.
     private(set) var actions: [Action] = []
@@ -25,8 +33,9 @@ public final class Registration<Product>: Registrable {
     /// The instance management strategy for the product.
     private(set) var instance: any Instance<Product>
     
-    /// Indicates whether this registration can be overridden by another.
     public let isOverridable: Bool
+    public let argumentType: Any.Type = Empty.self
+    public let key: RegistrationKey
     
     /// Initializes a new `Registration` instance.
     ///
@@ -35,10 +44,14 @@ public final class Registration<Product>: Registrable {
     ///   - isOverridable: Indicates whether this registration can be overridden.
     ///   - instanceType: The type of instance strategy used for managing product lifecycles.
     public init(
+        container: any Container,
+        key: RegistrationKey,
         factory: Factory<Product, Resolver>,
         isOverridable: Bool,
         instanceType: any Instance<Product>.Type
     ) {
+        self.container = container
+        self.key = key
         self.factory = factory
         self.isOverridable = isOverridable
         self.instance = instanceType.init()
@@ -54,25 +67,23 @@ public final class Registration<Product>: Registrable {
     ///   - isOverridable: Indicates whether this registration can be overridden.
     ///   - instance: A custom instance management strategy to use, often a mock.
     init(
+        container: any Container,
+        key: RegistrationKey,
         factory: Factory<Product, Resolver>,
         isOverridable: Bool,
         instance: any Instance<Product>
     ) {
+        self.container = container
+        self.key = key
         self.factory = factory
         self.isOverridable = isOverridable
         self.instance = instance
     }
     
-    /// Resolves and returns an instance of the product asynchronously.
-    ///
-    /// - Parameters:
-    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
-    ///   - context: The resolution context, used to isolate instances across scopes.
-    /// - Returns: An instance of the `Product`.
-    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
-    public func resolve(
-        _ container: Container,
-        with context: any Context = ResolutionContext.currentContext
+    public func resolve<Argument>(
+        container: Container,
+        argument: Argument,
+        in context: any Context
     ) async throws -> Product {
         guard let product = instance.get(for: context) else {
             do {
@@ -90,16 +101,10 @@ public final class Registration<Product>: Registrable {
         return product
     }
     
-    /// Resolves and returns an instance of the product synchronously.
-    ///
-    /// - Parameters:
-    ///   - container: The `Container` (acting as a `Resolver`) to use for resolving dependencies within the factory.
-    ///   - context: The resolution context, used to isolate instances across scopes.
-    /// - Returns: An instance of the `Product`.
-    /// - Throws: `AstrojectError` if there's a problem during resolution, such as an underlying error from the factory.
-    public func resolve(
-        _ container: Container,
-        with context: any Context = ResolutionContext.currentContext
+    public func resolve<Argument>(
+        container: Container,
+        argument: Argument,
+        in context: any Context
     ) throws -> Product {
         guard let product = instance.get(for: context) else {
             do {
@@ -117,36 +122,26 @@ public final class Registration<Product>: Registrable {
         return product
     }
     
-    /// Changes the instance management strategy for this registration.
-    ///
-    /// - Parameter instance: The type of `Instance` to use.
-    /// - Returns: The updated `Registration` instance.
     @discardableResult
     public func `as`(_ instance: any Instance<Product>.Type) -> Self {
         self.instance = instance.init()
         return self
     }
     
-    /// Adds a post-initialization action to be run after a product is created.
-    ///
-    /// - Parameter action: A closure that accepts the resolver and the newly created product.
-    /// - Returns: The updated `Registration` instance.
     @discardableResult
     public func afterInit(perform action: @escaping Action) -> Self {
         actions.append(action)
         return self
     }
+    
+    @discardableResult
+    public func implements<T>(_ type: T.Type) -> Self {
+        container.forward(type, to: self)
+        return self
+    }
 }
 
 extension Registration: Equatable where Product: Equatable {
-    /// Compares this registration with another for equality within a specific resolution context.
-    ///
-    /// - Parameters:
-    ///   - other: The other `Registration` instance to compare against.
-    ///   - context: The resolution context in which to compare resolved instances. Defaults to `.current`.
-    /// - Returns: `true` if both registrations have the same instance (in the given context),
-    ///            use the same instance management strategy, have the same `isOverridable` flag,
-    ///            and were created with the same factory; otherwise, `false`.
     public func isEqual(
         to other: Registration<Product>,
         in context: any Context = ResolutionContext.currentContext
@@ -155,12 +150,6 @@ extension Registration: Equatable where Product: Equatable {
         self == other
     }
     
-    /// Checks if two registrations are equal.
-    ///
-    /// - Parameters:
-    ///   - lhs: The left-hand side registration.
-    ///   - rhs: The right-hand side registration.
-    /// - Returns: `true` if the registrations are equal, `false` otherwise.
     public static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
         type(of: lhs.instance) == type(of: rhs.instance) &&
         lhs.isOverridable == rhs.isOverridable &&

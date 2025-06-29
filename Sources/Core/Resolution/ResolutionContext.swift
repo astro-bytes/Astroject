@@ -13,8 +13,18 @@ import Foundation
 /// identifier (`graphID`) for instances managed within a `Graph` instance management scope.
 /// It conforms to `Sendable` to allow safe usage across concurrent tasks.
 public struct ResolutionContext: Context {
-    // TODO: Comment
+    /// The task-local current resolution context.
+    ///
+    /// This value tracks the current `ResolutionContext` during dependency resolution,
+    /// allowing context-sensitive instance management (e.g., for graph-scoped instances).
+    /// It is automatically propagated across async tasks and allows Astroject to maintain
+    /// isolation between different resolution flows.
+    ///
+    /// Example:
+    /// - When resolving dependencies concurrently, each task will have its own context.
+    /// - When resolving a dependency graph, `graphID` allows sharing the same instances.
     @TaskLocal public static var currentContext: ResolutionContext = .init()
+    
     public static var current: TaskLocal<ResolutionContext> { $currentContext }
     
     public private(set) var depth: Int = 0

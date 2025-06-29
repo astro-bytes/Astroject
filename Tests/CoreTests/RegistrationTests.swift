@@ -52,6 +52,17 @@ struct RegistrationTests {
         #expect(registration.actions.count == 2)
     }
     
+    @Test("Implement Forwards Registration")
+    func whenForward_onRegistration() throws {
+        let container = MockContainer()
+        let registration = Registration<Int>(factory: .init(.sync({ _ in 1 })), isOverridable: true, instance: MockInstance())
+        container.whenRegister = { registration }
+        try container.register(Classes.ObjectD.self, factory: .init(.sync { _ in .init() }))
+            .implements(Protocols.Dinosaur.self)
+        
+        #expect(container.callsForward)
+    }
+    
     @Suite("Sync Resolution")
     struct SyncResolution {
         @Test("No Cached Instance")
