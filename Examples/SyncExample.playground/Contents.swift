@@ -14,10 +14,11 @@ protocol Vehicle: AnyObject {
 class Car: Vehicle {
     var wheels: [Wheel]
     
+    // swiftlint:disable:next identifier_name
     var _gas: Int = 0
     var gas: Int {
-        set { _gas = min(100, max(0, newValue)) }
         get { _gas }
+        set { _gas = min(100, max(0, newValue)) }
     }
     
     init(_ gas: Int = 50, wheels: [Wheel]) {

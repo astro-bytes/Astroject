@@ -5,6 +5,8 @@
 // Created by Porter McGary on 2/25/25.
 //
 
+// swiftlint:disable identifier_name
+
 import Foundation
 
 /// A protocol defining a registrable component that can be resolved by a `Container`.
@@ -155,7 +157,10 @@ public extension Registrable {
     ///     argument type is `Empty`, all instances should be released.
     ///   - context: The context in which the release should occur.
     /// - Throws: An error if releasing the instance fails.
-    func release<Argument>(_ argument: Argument = Empty(), in context: any Context = ResolutionContext.currentContext) throws {
+    func release<Argument>(
+        _ argument: Argument = Empty(), 
+        in context: any Context = ResolutionContext.currentContext
+    ) throws {
         try self.release(with: argument, in: context)
     }
 }
@@ -222,3 +227,5 @@ public extension Registrable where Product: AnyObject {
         return self.as(Weak.self)
     }
 }
+
+// swiftlint:enable identifier_name

@@ -9,8 +9,10 @@ import Foundation
 
 /// A disposable singleton instance that creates and stores a single instance of the product.
 ///
-/// The `DisposableSingleton` class implements the `Instance` protocol and represents a singleton scope for dependency injection.
-/// It ensures that only one instance of the product is created and stored throughout the application's lifecycle until disposed of and another is created
+/// The `DisposableSingleton` class implements the `Instance` protocol and represents a 
+/// singleton scope for dependency injection. It ensures that only one instance of the 
+/// product is created and stored throughout the application's lifecycle until disposed 
+/// of and another is created
 public class DisposableSingleton<Product>: Instance {
     /// The stored product instance.
     private(set) var product: Product?
