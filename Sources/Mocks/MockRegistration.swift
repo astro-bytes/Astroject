@@ -31,6 +31,10 @@ struct MockRegistration<Product>: Registrable {
         throw MockError()
     }
     
+    var whenRelease: () throws -> Void = {
+        throw MockError()
+    }
+    
     var isOverridable: Bool = false
     var argumentType: Any.Type = Empty.self
     var key: RegistrationKey = .init(factoryType: Int.self, productType: Product.self)
@@ -60,5 +64,9 @@ struct MockRegistration<Product>: Registrable {
     
     func resolve<Argument>(container: any Container, argument: Argument, in context: any Context) throws -> Product {
         try whenResolve()
+    }
+
+    func release<Argument>(with: Argument, in: any Context) throws {
+        try whenRelease()
     }
 }
