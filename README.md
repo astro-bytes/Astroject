@@ -14,8 +14,9 @@
 [![Platform - tvOS](https://img.shields.io/badge/platform-tvOS%2016%2B-green.svg?style=flat-square)](https://developer.apple.com/tvos/)
 [![Platform - watchOS](https://img.shields.io/badge/platform-watchOS%209%2B-red.svg?style=flat-square)](https://developer.apple.com/watchos/)
 [![Platform - visionOS](https://img.shields.io/badge/platform-visionOS%201%2B-purple.svg?style=flat-square)](https://developer.apple.com/visionos/)
-[![Build Status](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml)
+<!-- [![Build Status](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swift-unit-test.yml)
 [![Lint Status](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml/badge.svg)](https://github.com/astro-bytes/astroject/actions/workflows/swiftlint.yml)
+-->
 
 </div>
 
