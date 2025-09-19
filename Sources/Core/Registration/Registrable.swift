@@ -5,6 +5,8 @@
 // Created by Porter McGary on 2/25/25.
 //
 
+// swiftlint:disable identifier_name
+
 import Foundation
 
 /// A protocol defining a registrable component that can be resolved by a `Container`.
@@ -96,6 +98,20 @@ public protocol Registrable<Product> {
     /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
     func implements<T>(_: T.Type) -> Self
+    
+    /// Releases one or more managed instances from the container.
+    ///
+    /// Conforming types should remove the specified instance (or all instances)
+    /// from the given context, so that subsequent resolutions create new
+    /// instances instead of reusing the previous ones.
+    ///
+    /// - Parameters:
+    ///   - with: An argument identifying which instance to release. If the
+    ///     argument type is `Empty`, all instances should be released.
+    ///   - context: The context in which the release should occur.
+    /// - Throws: An error if releasing the instance fails.
+    func release<Argument>(with: Argument, in: any Context) throws
+
 }
 
 // MARK: Convenience Functions
@@ -129,6 +145,24 @@ public extension Registrable {
     ) async throws -> Product {
         try await self.resolve(container: container, argument: argument, in: context)
     }
+    
+    /// Releases one or more managed instances from the container.
+    ///
+    /// Conforming types should remove the specified instance (or all instances)
+    /// from the given context, so that subsequent resolutions create new
+    /// instances instead of reusing the previous ones.
+    ///
+    /// - Parameters:
+    ///   - with: An argument identifying which instance to release. If the
+    ///     argument type is `Empty`, all instances should be released.
+    ///   - context: The context in which the release should occur.
+    /// - Throws: An error if releasing the instance fails.
+    func release<Argument>(
+        _ argument: Argument = Empty(), 
+        in context: any Context = ResolutionContext.currentContext
+    ) throws {
+        try self.release(with: argument, in: context)
+    }
 }
 
 // MARK: Instance's
@@ -142,6 +176,17 @@ public extension Registrable {
     @discardableResult
     func asSingleton() -> Self {
         return self.as(Singleton.self)
+    }
+    
+    /// Specifies that the registered product should be a **disposable singleton**.
+    ///
+    /// A disposable singleton instance means that only one instance of the product will be
+    /// created and reused throughout the application's lifecycle, until disposed and another is created.
+    ///
+    /// - Returns: The modified `Registrable` instance for chaining.
+    @discardableResult
+    func asDisposableSingleton() -> Self {
+        return self.as(DisposableSingleton.self)
     }
     
     /// Specifies that a **new instance** of the product should be created **each time** it is resolved.
@@ -182,3 +227,5 @@ public extension Registrable where Product: AnyObject {
         return self.as(Weak.self)
     }
 }
+
+// swiftlint:enable identifier_name

@@ -28,7 +28,8 @@ Astroject comes packed with features to streamline your dependency management:
 
 - **Flexible Registration & Resolution:**  Register and resolve dependencies with or without arguments, supporting both synchronous and asynchronous (async/await) factory methods.
 - **Comprehensive Instance Scoping:** Control the lifecycle of your objects with built-in instance scopes:
-  - ***Singleton:*** Ensures a single, shared instance throughout the container's lifetime.
+  - ***Singleton:*** Ensures a single, shared instance throughout the container's lifetime that is not disposable.
+  - ***Disposable Singleton:*** Ensures a single, shared instance throughout the container's lifetime that is disposable.
   - ***Weak:*** Holds a weak reference to the instance, allowing it to be deallocated when no longer strongly referenced.
   - ***Transient:*** Creates a new instance every time it's resolved.
   - ***Graph:*** Manages instances within a specific resolution graph, ideal for scoped lifecycles like a request or a feature flow.
