@@ -96,6 +96,20 @@ public protocol Registrable<Product> {
     /// - Returns: The modified `Registrable` instance for chaining.
     @discardableResult
     func implements<T>(_: T.Type) -> Self
+    
+    /// Releases one or more managed instances from the container.
+    ///
+    /// Conforming types should remove the specified instance (or all instances)
+    /// from the given context, so that subsequent resolutions create new
+    /// instances instead of reusing the previous ones.
+    ///
+    /// - Parameters:
+    ///   - with: An argument identifying which instance to release. If the
+    ///     argument type is `Empty`, all instances should be released.
+    ///   - context: The context in which the release should occur.
+    /// - Throws: An error if releasing the instance fails.
+    func release<Argument>(with: Argument, in: any Context) throws
+
 }
 
 // MARK: Convenience Functions
@@ -128,6 +142,21 @@ public extension Registrable {
         in context: any Context = ResolutionContext.currentContext
     ) async throws -> Product {
         try await self.resolve(container: container, argument: argument, in: context)
+    }
+    
+    /// Releases one or more managed instances from the container.
+    ///
+    /// Conforming types should remove the specified instance (or all instances)
+    /// from the given context, so that subsequent resolutions create new
+    /// instances instead of reusing the previous ones.
+    ///
+    /// - Parameters:
+    ///   - with: An argument identifying which instance to release. If the
+    ///     argument type is `Empty`, all instances should be released.
+    ///   - context: The context in which the release should occur.
+    /// - Throws: An error if releasing the instance fails.
+    func release<Argument>(_ argument: Argument = Empty(), in context: any Context = ResolutionContext.currentContext) throws {
+        try self.release(with: argument, in: context)
     }
 }
 

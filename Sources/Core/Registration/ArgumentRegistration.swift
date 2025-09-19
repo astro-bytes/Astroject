@@ -152,9 +152,18 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
         .init(factory: factory, name: name)
     }
     
+    @discardableResult
     public func implements<T>(_ type: T.Type) -> Self {
         container.forward(type, to: self)
         return self
+    }
+    
+    public func release<A>(with argument: A, in context: any Context) throws {
+        if A.self == Empty.self {
+            instances.forEach { $0.value.release(for: context) }
+        } else if let argument = argument as? Argument, let instance = instances[argument] {
+            instance.release(for: context)
+        }
     }
 }
 

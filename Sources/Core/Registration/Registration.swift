@@ -139,6 +139,10 @@ public final class Registration<Product>: Registrable {
         container.forward(type, to: self)
         return self
     }
+    
+    public func release<A>(with argument: A, in context: any Context) throws {
+        instance.release(for: context)
+    }
 }
 
 extension Registration: Equatable where Product: Equatable {
