@@ -144,6 +144,17 @@ public extension Registrable {
         return self.as(Singleton.self)
     }
     
+    /// Specifies that the registered product should be a **disposable singleton**.
+    ///
+    /// A disposable singleton instance means that only one instance of the product will be
+    /// created and reused throughout the application's lifecycle, until disposed and another is created.
+    ///
+    /// - Returns: The modified `Registrable` instance for chaining.
+    @discardableResult
+    func asDisposableSingleton() -> Self {
+        return self.as(DisposableSingleton.self)
+    }
+    
     /// Specifies that a **new instance** of the product should be created **each time** it is resolved.
     ///
     /// This is often referred to as a "transient" or "factory" scope.
