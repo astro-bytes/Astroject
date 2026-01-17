@@ -21,6 +21,8 @@ class MockAssembly: Assembly {
     var whenPostAssemble: () throws -> Void = {}
     var whenLoaded: () throws -> Void = {}
     
+    required init() {}
+    
     func preassemble() throws {
         preassembleCalled = true
         try whenPreassemble()

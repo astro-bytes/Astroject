@@ -16,21 +16,16 @@ struct NetworkingAssembly: Assembly {
 }
 
 struct FeatureAssembly: Assembly {
-    static let dependencies = requires([
+    let requiredAssemblies: [Assembly.Type] = [
         MockAssembly.self,
         NetworkingAssembly.self
-    ])
-    
-    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
+    ]
     
     func assemble(container: Container) throws {}
 }
 
 struct AnalyticsAssembly: Assembly {
-    static let dependencies = requires([MockAssembly.self])
-    
-    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
-    
+    let requiredAssemblies: [Assembly.Type] = [MockAssembly.self]
     func assemble(container: Container) throws {}
 }
 
@@ -165,14 +160,32 @@ final class AssemblerTests {
     
     // MARK: Dependency validation tests
     
-    @Test("Missing Assemblies")
+    @Test("Missing Assemblies Throws Error")
     func missingRequiredAssembliesThrows() throws {
+        let container = MockContainer()
+        let assembler = Assembler(
+            container: container,
+            initializeMissingAssemblies: false
+        )
+        let error = Assembler.Error.missingRequiredAssemblies([
+            "MockAssembly", "NetworkingAssembly"
+        ])
+        
+        #expect(throws: error) {
+            try assembler.add(assemblies: [FeatureAssembly()]).assemble()
+        }
+    }
+    
+    @Test("Missing Assemblies Creates Missing Assemblies")
+    func missingRequiredAssembliesCreatesMissingAssemblies() throws {
         let container = MockContainer()
         let assembler = Assembler(container: container)
         
-        #expect(throws: Assembler.Error.missingRequiredAssemblies) {
-            try assembler.add(assemblies: [FeatureAssembly()]).assemble()
-        }
+        assembler.add(assemblies: [FeatureAssembly()])
+        #expect(assembler.assemblies.count == 1)
+        
+        try assembler.assemble()
+        #expect(assembler.assemblies.count == 3)
     }
     
     @Test("All Assemblies Present")

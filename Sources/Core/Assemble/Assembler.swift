@@ -15,13 +15,19 @@ import Foundation
 public class Assembler {
     
     /// Errors that may occur during assembly.
-    public enum Error: Swift.Error {
-        /// Thrown when attempting to assemble dependencies that are already assembled.
+    public enum Error: Swift.Error, Equatable {
+        /// Thrown when `assemble()` is called but the assembler has already completed assembly.
+        /// Assemblies can only be assembled as many times as necessary if an assembly is added but
+        /// not applied per Assembler instance.
         case alreadyAssembled
-        /// Thrown when required assemblies are missing.
-        case missingRequiredAssemblies
-        /// Thrown when an operation requires the assemblies to be assembled first
-        /// but `assemble()` has not yet been called.
+        
+        /// Thrown when one or more assemblies declare dependencies that are not present
+        /// in the Assembler. The associated array contains the missing assembly type names.
+        case missingRequiredAssemblies([String])
+        
+        /// Thrown when an operation requires the assemblies to have been assembled first,
+        /// but `assemble()` has not yet been called. For example, resolving dependencies
+        /// before assembly will trigger this error.
         case notAssembled
     }
     
@@ -33,7 +39,17 @@ public class Assembler {
     /// Returns the `Container` itself, as it conforms to the `Resolver` protocol.
     public var resolver: Resolver { container }
     
-    /// Indicates whether the assembler has already assembled its dependencies.
+    /// Indicates whether the assembler should automatically create and add any assemblies
+    /// that are required but not present in the assembler when `assemble()` is called.
+    ///
+    /// - true: Missing required assemblies are instantiated and added automatically.
+    /// - false: Missing assemblies cause `assemble()` to throw `Assembler.Error.missingRequiredAssemblies`.
+    let initializeMissingAssemblies: Bool
+    
+    /// Indicates whether the assembler has already completed assembly.
+    ///
+    /// Once `assemble()` has successfully run, attempting to assemble again
+    /// will throw `Assembler.Error.alreadyAssembled`.
     var isAssembled: Bool = false
     
     /// Assemblies that will be applied to the container.
@@ -49,9 +65,10 @@ public class Assembler {
     ///   - container: The container to assemble dependencies into.
     ///   - assemblies: An array of `Assembly` instances to apply. Defaults to an empty array.
     /// - Throws: `Assembler.Error.alreadyAssembled` or `Assembler.Error.missingRequiredAssemblies` if validation fails.
-    public init(container: Container, assemblies: [Assembly]) throws {
+    public init(container: Container, assemblies: [Assembly], initializeMissingAssemblies: Bool = true) throws {
         self.container = container
         self.assemblies = assemblies
+        self.initializeMissingAssemblies = initializeMissingAssemblies
         if !assemblies.isEmpty {
             try self.assemble()
         }
@@ -62,9 +79,13 @@ public class Assembler {
     /// Dependencies can be added later using `add(assembly:)` or `add(assemblies:)`.
     ///
     /// - Parameter container: The container to assemble dependencies into.
-    public convenience init(container: Container) {
+    public convenience init(container: Container, initializeMissingAssemblies: Bool = true) {
         // swiftlint:disable:next force_try
-        try! self.init(container: container, assemblies: [])
+        try! self.init(
+            container: container,
+            assemblies: [],
+            initializeMissingAssemblies: initializeMissingAssemblies
+        )
     }
     
     // MARK: - Legacy Initializers
@@ -157,26 +178,69 @@ public class Assembler {
         return self
     }
     
-    /// Validates that all required assemblies are present before assembly.
+    /// Validates that all required assemblies declared by each assembly
+    /// are present in the assembler.
     ///
-    /// - Throws: `Assembler.Error.missingRequiredAssemblies` if any required assembly is missing.
+    /// If `initializeMissingAssemblies` is true, any missing assemblies
+    /// will be automatically instantiated and appended to the assembler.
+    /// Otherwise, a `missingRequiredAssemblies` error is thrown.
+    ///
+    /// Validation occurs before any assembly lifecycle methods are executed.
+    ///
+    /// - Throws: `missingRequiredAssemblies` if required assemblies are missing and
+    ///           `initializeMissingAssemblies` is false.
     func validateRequiredAssemblies() throws {
-        let presentTypes = Set(self.assemblies.map { ObjectIdentifier(type(of: $0)) })
-        let requiredTypes = Set(self.assemblies.flatMap { $0.requiredAssemblies() })
+        let presentIdentifiers = Set(self.assemblies.map { ObjectIdentifier(type(of: $0)) })
+        let requiredIdentifiers = Set(self.assemblies.flatMap { $0.requiredAssemblies.map(ObjectIdentifier.init)
+        })
         
-        guard requiredTypes.isSubset(of: presentTypes) else {
-            throw Self.Error.missingRequiredAssemblies
+        let missingIdentifiers = requiredIdentifiers.subtracting(presentIdentifiers)
+        
+        guard !missingIdentifiers.isEmpty else { return }
+        
+        let types: [ObjectIdentifier: Assembly.Type] = self.assemblies.reduce(
+            into: [ObjectIdentifier: Assembly.Type]()) { partialResult, assembly in
+                let type = type(of: assembly)
+                let identifier = ObjectIdentifier(type)
+                partialResult[identifier] = type
+                let required = assembly.requiredAssemblies
+                    .reduce(into: [ObjectIdentifier: Assembly.Type]()) { partialResult, type in
+                        let identifier = ObjectIdentifier(type)
+                        partialResult[identifier] = type
+                    }
+                partialResult.merge(required) { first, _ in first }
+            }
+        
+        var missingTypes = missingIdentifiers
+            .reduce(into: [Assembly.Type]()) { partialResult, identifier in
+                guard let type = types[identifier] else { return }
+                partialResult.append(type)
+            }
+        
+        guard initializeMissingAssemblies else {
+            let missingTypeNames = missingTypes
+                .map { String(describing: $0) }
+                .sorted()
+            throw Self.Error.missingRequiredAssemblies(missingTypeNames)
+        }
+        
+        for missingType in missingTypes {
+            let assembly = missingType.init()
+            assemblies.append(assembly)
         }
     }
     
     /// Runs the assembly process for all assemblies.
     ///
-    /// This involves three phases for each assembly:
-    /// 1. `preloaded()` — pre-assembly configuration.
-    /// 2. `assemble(container:)` — registers dependencies into the container.
-    /// 3. `loaded(resolver:)` — post-assembly configuration.
+    /// For each assembly, the following lifecycle is executed in order:
     ///
-    /// - Throws: Any errors thrown by the assemblies.
+    /// 1. `preassemble()`
+    /// 2. `preloaded()` (deprecated)
+    /// 3. `assemble(container:)`
+    /// 4. `postAssemble(resolver:)`
+    /// 5. `loaded(resolver:)` (deprecated)
+    ///
+    /// - Throws: Any error thrown by an assembly hook.
     func run() throws {
         try self.assemblies.forEach {
             try $0.preassemble()

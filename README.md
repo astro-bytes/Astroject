@@ -383,159 +383,280 @@ try container.register(String.self) { "Hello, Astroject!" }
 
 # 🏗️ Assemblies and Assembler
 
-For larger applications, managing all registrations in one place can become unwieldy. **Astroject** solves this with **Assemblies** and the **Assembler**, promoting a modular, organized, and testable structure for your dependency graph.
+For larger applications, registering all dependencies in one place quickly becomes unmanageable.
+Astroject addresses this by introducing Assemblies and the Assembler, enabling a modular, explicit, and testable dependency graph.
 
 ---
 
 ## Assemblies
 
-An **Assembly** is a dedicated module responsible for registering a specific set of dependencies. It provides three phases:
+An Assembly is a unit of configuration responsible for registering a related set of dependencies into a Container.
 
-1. **`preassemble()`** *(optional)*  
-   Optional setup **before** registration occurs (e.g., configuration, validation, or preconditions).  
-   > ⚠️ The old `preloaded()` method is deprecated in favor of `preassemble()`.
+Assemblies:
+- Encapsulate dependency registration logic
+- May declare dependencies on other assemblies
+- May participate in lifecycle hooks
+- Are executed and coordinated by an Assembler
 
-2. **`assemble(container:)`**  
-   The main registration function where all dependencies for the module are registered in the container.
+Assemblies themselves do not perform registration until applied by an Assembler.
 
-3. **`postAssemble(resolver:)`** *(optional)*  
-   Runs **after all assemblies have been applied**. This is perfect for post-setup logic, validation, or resolving initial instances that depend on the full assembly being in place.  
-   > ⚠️ The old `loaded(resolver:)` method is deprecated in favor of `postAssemble(resolver:)`.
+---
 
-4. **`requiredAssemblies()`** *(optional)*  
-   Returns a `Set<ObjectIdentifier>` of assemblies that this assembly depends on.  
-   Use the convenient `Assembly.requires(_:)` static function to declare dependencies:
+## Assembly Lifecycle
+
+Assemblies participate in a structured lifecycle when applied by an Assembler.
+
+### Lifecycle Execution Order
+
+For each assembly, lifecycle methods are executed in the following order:
+
+1. preassemble()
+2. preloaded() (deprecated, still executed)
+3. assemble(container:)
+4. postAssemble(resolver:)
+5. loaded(resolver:) (deprecated, still executed)
+
+All assemblies complete steps 1–3 for every assembly before any assembly enters steps 4–5.
+
+---
+
+### `preassemble()`
+
+Called before any dependency registration occurs.
+
+Use this hook for:
+- Validation
+- Configuration checks
+- Preparing state required for registration
 
 ```swift
+func preassemble() throws
+```
+
+- Optional
+- Default implementation does nothing
+
+---
+
+### `assemble(container:)`
+
+The core lifecycle method where dependencies are registered into the container.
+
+```swift
+func assemble(container: Container) throws
+```
+
+- Required
+- All dependency registrations must occur here
+
+---
+
+### `postAssemble(resolver:)`
+
+Called after all assemblies have completed registration.
+
+Use this hook for:
+- Resolving initial instances
+- Cross-assembly validation
+- Post-registration wiring
+
+```swift
+func postAssemble(resolver: Resolver) throws
+```
+
+- Optional
+- Default implementation does nothing
+
+---
+
+## Legacy Lifecycle Hooks
+
+Astroject maintains backward compatibility with legacy lifecycle hooks.
+
+| Legacy Hook         | Modern Replacement      |
+|---------------------|-------------------------|
+| preloaded()         | preassemble()           |
+| loaded(resolver:)   | postAssemble(resolver:) |
+
+These hooks are deprecated but still executed to avoid breaking existing assemblies.
+
+---
+
+## Declaring Assembly Dependencies
+
+Assemblies may declare dependencies on other assemblies.
+
+```swift
+var requiredAssemblies: [Assembly.Type] { get }
+```
+
+- Default implementation returns an empty array
+- Dependencies are validated before assembly begins
+- Missing required assemblies cause assembly to fail
+
+Example:
+```swift
 struct FeatureAssembly: Assembly {
-    // Declare dependencies using the `requires` helper
-    static let dependencies = requires([CoreAssembly.self, NetworkingAssembly.self])
-    
-    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
-    
-    func preassemble() {
-        print("Preassemble FeatureAssembly")
+
+    var requiredAssemblies: [Assembly.Type] {
+        [CoreAssembly.self, NetworkingAssembly.self]
     }
-    
+
     func assemble(container: Container) throws {
-        try container.register(String.self, name: "featureName") { "My Feature" }
-    }
-    
-    func postAssemble(resolver: Resolver) throws {
-        if let feature: String = try? resolver.resolve(String.self, name: "featureName") {
-            print("FeatureAssembly postAssemble: \(feature)")
+        try container.register(String.self, name: "featureName") {
+            "My Feature"
         }
     }
 }
 ```
 
-> ⚠️ `preassemble()`, `postAssemble(resolver:)`, and `requiredAssemblies()` are all optional.  
-> Using `Assembly.requires([...])` makes it easy to declare dependencies without manually constructing sets.
+--
+
+## Automatic Initialization of Missing Assemblies
+
+The `Assembler` provides a property called `initializeMissingAssemblies` that controls
+how missing required assemblies are handled during `assemble()`.
+
+### Behavior
+
+- `true` (default)  
+  Missing required assemblies are automatically instantiated and added to the assembler
+  before assembly proceeds. This allows the assembler to satisfy all declared dependencies
+  without requiring the user to manually add every assembly.
+
+- `false`  
+  Missing required assemblies will cause `assemble()` to throw 
+  `Assembler.Error.missingRequiredAssemblies`. This enforces strict manual registration
+  and allows you to catch configuration issues early.
+
+### Usage Example
+
+Automatic initialization (default):
+
+    let assembler = try Assembler(
+        container: container,
+        assemblies: [FeatureAssembly()],
+        initializeMissingAssemblies: true
+    )
+    // Any required assemblies not present will be created automatically
+
+Strict validation:
+
+    let assembler = try Assembler(
+        container: container,
+        assemblies: [FeatureAssembly()],
+        initializeMissingAssemblies: false
+    )
+    // Throws Error.missingRequiredAssemblies if any required assemblies are missing
+
+### Notes
+
+- This behavior only applies to assemblies declared in `requiredAssemblies`.
+- Automatically initialized assemblies will go through the normal assembly lifecycle
+  (`preassemble()`, `assemble(container:)`, `postAssemble(resolver:)`).
+- Use `initializeMissingAssemblies = false` in production if you want explicit control
+  over all assemblies added to the container.
 
 ---
 
 ## Assembler
 
-The **Assembler** applies one or more assemblies to a `Container`. Modern usage promotes **method chaining** for adding assemblies and performing assembly in one fluent style:
+The Assembler coordinates applying one or more assemblies to a Container.
+
+Responsibilities:
+- Validates required assemblies
+- Executes the full assembly lifecycle
+- Prevents duplicate assembly runs
+- Provides a fluent API for composition
+
+---
+
+## Creating an Assembler
+
+### Fluent / Manual Assembly
 
 ```swift
 let assembler = Assembler(container: container)
 
 try assembler
-    .add(assembly: SomeAssembly())
+    .add(assembly: CoreAssembly())
     .add(assemblies: [FeatureAssembly(), AnalyticsAssembly()])
     .assemble()
 ```
 
-**Automatic Assembly via Initializer**
-
-If you use the **initializer that takes an array of assemblies**, the assembler will automatically **validate and assemble them**:
-
-```swift
-let assembler = try Assembler(
-    container: container,
-    assemblies: [CoreAssembly(), NetworkingAssembly(), FeatureAssembly()]
-)
-// All assemblies are already validated and assembled
-```
-
-- Each `add` marks the assembler as needing reassembly.  
-- `assemble()` validates dependencies, runs all three phases (`preassemble`, `assemble`, `postAssemble`) for each assembly, and marks the assembler as assembled.  
-- Chaining is supported for a fluent workflow.
-
-> ⚠️ Legacy methods like `preloaded()` and `loaded(resolver:)` are deprecated. Use `preassemble()` and `postAssemble(resolver:)`.  
-> ⚠️ Use `Assembly.requires([...])` for dependencies rather than manually constructing sets.
+Behavior:
+- Adding assemblies marks the assembler as needing assembly
+- assemble() validates dependencies and executes all lifecycle hooks
+- Calling assemble() more than once throws an error
 
 ---
 
-## Example: Organizing Registrations with an Assembly
+### Automatic Assembly via Initializer
+```swift
+let assembler = try Assembler(
+    container: container,
+    assemblies: [
+        CoreAssembly(),
+        NetworkingAssembly(),
+        FeatureAssembly()
+    ]
+)
+```
+
+Behavior:
+- Assemblies are validated immediately
+- Lifecycle hooks are executed automatically
+- No additional assemble() call is required
+
+---
+
+## Assembly Rules
+
+- Assemblies execute in the order they are added
+- All required assemblies must be present
+- Assemblies are assembled only once per assembler
+- Legacy lifecycle hooks are executed automatically
+
+---
+
+## Example
 
 ```swift
-import Astroject
-
 class MyAssembly: Assembly {
+
     func preassemble() {
-        print("Preassembling MyAssembly")
+        print("Preparing MyAssembly")
     }
 
     func assemble(container: Container) throws {
-        try container.register(String.self, name: "greeting") { "Hello from Astroject!" }
-        try container.register(Int.self) { 42 }
+        try container.register(String.self, name: "greeting") {
+            "Hello from Astroject!"
+        }
     }
 
     func postAssemble(resolver: Resolver) throws {
-        if let message: String = try? resolver.resolve(String.self, name: "greeting") {
-            print("MyAssembly postAssemble resolved message: \(message)")
-        }
-        if let number: Int = try? resolver.resolve(Int.self) {
-            print("MyAssembly postAssemble resolved number: \(number)")
-        }
-    }
-}
-
-// Declare dependencies easily using requires()
-struct FeatureAssembly: Assembly {
-    static let dependencies = requires([MyAssembly.self])
-    
-    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
-    
-    func assemble(container: Container) throws {
-        try container.register(String.self, name: "featureName") { "My Feature" }
+        let greeting: String = try resolver.resolve(String.self, name: "greeting")
+        print(greeting)
     }
 }
 
 let container = Container()
-
-// Using add() + assemble() chaining
 let assembler = Assembler(container: container)
-try assembler.add(assembly: MyAssembly()).add(assemblies: [FeatureAssembly()]).assemble()
 
-// Using initializer with assemblies → automatically assembles
-let autoAssembler = try Assembler(
-    container: container,
-    assemblies: [MyAssembly(), FeatureAssembly()]
-)
-
-// Resolve dependencies
-let message: String = try await container.resolve(String.self, name: "greeting")
-print(message) // "Hello from Astroject!"
-
-let feature: String = try await container.resolve(String.self, name: "featureName")
-print(feature) // "My Feature"
+try assembler
+    .add(assembly: MyAssembly())
+    .assemble()
 ```
 
 ---
 
-### Key Benefits
+## Key Takeaways
 
-- **Modular**: Each Assembly encapsulates a logical set of dependencies.  
-- **Safe**: The Assembler validates required assemblies before assembling.  
-- **Fluent**: Chaining allows adding multiple assemblies and assembling in a single flow.  
-- **Automatic**: Using the initializer with an array of assemblies auto-assembles them.  
-- **Optional Hooks**: Assemblies can define `preassemble()` and `postAssemble(resolver:)` hooks as needed.  
-- **Testable**: Assemblies and the Assembler can be tested independently.  
-- **Extensible**: Supports synchronous (`SyncContainer`) or asynchronous (`AsyncContainer`) containers.
-
+- Assemblies are modular and self-contained
+- Assembly dependencies are explicit and validated
+- A three-phase lifecycle with legacy compatibility
+- Assemblers guarantee safe, single-pass assembly
+- Supports both fluent and automatic assembly styles
 
 ## 💡 Sample Code
 Checkout our sample code under the [playgrounds](/Playgrounds) directory. (Coming Soon!)

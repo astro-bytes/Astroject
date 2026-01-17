@@ -9,73 +9,63 @@ import Foundation
 
 /// A protocol defining an assembly that configures dependencies in a `Container`.
 ///
-/// The `Assembly` protocol is used to define a set of instructions for configuring
-/// dependencies within a dependency injection `Container`.
-/// Implementations of this protocol are responsible for registering dependencies and performing any necessary setup.
+/// An `Assembly` represents a modular unit of dependency registration.
+/// Assemblies may optionally participate in pre- and post-assembly lifecycle hooks
+/// and declare dependencies on other assemblies.
 public protocol Assembly {
     
-    /// Returns the set of assemblies that this assembly depends on.
-    ///
-    /// Use `Assembly.requires([...])` to declare dependencies.
-    /// Default implementation returns an empty set.
-    func requiredAssemblies() -> Set<ObjectIdentifier>
+    // TODO: Comment
+    init()
     
-    // MARK: - New Optional Hooks
-    
-    /// Optional hook that is called before registration occurs.
+    /// A list of assemblies that must also be present for this assembly to run.
     ///
-    /// Use this to perform any setup that needs to happen prior to `assemble(container:)`.
+    /// These dependencies are validated by the `Assembler` before assembly begins.
+    /// Default implementation returns an empty array.
+    var requiredAssemblies: [Assembly.Type] { get }
+    
+    // MARK: - Lifecycle Hooks
+    
+    /// Called before any dependencies are registered.
+    ///
+    /// Use this for validation or preparation that must occur prior to `assemble(container:)`.
+    /// Default implementation does nothing.
     func preassemble() throws
     
-    /// Optional hook that is called after all assemblies have been applied.
+    /// Called after all assemblies have completed registration.
     ///
-    /// Use this to perform any post-setup logic, validation, or initial resolution
-    /// that depends on other assemblies having been assembled.
+    /// This hook is guaranteed to run after every assembly's `assemble(container:)`
+    /// has executed.
     ///
-    /// - parameter resolver: The resolver providing access to dependencies.
+    /// Use this for validation, resolving initial objects, or wiring
+    /// that depends on the full dependency graph.
     func postAssemble(resolver: Resolver) throws
     
-    // MARK: - Core Methods
+    // MARK: - Required Method
     
-    /// Configures dependencies within the provided `Container`.
+    /// Registers dependencies into the provided container.
     ///
-    /// Implementations should register all factories and dependencies into the container here.
-    ///
-    /// - parameter container: The `Container` instance to configure.
+    /// This method is required and is where all registrations should occur.
     func assemble(container: Container) throws
     
-    // MARK: - Deprecated Hooks
+    // MARK: - Legacy Hooks
     
-    /// Deprecated: Use `preassemble()` instead.
+    /// Deprecated legacy pre-assembly hook.
+    ///
+    /// This method is still invoked after `preassemble()` for backward compatibility.
     @available(*, deprecated, message: "Use preassemble() instead")
     func preloaded() throws
     
-    /// Deprecated: Use `postAssemble(resolver:)` instead.
+    /// Deprecated legacy post-assembly hook.
+    ///
+    /// This method is still invoked after `postAssemble(resolver:)` for backward compatibility.
     @available(*, deprecated, message: "Use postAssemble(resolver:) instead")
     func loaded(resolver: Resolver) throws
 }
 
+
 public extension Assembly {
-    
-    /// Convenience function to declare dependencies using an array of assembly types.
-    ///
-    /// Example:
-    /// ```swift
-    /// struct FeatureAssembly: Assembly {
-    ///     static let dependencies = requires([CoreAssembly.self, NetworkingAssembly.self])
-    ///
-    ///     func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
-    /// }
-    /// ```
-    ///
-    /// - Parameter assemblies: An array of `Assembly.Type` representing required assemblies.
-    /// - Returns: A set of `ObjectIdentifier` representing required assemblies.
-    static func requires(_ assemblies: [Assembly.Type] = []) -> Set<ObjectIdentifier> {
-        Set(assemblies.map(ObjectIdentifier.init))
-    }
-    
     /// Default implementation returns an empty set, meaning no required assemblies.
-    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.requires() }
+    var requiredAssemblies: [Assembly.Type] { [] }
     
     /// Default implementation of `preassemble()`, which does nothing.
     func preassemble() throws {}
