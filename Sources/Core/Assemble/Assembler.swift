@@ -190,9 +190,11 @@ public class Assembler {
     
     /// Validates and assembles all added assemblies into the container.
     ///
-    /// - Throws: `Assembler.Error.alreadyAssembled` if already assembled, or
-    ///           `Assembler.Error.missingRequiredAssemblies` if required
-    ///           assemblies are missing.
+    /// - Throws:
+    ///   - `Assembler.Error.alreadyAssembled` if the assembler has already completed assembly.
+    ///   - `Assembler.Error.missingRequiredAssemblies` if required assemblies are missing and auto-initialization is disabled.
+    ///   - `Assembler.Error.circularDependency` if a circular dependency between assemblies is detected.
+    ///   - `Assembler.Error.assemblyFailure` if an assembly lifecycle method throws an error.
     /// - Returns: The `Assembler` instance for chaining.
     @discardableResult
     public func assemble() throws(Assembler.Error) -> Assembler {
