@@ -492,7 +492,7 @@ var requiredAssemblies: [Assembly.Type] { get }
 
 - Default implementation returns an empty array
 - Dependencies are validated before assembly begins
-- Missing required assemblies cause assembly to fail or they can be generated 
+- Missing required assemblies cause assembly to fail or they can be generated
   automatically (default behavior)
 
 Example:

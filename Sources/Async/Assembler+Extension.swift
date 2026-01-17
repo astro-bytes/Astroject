@@ -21,7 +21,7 @@ public extension Assembler {
     ///
     /// - Parameter container: The `Container` instance to associate with the assembler.
     ///   Defaults to a new instance of `AsyncContainer`.
-    convenience init(async container: Container = AsyncContainer()) {
+    convenience init(_ container: Container = AsyncContainer()) {
         self.init(container: container)
     }
     
@@ -36,7 +36,7 @@ public extension Assembler {
     ///     Defaults to a new `AsyncContainer`.
     /// - Throws: Any error thrown by the assemblies during registration.
     @available(*, deprecated, message: "Use Assembler(container:) + add(assemblies:) + assemble() instead")
-    convenience init(async assemblies: [Assembly], container: Container = AsyncContainer()) throws {
+    convenience init(_ assemblies: [Assembly], container: Container = AsyncContainer()) throws {
         try self.init(assemblies: assemblies, container: container)
     }
     
@@ -51,7 +51,7 @@ public extension Assembler {
     ///     Defaults to a new `AsyncContainer`.
     /// - Throws: Any error thrown by the assembly during registration.
     @available(*, deprecated, message: "Use Assembler(container:) + add(assembly:) + assemble() instead")
-    convenience init(async assembly: Assembly, container: Container = AsyncContainer()) throws {
+    convenience init(_ assembly: Assembly, container: Container = AsyncContainer()) throws {
         try self.init(assembly: assembly, container: container)
     }
 }

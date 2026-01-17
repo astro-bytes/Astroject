@@ -33,7 +33,7 @@ public protocol Assembly {
     ///
     /// These dependencies are validated by the `Assembler` before assembly begins.
     /// Default implementation returns an empty array.
-    var requiredAssemblies: [Assembly.Type] { get }
+    static var requiredAssemblies: [Assembly.Type] { get }
     
     // MARK: - Lifecycle Hooks
     
@@ -76,7 +76,7 @@ public protocol Assembly {
 
 public extension Assembly {
     /// Default implementation returns an empty set, meaning no required assemblies.
-    var requiredAssemblies: [Assembly.Type] { [] }
+    static var requiredAssemblies: [Assembly.Type] { [] }
     
     /// Default implementation of `preassemble()`, which does nothing.
     func preassemble() throws {}

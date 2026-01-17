@@ -16,64 +16,80 @@ struct NetworkingAssembly: Assembly {
 }
 
 struct FeatureAssembly: Assembly {
-    let requiredAssemblies: [Assembly.Type] = [
+    static var requiredAssemblies: [Assembly.Type] {[
         MockAssembly.self,
         NetworkingAssembly.self
-    ]
+    ]}
     
     func assemble(container: Container) throws {}
 }
 
 struct AnalyticsAssembly: Assembly {
-    let requiredAssemblies: [Assembly.Type] = [MockAssembly.self]
+    static var requiredAssemblies: [Assembly.Type] {[ MockAssembly.self ]}
     func assemble(container: Container) throws {}
 }
 
 struct AAssembly: Assembly {
-    init() {}
-    var requiredAssemblies: [Assembly.Type] { [BAssembly.self] }
+    static var requiredAssemblies: [Assembly.Type] { [BAssembly.self] }
     func assemble(container: Container) throws {}
 }
 
 struct BAssembly: Assembly {
-    init() {}
-    var requiredAssemblies: [Assembly.Type] { [CAssembly.self] }
+    static var requiredAssemblies: [Assembly.Type] { [CAssembly.self] }
     func assemble(container: Container) throws {}
 }
 
 struct CAssembly: Assembly {
-    init() {}
-    var requiredAssemblies: [Assembly.Type] { [] }
+    static var requiredAssemblies: [Assembly.Type] { [] }
     func assemble(container: Container) throws {}
 }
 
 struct CircularA: Assembly {
-    init() {}
-    var requiredAssemblies: [Assembly.Type] { [CircularB.self] }
+    static var requiredAssemblies: [Assembly.Type] { [CircularB.self] }
     func assemble(container: Container) throws {}
 }
 
 struct CircularB: Assembly {
-    init() {}
-    var requiredAssemblies: [Assembly.Type] { [CircularA.self] }
+    static var requiredAssemblies: [Assembly.Type] { [CircularA.self] }
     func assemble(container: Container) throws {}
 }
 
 struct SelfCycle: Assembly {
-    init() {}
-    var requiredAssemblies: [Assembly.Type] { [SelfCycle.self] }
+    static var requiredAssemblies: [Assembly.Type] { [SelfCycle.self] }
     func assemble(container: Container) throws {}
 }
 
 // Deep dependency chain
-struct DAssembly: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [EAssembly.self] }; func assemble(container: Container) throws {} }
-struct EAssembly: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [] }; func assemble(container: Container) throws {} }
+struct DAssembly: Assembly {
+    static var requiredAssemblies: [Assembly.Type] { [EAssembly.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct EAssembly: Assembly {
+    static var requiredAssemblies: [Assembly.Type] { [] }
+    func assemble(container: Container) throws {}
+}
 
 // Multiple branches
-struct BranchA: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [BranchB.self, BranchC.self] }; func assemble(container: Container) throws {} }
-struct BranchB: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [BranchD.self] }; func assemble(container: Container) throws {} }
-struct BranchC: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [BranchD.self] }; func assemble(container: Container) throws {} }
-struct BranchD: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [] }; func assemble(container: Container) throws {} }
+struct BranchA: Assembly {
+    static var requiredAssemblies: [Assembly.Type] { [BranchB.self, BranchC.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct BranchB: Assembly {
+    static var requiredAssemblies: [Assembly.Type] { [BranchD.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct BranchC: Assembly {
+    static var requiredAssemblies: [Assembly.Type] { [BranchD.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct BranchD: Assembly {
+    static var requiredAssemblies: [Assembly.Type] { [] }
+    func assemble(container: Container) throws {}
+}
 
 // MARK: - Legacy Assembler Tests
 
@@ -152,14 +168,14 @@ struct LegacyAssemblerTests {
         let container = MockContainer()
         let assembly = MockAssembly()
         var sequence: [String] = []
-        assembly.whenPreassemble = { sequence.append("preloaded") }
+        assembly.whenPreassemble = { sequence.append("preassembled") }
         assembly.whenAssemble = { sequence.append("assembled") }
-        assembly.whenPostAssemble = { sequence.append("loaded") }
+        assembly.whenPostAssemble = { sequence.append("post-assembled") }
         
         let assembler = Assembler(container: container)
         try assembler.run(assemblies: [assembly])
         
-        #expect(sequence == ["preloaded", "assembled", "loaded"])
+        #expect(sequence == ["preassembled", "assembled", "post-assembled"])
     }
     
     @Test("Deprecated Initializer with Single Assembly")
@@ -460,7 +476,6 @@ final class AssemblerTests {
         }
     }
     
-    
     @Test("Transitive dependencies are automatically initialized")
     func transitiveDependenciesAutoInit() throws {
         let container = MockContainer()
@@ -527,9 +542,20 @@ final class AssemblerTests {
     
     @Test("Nested circular dependency")
     func nestedCircularDependencyThrows() throws {
-        struct X: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [Y.self] }; func assemble(container: Container) throws {} }
-        struct Y: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [Z.self] }; func assemble(container: Container) throws {} }
-        struct Z: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [X.self] }; func assemble(container: Container) throws {} }
+        struct X: Assembly {
+            static var requiredAssemblies: [Assembly.Type] { [Y.self] }
+            func assemble(container: Container) throws {}
+        }
+        
+        struct Y: Assembly {
+            static var requiredAssemblies: [Assembly.Type] { [Z.self] }
+            func assemble(container: Container) throws {}
+        }
+        
+        struct Z: Assembly {
+            static var requiredAssemblies: [Assembly.Type] { [X.self] }
+            func assemble(container: Container) throws {}
+        }
         
         let container = MockContainer()
         let assembler = Assembler(container: container, initializeMissingAssemblies: true)
@@ -544,7 +570,11 @@ final class AssemblerTests {
     @Test("Deep chain auto-init")
     func deepChainAutoInit() throws {
         let container = MockContainer()
-        let assembler = try Assembler(container: container, assemblies: [DAssembly()], initializeMissingAssemblies: true)
+        let assembler = try Assembler(
+            container: container,
+            assemblies: [DAssembly()],
+            initializeMissingAssemblies: true
+        )
         let types = assembler.assemblies.map { type(of: $0) }
         #expect(types.contains(where: { $0 == DAssembly.self }))
         #expect(types.contains(where: { $0 == EAssembly.self }))
@@ -578,7 +608,11 @@ final class AssemblerTests {
     @Test("Duplicate dependencies only added once")
     func duplicateDependenciesOnlyOnce() throws {
         let container = MockContainer()
-        let assembler = try Assembler(container: container, assemblies: [BranchB(), BranchD()], initializeMissingAssemblies: true)
+        let assembler = try Assembler(
+            container: container,
+            assemblies: [BranchB(), BranchD()],
+            initializeMissingAssemblies: true
+        )
         try assembler.add(assemblies: [BranchC()]).assemble()
         
         let types = assembler.assemblies.map { type(of: $0) }
@@ -592,4 +626,26 @@ final class AssemblerTests {
         let assembler = try Assembler(container: container, assemblies: [MockAssembly()])
         #expect(throws: Assembler.Error.alreadyAssembled) { try assembler.assemble() }
     }
+    
+    @Test("Assembly failure wraps underlying error")
+    func assemblyFailureIsThrown() throws {
+        struct FailingAssembly: Assembly {
+            init() {}
+            var requiredAssemblies: [Assembly.Type] { [] }
+            
+            func preassemble() throws {
+                throw MockError()
+            }
+            
+            func assemble(container: Container) throws {}
+            func postAssemble(resolver: Resolver) throws {}
+        }
+        
+        let container = MockContainer()
+        
+        #expect(throws: Assembler.Error.assemblyFailure(MockError())) {
+            try Assembler(container: container, assemblies: [FailingAssembly()])
+        }
+    }
+    
 }

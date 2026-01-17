@@ -21,13 +21,13 @@ public class Assembler {
             case (.alreadyAssembled, .alreadyAssembled), (.notAssembled, .notAssembled):
                 return true
             case (
-                    .missingRequiredAssemblies(let left),
-                    .missingRequiredAssemblies(let right)
-                 ),
-                 (
+                .missingRequiredAssemblies(let left),
+                .missingRequiredAssemblies(let right)
+            ),
+                (
                     .circularDependency(let left),
                     .circularDependency(let right)
-                 ):
+                ):
                 return left == right
             case (.assemblyFailure(let left), .assemblyFailure(let right)):
                 return String(describing: left) == String(describing: right)
@@ -111,13 +111,10 @@ public class Assembler {
     /// Dependencies can be added later using `add(assembly:)` or `add(assemblies:)`.
     ///
     /// - Parameter container: The container to assemble dependencies into.
-    public convenience init(container: Container, initializeMissingAssemblies: Bool = true) {
-        // swiftlint:disable:next force_try
-        try! self.init(
-            container: container,
-            assemblies: [],
-            initializeMissingAssemblies: initializeMissingAssemblies
-        )
+    public init(container: Container, initializeMissingAssemblies: Bool = true) {
+        self.container = container
+        self.assemblies = []
+        self.initializeMissingAssemblies = initializeMissingAssemblies
     }
     
     // MARK: - Legacy Initializers
@@ -256,7 +253,7 @@ public class Assembler {
             visitingStack.append(assemblyType)
             
             // Recursively visit required assemblies
-            for dep in assemblyType.init().requiredAssemblies {
+            for dep in assemblyType.requiredAssemblies {
                 try visit(dep)
             }
             
@@ -285,14 +282,6 @@ public class Assembler {
             let assembly = missingType.init()
             assemblies.append(assembly)
         }
-        
-//        var seen = Set<ObjectIdentifier>()
-//        assemblies = assemblies.filter { assembly in
-//            let id = ObjectIdentifier(type(of: assembly))
-//            if seen.contains(id) { return false }
-//            seen.insert(id)
-//            return true
-//        }
     }
     
     /// Runs the assembly process for all assemblies.
