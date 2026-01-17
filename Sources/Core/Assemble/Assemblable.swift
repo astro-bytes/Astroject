@@ -38,7 +38,7 @@ public extension Assemblable {
     /// that the object has been assembled according to its assembler.
     func isAssembled() throws(Assembler.Error) {
         if let assembler {
-            guard !assembler.isAssembled else {
+            guard assembler.isAssembled else {
                 throw Assembler.Error.notAssembled
             }
         }

@@ -29,13 +29,27 @@ public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
     
     public private(set) var assembler: Assembler?
     
-    // TODO: Comment
+    /// Initializes a new container with an optional assembler.
+    ///
+    /// - Parameter createAssembler: A Boolean flag indicating whether to automatically
+    ///   create and assign an `Assembler` to this container. Defaults to `false`.
+    ///
+    /// If `createAssembler` is `true`, a new `Assembler` is created with this container
+    /// as its owner. If `false`, the container starts without an assembler and one
+    /// can be assigned later.
     public init(createAssembler: Bool = false) {
         guard createAssembler else { return }
         self.assembler = Assembler(container: self)
     }
-    
-    // TODO: Comment
+
+    /// Initializes a new container and sets up an `Assembler` with the provided assemblies.
+    ///
+    /// - Parameter assemblies: An array of `Assembly` objects used to configure the assembler.
+    ///
+    /// - Throws: Any error thrown by the `Assembler` initializer if the assembly process fails.
+    ///
+    /// This initializer automatically creates an `Assembler` for the container and
+    /// immediately attempts to assemble it using the provided assemblies.
     public init(assemblies: [Assembly]) throws {
         self.assembler = try Assembler(container: self, assemblies: assemblies)
     }
