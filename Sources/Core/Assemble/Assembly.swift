@@ -9,46 +9,86 @@ import Foundation
 
 /// A protocol defining an assembly that configures dependencies in a `Container`.
 ///
-/// The `Assembly` protocol is used to define a set of instructions for configuring
-/// dependencies within a dependency injection `Container`.
-/// Implementations of this protocol are responsible for registering dependencies and performing any necessary setup.
+/// An `Assembly` represents a modular unit of dependency registration.
+/// Assemblies may optionally participate in pre- and post-assembly lifecycle hooks
+/// and declare dependencies on other assemblies.
 public protocol Assembly {
-    /// Performs any necessary setup or loading that needs to occur *before* the assembly's dependencies are registered.
-    ///
-    /// This function is typically used for tasks that must be completed prior to the main `assemble` phase,
-    /// such as loading configuration files or initializing external systems that the assembly depends on.
-    func preloaded() throws
     
-    /// Configures dependencies within the provided `Container`.
+    /// Required default initializer.
     ///
-    /// This function is called by an `Assembler` to register dependencies in the given `Container`.
-    /// Implementations should use the `Container` to register factories and other configuration.
+    /// This initializer allows the Assembler to automatically create instances
+    /// of assemblies when `initializeMissingAssemblies` is true and a required
+    /// assembly is missing. All assemblies that may be automatically initialized
+    /// must implement a public, parameterless `init()`.
     ///
-    /// - parameter container: The `Container` instance to configure.
+    /// Example:
+    /// ```swift
+    /// struct FeatureAssembly: Assembly {
+    ///     init() { /* default setup */ }
+    /// }
+    /// ```
+    init()
+    
+    /// A list of assemblies that must also be present for this assembly to run.
+    ///
+    /// These dependencies are validated by the `Assembler` before assembly begins.
+    /// Default implementation returns an empty array.
+    static var requiredAssemblies: [Assembly.Type] { get }
+    
+    // MARK: - Lifecycle Hooks
+    
+    /// Called before any dependencies are registered.
+    ///
+    /// Use this for validation or preparation that must occur prior to `assemble(container:)`.
+    /// Default implementation does nothing.
+    func preassemble() throws
+    
+    /// Called after all assemblies have completed registration.
+    ///
+    /// This hook is guaranteed to run after every assembly's `assemble(container:)`
+    /// has executed.
+    ///
+    /// Use this for validation, resolving initial objects, or wiring
+    /// that depends on the full dependency graph.
+    func postAssemble(resolver: Resolver) throws
+    
+    // MARK: - Required Method
+    
+    /// Registers dependencies into the provided container.
+    ///
+    /// This method is required and is where all registrations should occur.
     func assemble(container: Container) throws
     
-    /// Called after the assembly has been loaded into the `Container`.
+    // MARK: - Legacy Hooks
+    
+    /// Deprecated legacy pre-assembly hook.
     ///
-    /// This function is called by an `Assembler` after all assemblies have been processed.
-    /// It allows performing any post-registration setup or configuration that requires access to
-    /// the resolved dependencies.
+    /// This method is still invoked after `preassemble()` for backward compatibility.
+    @available(*, deprecated, message: "Use preassemble() instead")
+    func preloaded() throws
+    
+    /// Deprecated legacy post-assembly hook.
     ///
-    /// - parameter resolver: The `Resolver` instance providing access to the assembled dependencies.
+    /// This method is still invoked after `postAssemble(resolver:)` for backward compatibility.
+    @available(*, deprecated, message: "Use postAssemble(resolver:) instead")
     func loaded(resolver: Resolver) throws
 }
 
 public extension Assembly {
-    /// Default implementation of `preloaded()`, which does nothing.
-    ///
-    /// This default implementation is provided for convenience, allowing assemblies
-    /// that do not require pre-assembly setup to omit implementing the `preloaded` function.
+    /// Default implementation returns an empty set, meaning no required assemblies.
+    static var requiredAssemblies: [Assembly.Type] { [] }
+    
+    /// Default implementation of `preassemble()`, which does nothing.
+    func preassemble() throws {}
+    
+    /// Default implementation of `postAssemble(resolver:)`, which does nothing.
+    func postAssemble(resolver: Resolver) throws {}
+    
+    /// Default implementation of deprecated `preloaded()`.
+    @available(*, deprecated, message: "Use preassemble() instead")
     func preloaded() throws {}
     
-    /// Default implementation of `loaded(resolver:)`, which does nothing.
-    ///
-    /// This default implementation is provided for convenience, allowing assemblies
-    /// that do not require post-registration setup to omit implementing the `loaded` function.
-    ///
-    /// - parameter resolver: The `Resolver` instance (unused in the default implementation).
+    /// Default implementation of deprecated `loaded(resolver:)`.
+    @available(*, deprecated, message: "Use postAssemble(resolver:) instead")
     func loaded(resolver: Resolver) throws {}
 }
