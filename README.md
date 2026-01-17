@@ -625,6 +625,8 @@ Behavior:
 ```swift
 class MyAssembly: Assembly {
 
+    required init() {}
+
     func preassemble() {
         print("Preparing MyAssembly")
     }

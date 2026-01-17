@@ -16,6 +16,25 @@ public class Assembler {
     
     /// Errors that may occur during assembly.
     public enum Error: Swift.Error, Equatable {
+        public static func == (lhs: Assembler.Error, rhs: Assembler.Error) -> Bool {
+            switch (lhs, rhs) {
+            case (.alreadyAssembled, .alreadyAssembled), (.notAssembled, .notAssembled):
+                return true
+            case (
+                    .missingRequiredAssemblies(let left),
+                    .missingRequiredAssemblies(let right)
+                 ),
+                 (
+                    .circularDependency(let left),
+                    .circularDependency(let right)
+                 ):
+                return left == right
+            case (.assemblyFailure(let left), .assemblyFailure(let right)):
+                return String(describing: left) == String(describing: right)
+            default:
+                return false
+            }
+        }
         /// Thrown when `assemble()` is called but the assembler has already completed assembly.
         /// Assemblies can only be assembled as many times as necessary if an assembly is added but
         /// not applied per Assembler instance.
@@ -25,10 +44,23 @@ public class Assembler {
         /// in the Assembler. The associated array contains the missing assembly type names.
         case missingRequiredAssemblies([String])
         
+        /// Thrown when a circular dependency between assemblies is detected.
+        ///
+        /// The associated array contains the names of the assemblies forming the cycle,
+        /// starting and ending with the same assembly to show the loop.
+        case circularDependency([String])
+        
         /// Thrown when an operation requires the assemblies to have been assembled first,
         /// but `assemble()` has not yet been called. For example, resolving dependencies
         /// before assembly will trigger this error.
         case notAssembled
+        
+        /// Thrown when an assembly throws an unexpected error during its lifecycle methods
+        /// (`preassemble()`, `assemble(container:)`, or `postAssemble(resolver:)`).
+        ///
+        /// The associated `Swift.Error` contains the original error thrown by the assembly,
+        /// allowing the caller to inspect or propagate the underlying cause.
+        case assemblyFailure(Swift.Error)
     }
     
     /// The container that holds assembled dependencies.
@@ -165,7 +197,7 @@ public class Assembler {
     ///           assemblies are missing.
     /// - Returns: The `Assembler` instance for chaining.
     @discardableResult
-    public func assemble() throws -> Assembler {
+    public func assemble() throws(Assembler.Error) -> Assembler {
         guard !self.isAssembled else {
             throw Self.Error.alreadyAssembled
         }
@@ -178,56 +210,89 @@ public class Assembler {
         return self
     }
     
-    /// Validates that all required assemblies declared by each assembly
-    /// are present in the assembler.
+    /// Validates that all required assemblies declared by each assembly are present.
     ///
-    /// If `initializeMissingAssemblies` is true, any missing assemblies
-    /// will be automatically instantiated and appended to the assembler.
-    /// Otherwise, a `missingRequiredAssemblies` error is thrown.
+    /// This method performs a **recursive check** of each assembly's `requiredAssemblies`,
+    /// ensuring that all dependencies, including transitive ones, are present in the assembler.
     ///
-    /// Validation occurs before any assembly lifecycle methods are executed.
+    /// If `initializeMissingAssemblies` is `true`, any missing assemblies are automatically
+    /// instantiated and appended to the assembler. If `false`, a `missingRequiredAssemblies`
+    /// error is thrown listing all missing assemblies.
     ///
-    /// - Throws: `missingRequiredAssemblies` if required assemblies are missing and
-    ///           `initializeMissingAssemblies` is false.
-    func validateRequiredAssemblies() throws {
-        let presentIdentifiers = Set(self.assemblies.map { ObjectIdentifier(type(of: $0)) })
-        let requiredIdentifiers = Set(self.assemblies.flatMap { $0.requiredAssemblies.map(ObjectIdentifier.init)
-        })
+    /// Additionally, this function detects **circular dependencies** between assemblies.
+    /// If a cycle is detected, a `circularDependency` error is thrown containing
+    /// the sequence of assemblies forming the cycle.
+    ///
+    /// Validation occurs before any assembly lifecycle methods (`preassemble`, `assemble`,
+    /// `postAssemble`) are executed.
+    ///
+    /// - Throws:
+    ///   - `Assembler.Error.missingRequiredAssemblies` if required assemblies are missing and
+    ///     `initializeMissingAssemblies` is `false`.
+    ///   - `Assembler.Error.circularDependency` if a circular dependency is detected.
+    func validateRequiredAssemblies() throws(Assembler.Error) {
+        // Assemblies already present
+        var presentIdentifiers = Set(self.assemblies.map { ObjectIdentifier(type(of: $0)) })
         
-        let missingIdentifiers = requiredIdentifiers.subtracting(presentIdentifiers)
+        // Assemblies that are missing and will be auto-initialized
+        var missingTypes: [Assembly.Type] = []
         
-        guard !missingIdentifiers.isEmpty else { return }
+        // Cycle detection helpers
+        var visitingStack: [Assembly.Type] = [] // stack to track current recursion path
+        var visited = Set<ObjectIdentifier>()   // visited nodes
         
-        let types: [ObjectIdentifier: Assembly.Type] = self.assemblies.reduce(
-            into: [ObjectIdentifier: Assembly.Type]()) { partialResult, assembly in
-                let type = type(of: assembly)
-                let identifier = ObjectIdentifier(type)
-                partialResult[identifier] = type
-                let required = assembly.requiredAssemblies
-                    .reduce(into: [ObjectIdentifier: Assembly.Type]()) { partialResult, type in
-                        let identifier = ObjectIdentifier(type)
-                        partialResult[identifier] = type
-                    }
-                partialResult.merge(required) { first, _ in first }
+        // Recursive visit function
+        func visit(_ assemblyType: Assembly.Type) throws(Assembler.Error) {
+            // Detect circular dependency
+            if visitingStack.contains(where: { $0 == assemblyType }) {
+                let cycle = visitingStack.map { String(describing: $0) } + [String(describing: assemblyType)]
+                throw Assembler.Error.circularDependency(cycle)
             }
-        
-        var missingTypes = missingIdentifiers
-            .reduce(into: [Assembly.Type]()) { partialResult, identifier in
-                guard let type = types[identifier] else { return }
-                partialResult.append(type)
+            
+            let id = ObjectIdentifier(assemblyType)
+            guard !visited.contains(id) else { return } // already processed
+            
+            visited.insert(id)
+            visitingStack.append(assemblyType)
+            
+            // Recursively visit required assemblies
+            for dep in assemblyType.init().requiredAssemblies {
+                try visit(dep)
             }
-        
-        guard initializeMissingAssemblies else {
-            let missingTypeNames = missingTypes
-                .map { String(describing: $0) }
-                .sorted()
-            throw Self.Error.missingRequiredAssemblies(missingTypeNames)
+            
+            visitingStack.removeLast()
+            
+            // Queue this assembly for adding if not already present
+            if !presentIdentifiers.contains(id) {
+                missingTypes.append(assemblyType)
+                presentIdentifiers.insert(id)
+            }
         }
         
+        // Start visiting all assemblies currently in the assembler
+        for assembly in assemblies {
+            try visit(type(of: assembly))
+        }
+        
+        // If auto-init is disabled, throw an error for missing assemblies
+        if !initializeMissingAssemblies, !missingTypes.isEmpty {
+            let missingNames = missingTypes.map { String(describing: $0) }.sorted()
+            throw Assembler.Error.missingRequiredAssemblies(missingNames)
+        }
+        
+        // Instantiate missing assemblies after recursion
         for missingType in missingTypes {
             let assembly = missingType.init()
             assemblies.append(assembly)
         }
+        
+//        var seen = Set<ObjectIdentifier>()
+//        assemblies = assemblies.filter { assembly in
+//            let id = ObjectIdentifier(type(of: assembly))
+//            if seen.contains(id) { return false }
+//            seen.insert(id)
+//            return true
+//        }
     }
     
     /// Runs the assembly process for all assemblies.
@@ -241,17 +306,21 @@ public class Assembler {
     /// 5. `loaded(resolver:)` (deprecated)
     ///
     /// - Throws: Any error thrown by an assembly hook.
-    func run() throws {
-        try self.assemblies.forEach {
-            try $0.preassemble()
-            try $0.preloaded()
-        }
-        
-        try self.assemblies.forEach { try $0.assemble(container: self.container) }
-        
-        try self.assemblies.forEach {
-            try $0.postAssemble(resolver: self.resolver)
-            try $0.loaded(resolver: self.resolver)
+    func run() throws(Assembler.Error) {
+        do {
+            try self.assemblies.forEach {
+                try $0.preassemble()
+                try $0.preloaded()
+            }
+            
+            try self.assemblies.forEach { try $0.assemble(container: self.container) }
+            
+            try self.assemblies.forEach {
+                try $0.postAssemble(resolver: self.resolver)
+                try $0.loaded(resolver: self.resolver)
+            }
+        } catch {
+            throw Self.Error.assemblyFailure(error)
         }
     }
     

@@ -29,6 +29,52 @@ struct AnalyticsAssembly: Assembly {
     func assemble(container: Container) throws {}
 }
 
+struct AAssembly: Assembly {
+    init() {}
+    var requiredAssemblies: [Assembly.Type] { [BAssembly.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct BAssembly: Assembly {
+    init() {}
+    var requiredAssemblies: [Assembly.Type] { [CAssembly.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct CAssembly: Assembly {
+    init() {}
+    var requiredAssemblies: [Assembly.Type] { [] }
+    func assemble(container: Container) throws {}
+}
+
+struct CircularA: Assembly {
+    init() {}
+    var requiredAssemblies: [Assembly.Type] { [CircularB.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct CircularB: Assembly {
+    init() {}
+    var requiredAssemblies: [Assembly.Type] { [CircularA.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct SelfCycle: Assembly {
+    init() {}
+    var requiredAssemblies: [Assembly.Type] { [SelfCycle.self] }
+    func assemble(container: Container) throws {}
+}
+
+// Deep dependency chain
+struct DAssembly: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [EAssembly.self] }; func assemble(container: Container) throws {} }
+struct EAssembly: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [] }; func assemble(container: Container) throws {} }
+
+// Multiple branches
+struct BranchA: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [BranchB.self, BranchC.self] }; func assemble(container: Container) throws {} }
+struct BranchB: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [BranchD.self] }; func assemble(container: Container) throws {} }
+struct BranchC: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [BranchD.self] }; func assemble(container: Container) throws {} }
+struct BranchD: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [] }; func assemble(container: Container) throws {} }
+
 // MARK: - Legacy Assembler Tests
 
 @Suite("Legacy Assembler Tests")
@@ -388,5 +434,162 @@ final class AssemblerTests {
         #expect(sequence == [
             "pre1", "pre2", "assemble1", "assemble2", "post1", "post2"
         ])
+    }
+    
+    @Test("No duplicate assemblies after validation and auto-init")
+    func noDuplicateAssemblies() throws {
+        let container = MockContainer()
+        
+        // Assemblies with shared dependencies
+        let assembler = try Assembler(
+            container: container,
+            assemblies: [BranchA(), BranchB(), BranchC()],
+            initializeMissingAssemblies: true
+        )
+        
+        // Count occurrences of each assembly type
+        var typeCounts: [String: Int] = [:]
+        for assembly in assembler.assemblies {
+            let name = String(describing: type(of: assembly))
+            typeCounts[name, default: 0] += 1
+        }
+        
+        // Assert each type occurs only once
+        for (name, count) in typeCounts {
+            #expect(count == 1, "Assembly \(name) occurs \(count) times, expected 1")
+        }
+    }
+    
+    
+    @Test("Transitive dependencies are automatically initialized")
+    func transitiveDependenciesAutoInit() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(
+            container: container,
+            assemblies: [AAssembly()],
+            initializeMissingAssemblies: true
+        )
+        
+        let types = assembler.assemblies.map { type(of: $0) }
+        
+        #expect(types.contains(where: { $0 == AAssembly.self }))
+        #expect(types.contains(where: { $0 == BAssembly.self }))
+        #expect(types.contains(where: { $0 == CAssembly.self }))
+    }
+    
+    @Test("Missing dependencies throw when auto-init is disabled")
+    func missingDependenciesThrow() throws {
+        let container = MockContainer()
+        let assembler = Assembler(
+            container: container,
+            initializeMissingAssemblies: false
+        )
+        
+        #expect(throws: Assembler.Error.missingRequiredAssemblies(["BAssembly", "CAssembly"])) {
+            try assembler.add(assembly: AAssembly()).assemble()
+        }
+    }
+    
+    @Test("Circular dependencies throw circularDependency error")
+    func circularDependenciesThrow() throws {
+        let container = MockContainer()
+        let assembler = Assembler(
+            container: container,
+            initializeMissingAssemblies: true
+        )
+        
+        #expect(throws: Assembler.Error.circularDependency(["CircularA", "CircularB", "CircularA"])) {
+            try assembler.add(assembly: CircularA()).assemble()
+        }
+    }
+    
+    @Test("Already assembled throws error")
+    func alreadyAssembledThrows() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [CAssembly()])
+        
+        #expect(throws: Assembler.Error.alreadyAssembled) {
+            try assembler.assemble()
+        }
+    }
+    
+    // MARK: - Circular dependency tests
+    
+    @Test("Self-cycle dependency throws circularDependency error")
+    func selfCycleDependencyThrows() throws {
+        let container = MockContainer()
+        let assembler = Assembler(container: container, initializeMissingAssemblies: true)
+        
+        #expect(throws: Assembler.Error.circularDependency(["SelfCycle", "SelfCycle"])) {
+            try assembler.add(assembly: SelfCycle()).assemble()
+        }
+    }
+    
+    @Test("Nested circular dependency")
+    func nestedCircularDependencyThrows() throws {
+        struct X: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [Y.self] }; func assemble(container: Container) throws {} }
+        struct Y: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [Z.self] }; func assemble(container: Container) throws {} }
+        struct Z: Assembly { init() {}; var requiredAssemblies: [Assembly.Type] { [X.self] }; func assemble(container: Container) throws {} }
+        
+        let container = MockContainer()
+        let assembler = Assembler(container: container, initializeMissingAssemblies: true)
+        
+        #expect(throws: Assembler.Error.circularDependency(["X", "Y", "Z", "X"])) {
+            try assembler.add(assembly: X()).assemble()
+        }
+    }
+    
+    // MARK: - Transitive dependencies
+    
+    @Test("Deep chain auto-init")
+    func deepChainAutoInit() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [DAssembly()], initializeMissingAssemblies: true)
+        let types = assembler.assemblies.map { type(of: $0) }
+        #expect(types.contains(where: { $0 == DAssembly.self }))
+        #expect(types.contains(where: { $0 == EAssembly.self }))
+    }
+    
+    @Test("Multiple branches auto-init only once")
+    func multipleBranchesAutoInit() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [BranchA()], initializeMissingAssemblies: true)
+        let types = assembler.assemblies.map { type(of: $0) }
+        
+        #expect(types.contains(where: { $0 == BranchA.self }))
+        #expect(types.contains(where: { $0 == BranchB.self }))
+        #expect(types.contains(where: { $0 == BranchC.self }))
+        #expect(types.contains(where: { $0 == BranchD.self }))
+        
+        // BranchD should only appear once
+        let countD = types.filter { $0 == BranchD.self }.count
+        #expect(countD == 1)
+    }
+    
+    // MARK: - Misc edge cases
+    
+    @Test("Empty assembler does nothing")
+    func emptyAssembler() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [], initializeMissingAssemblies: true)
+        #expect(try assembler.assemble() === assembler)
+    }
+    
+    @Test("Duplicate dependencies only added once")
+    func duplicateDependenciesOnlyOnce() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [BranchB(), BranchD()], initializeMissingAssemblies: true)
+        try assembler.add(assemblies: [BranchC()]).assemble()
+        
+        let types = assembler.assemblies.map { type(of: $0) }
+        let countD = types.filter { $0 == BranchD.self }.count
+        #expect(countD == 1)
+    }
+    
+    @Test("Assemble twice throws alreadyAssembled")
+    func assembleTwiceThrows() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [MockAssembly()])
+        #expect(throws: Assembler.Error.alreadyAssembled) { try assembler.assemble() }
     }
 }
