@@ -487,7 +487,7 @@ These hooks are deprecated but still executed to avoid breaking existing assembl
 Assemblies may declare dependencies on other assemblies.
 
 ```swift
-var requiredAssemblies: [Assembly.Type] { get }
+static var requiredAssemblies: [Assembly.Type] { get }
 ```
 
 - Default implementation returns an empty array
@@ -499,7 +499,7 @@ Example:
 ```swift
 struct FeatureAssembly: Assembly {
 
-    var requiredAssemblies: [Assembly.Type] {
+    static var requiredAssemblies: [Assembly.Type] {
         [CoreAssembly.self, NetworkingAssembly.self]
     }
 
