@@ -176,9 +176,9 @@ public class Assembler {
     ///
     /// - Throws: Any errors thrown by the assemblies.
     func run() throws {
-        try self.assemblies.forEach { try $0.preloaded() }
+        try self.assemblies.forEach { try $0.preassemble() }
         try self.assemblies.forEach { try $0.assemble(container: self.container) }
-        try self.assemblies.forEach { try $0.loaded(resolver: self.resolver) }
+        try self.assemblies.forEach { try $0.postAssemble(resolver: self.resolver) }
     }
     
     // MARK: - Legacy Compatibility
@@ -211,8 +211,8 @@ public class Assembler {
     /// - Throws: Any errors thrown by the assemblies.
     @available(*, deprecated, message: "Internal use only; use assemble() for modern usage")
     func run(assemblies: [Assembly]) throws {
-        try assemblies.forEach { try $0.preloaded() }
+        try assemblies.forEach { try $0.preassemble() }
         try assemblies.forEach { try $0.assemble(container: self.container) }
-        try assemblies.forEach { try $0.loaded(resolver: self.resolver) }
+        try assemblies.forEach { try $0.postAssemble(resolver: self.resolver) }
     }
 }

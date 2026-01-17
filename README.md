@@ -381,63 +381,161 @@ try container.register(String.self) { "Hello, Astroject!" }
 ```
 *By adding custom behaviors, you can easily extend Astroject's functionality to suit your application's specific needs without modifying the core framework.*
 
-### 🏗️ Assemblies and Assemblers
+# 🏗️ Assemblies and Assembler
 
-For larger applications, managing all registrations in one place can become unwieldy. Astroject addresses this with Assemblies and Assemblers, promoting a modular and organized structure for your dependency graph.
+For larger applications, managing all registrations in one place can become unwieldy. **Astroject** solves this with **Assemblies** and the **Assembler**, promoting a modular, organized, and testable structure for your dependency graph.
 
-An Assembly is a dedicated module responsible for registering a specific set of dependencies. It provides:
+---
 
-A `assemble(container:)` function where all registrations for that module are defined.
-A `loaded(resolver:)` function that acts as a hook, executing after all registrations within that assembly are complete. This is perfect for post-setup logic, validation, or resolving initial instances that depend on the full assembly being in place.
-The Assembler is a utility that takes one or more Assemblies and applies their registrations to a Container. This allows you to construct your dependency graph by combining various functional modules.
+## Assemblies
 
-#### Example: Organizing Registrations with an Assembly
+An **Assembly** is a dedicated module responsible for registering a specific set of dependencies. It provides three phases:
 
-Here's how you can define and use an Assembly to encapsulate related registrations:
+1. **`preassemble()`** *(optional)*  
+   Optional setup **before** registration occurs (e.g., configuration, validation, or preconditions).  
+   > ⚠️ The old `preloaded()` method is deprecated in favor of `preassemble()`.
 
-```Swift
+2. **`assemble(container:)`**  
+   The main registration function where all dependencies for the module are registered in the container.
+
+3. **`postAssemble(resolver:)`** *(optional)*  
+   Runs **after all assemblies have been applied**. This is perfect for post-setup logic, validation, or resolving initial instances that depend on the full assembly being in place.  
+   > ⚠️ The old `loaded(resolver:)` method is deprecated in favor of `postAssemble(resolver:)`.
+
+4. **`requiredAssemblies()`** *(optional)*  
+   Returns a `Set<ObjectIdentifier>` of assemblies that this assembly depends on.  
+   Use the convenient `Assembly.requires(_:)` static function to declare dependencies:
+
+```swift
+struct FeatureAssembly: Assembly {
+    // Declare dependencies using the `requires` helper
+    static let dependencies = requires([CoreAssembly.self, NetworkingAssembly.self])
+    
+    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
+    
+    func preassemble() {
+        print("Preassemble FeatureAssembly")
+    }
+    
+    func assemble(container: Container) throws {
+        try container.register(String.self, name: "featureName") { "My Feature" }
+    }
+    
+    func postAssemble(resolver: Resolver) throws {
+        if let feature: String = try? resolver.resolve(String.self, name: "featureName") {
+            print("FeatureAssembly postAssemble: \(feature)")
+        }
+    }
+}
+```
+
+> ⚠️ `preassemble()`, `postAssemble(resolver:)`, and `requiredAssemblies()` are all optional.  
+> Using `Assembly.requires([...])` makes it easy to declare dependencies without manually constructing sets.
+
+---
+
+## Assembler
+
+The **Assembler** applies one or more assemblies to a `Container`. Modern usage promotes **method chaining** for adding assemblies and performing assembly in one fluent style:
+
+```swift
+let assembler = Assembler(container: container)
+
+try assembler
+    .add(assembly: SomeAssembly())
+    .add(assemblies: [FeatureAssembly(), AnalyticsAssembly()])
+    .assemble()
+```
+
+**Automatic Assembly via Initializer**
+
+If you use the **initializer that takes an array of assemblies**, the assembler will automatically **validate and assemble them**:
+
+```swift
+let assembler = try Assembler(
+    container: container,
+    assemblies: [CoreAssembly(), NetworkingAssembly(), FeatureAssembly()]
+)
+// All assemblies are already validated and assembled
+```
+
+- Each `add` marks the assembler as needing reassembly.  
+- `assemble()` validates dependencies, runs all three phases (`preassemble`, `assemble`, `postAssemble`) for each assembly, and marks the assembler as assembled.  
+- Chaining is supported for a fluent workflow.
+
+> ⚠️ Legacy methods like `preloaded()` and `loaded(resolver:)` are deprecated. Use `preassemble()` and `postAssemble(resolver:)`.  
+> ⚠️ Use `Assembly.requires([...])` for dependencies rather than manually constructing sets.
+
+---
+
+## Example: Organizing Registrations with an Assembly
+
+```swift
 import Astroject
 
-// 1. Define your Assembly
 class MyAssembly: Assembly {
-    // This is where you register your dependencies for this module
-    func assemble(container: Container) {
-        // We use try? here for brevity in example, in real code you'd handle errors
-        try? container.register(String.self, name: "greeting") {  "Hello from Astroject Assembly!" }
-        try? container.register(Int.self) {  123 }
+    func preassemble() {
+        print("Preassembling MyAssembly")
     }
 
-    // This hook runs AFTER assemble() is called and all registrations are processed
-    func loaded(resolver: Resolver) {
+    func assemble(container: Container) throws {
+        try container.register(String.self, name: "greeting") { "Hello from Astroject!" }
+        try container.register(Int.self) { 42 }
+    }
+
+    func postAssemble(resolver: Resolver) throws {
         if let message: String = try? resolver.resolve(String.self, name: "greeting") {
-            print("MyAssembly loaded and resolved message: \(message)")
+            print("MyAssembly postAssemble resolved message: \(message)")
         }
         if let number: Int = try? resolver.resolve(Int.self) {
-            print("MyAssembly loaded and resolved number: \(number)")
+            print("MyAssembly postAssemble resolved number: \(number)")
         }
     }
 }
 
-// 2. Create your Container and Assembler
+// Declare dependencies easily using requires()
+struct FeatureAssembly: Assembly {
+    static let dependencies = requires([MyAssembly.self])
+    
+    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
+    
+    func assemble(container: Container) throws {
+        try container.register(String.self, name: "featureName") { "My Feature" }
+    }
+}
+
 let container = Container()
+
+// Using add() + assemble() chaining
 let assembler = Assembler(container: container)
+try assembler.add(assembly: MyAssembly()).add(assemblies: [FeatureAssembly()]).assemble()
 
-// 3. Apply your assembly to the container
-print("Applying MyAssembly...")
-assembler.apply(assembly: MyAssembly())
-// Expected Output during apply (due to loaded hook):
-// MyAssembly loaded and resolved message: Hello from Astroject Assembly!
-// MyAssembly loaded and resolved number: 123
-print("MyAssembly applied.")
+// Using initializer with assemblies → automatically assembles
+let autoAssembler = try Assembler(
+    container: container,
+    assemblies: [MyAssembly(), FeatureAssembly()]
+)
 
-// 4. Resolve dependencies registered by the assembly
+// Resolve dependencies
 let message: String = try await container.resolve(String.self, name: "greeting")
-print("Resolved message from container: \(message)") // Output: Resolved message from container: Hello from Astroject Assembly!
+print(message) // "Hello from Astroject!"
 
-let number: Int = try await container.resolve(Int.self)
-print("Resolved number from container: \(number)") // Output: Resolved number from container: 123
+let feature: String = try await container.resolve(String.self, name: "featureName")
+print(feature) // "My Feature"
 ```
-*By leveraging Assemblies and Assemblers, you can significantly improve the organization, maintainability, and testability of your application's dependency setup.*
+
+---
+
+### Key Benefits
+
+- **Modular**: Each Assembly encapsulates a logical set of dependencies.  
+- **Safe**: The Assembler validates required assemblies before assembling.  
+- **Fluent**: Chaining allows adding multiple assemblies and assembling in a single flow.  
+- **Automatic**: Using the initializer with an array of assemblies auto-assembles them.  
+- **Optional Hooks**: Assemblies can define `preassemble()` and `postAssemble(resolver:)` hooks as needed.  
+- **Testable**: Assemblies and the Assembler can be tested independently.  
+- **Extensible**: Supports synchronous (`SyncContainer`) or asynchronous (`AsyncContainer`) containers.
+
 
 ## 💡 Sample Code
 Checkout our sample code under the [playgrounds](/Playgrounds) directory. (Coming Soon!)

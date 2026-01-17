@@ -58,9 +58,9 @@ struct LegacyAssemblerTests {
         
         #expect(assembler.container === container)
         #expect(assembler.resolver === container)
-        #expect(assembly1.preloadedCalled)
+        #expect(assembly1.preassembleCalled)
         #expect(assembly1.assembleCalled)
-        #expect(assembly1.loadedCalled)
+        #expect(assembly1.postAssembleCalled)
     }
     
     @Test("Init with Assembly")
@@ -72,9 +72,9 @@ struct LegacyAssemblerTests {
         
         #expect(assembler.container === container)
         #expect(assembler.resolver === container)
-        #expect(assembly.preloadedCalled)
+        #expect(assembly.preassembleCalled)
         #expect(assembly.assembleCalled)
-        #expect(assembly.loadedCalled)
+        #expect(assembly.postAssembleCalled)
     }
     
     @Test("Apply Single Assembly")
@@ -84,9 +84,9 @@ struct LegacyAssemblerTests {
         
         try assembler.apply(assembly: assembly)
         
-        #expect(assembly.preloadedCalled)
+        #expect(assembly.preassembleCalled)
         #expect(assembly.assembleCalled)
-        #expect(assembly.loadedCalled)
+        #expect(assembly.postAssembleCalled)
     }
     
     @Test("Apply Multiple Assemblies")
@@ -98,12 +98,12 @@ struct LegacyAssemblerTests {
         
         try assembler.apply(assemblies: [assembly1, assembly2])
         
-        #expect(assembly1.preloadedCalled)
+        #expect(assembly1.preassembleCalled)
         #expect(assembly1.assembleCalled)
-        #expect(assembly1.loadedCalled)
-        #expect(assembly2.preloadedCalled)
+        #expect(assembly1.postAssembleCalled)
+        #expect(assembly2.preassembleCalled)
         #expect(assembly2.assembleCalled)
-        #expect(assembly2.loadedCalled)
+        #expect(assembly2.postAssembleCalled)
     }
     
     @Test("Runs Assembly in Correct Sequence")
@@ -111,9 +111,9 @@ struct LegacyAssemblerTests {
         let container = MockContainer()
         let assembly = MockAssembly()
         var sequence: [String] = []
-        assembly.whenPreloaded = { sequence.append("preloaded") }
+        assembly.whenPreassemble = { sequence.append("preloaded") }
         assembly.whenAssemble = { sequence.append("assembled") }
-        assembly.whenLoaded = { sequence.append("loaded") }
+        assembly.whenPostAssemble = { sequence.append("loaded") }
         
         let assembler = Assembler(container: container)
         try assembler.run(assemblies: [assembly])
@@ -126,9 +126,9 @@ struct LegacyAssemblerTests {
         let assembly = MockAssembly()
         let assembler = try Assembler(assembly: assembly, container: MockContainer())
         
-        #expect(assembly.preloadedCalled)
+        #expect(assembly.preassembleCalled)
         #expect(assembly.assembleCalled)
-        #expect(assembly.loadedCalled)
+        #expect(assembly.postAssembleCalled)
         #expect(assembler.isAssembled)
     }
     
@@ -138,9 +138,9 @@ struct LegacyAssemblerTests {
         let assembler = try Assembler(assemblies: assemblies, container: MockContainer())
         
         assemblies.forEach {
-            #expect($0.preloadedCalled)
+            #expect($0.preassembleCalled)
             #expect($0.assembleCalled)
-            #expect($0.loadedCalled)
+            #expect($0.postAssembleCalled)
         }
         #expect(assembler.isAssembled)
     }
@@ -235,9 +235,9 @@ final class AssemblerTests {
         try assembler.add(assembly: assembly)
             .assemble()
         
-        #expect(assembly.preloadedCalled)
+        #expect(assembly.preassembleCalled)
         #expect(assembly.assembleCalled)
-        #expect(assembly.loadedCalled)
+        #expect(assembly.postAssembleCalled)
     }
     
     @Test("Add Multiple Assemblies Chaining")
@@ -250,12 +250,12 @@ final class AssemblerTests {
         try assembler.add(assemblies: [assembly1, assembly2])
             .assemble()
         
-        #expect(assembly1.preloadedCalled)
+        #expect(assembly1.preassembleCalled)
         #expect(assembly1.assembleCalled)
-        #expect(assembly1.loadedCalled)
-        #expect(assembly2.preloadedCalled)
+        #expect(assembly1.postAssembleCalled)
+        #expect(assembly2.preassembleCalled)
         #expect(assembly2.assembleCalled)
-        #expect(assembly2.loadedCalled)
+        #expect(assembly2.postAssembleCalled)
     }
     
     @Test("IsAssembled Updates Correctly")
@@ -318,7 +318,7 @@ final class AssemblerTests {
             .add(assemblies: [assembly2])
             .assemble()
         
-        #expect(assembly1.preloadedCalled)
+        #expect(assembly1.preassembleCalled)
         #expect(assembly2.assembleCalled)
         #expect(assembler.isAssembled)
     }
@@ -338,8 +338,8 @@ final class AssemblerTests {
         
         try assembler.add(assembly: assembly).assemble()
         
-        #expect(assembly.preloadedCalled)
+        #expect(assembly.preassembleCalled)
         #expect(assembly.assembleCalled)
-        #expect(assembly.loadedCalled)
+        #expect(assembly.postAssembleCalled)
     }
 }
