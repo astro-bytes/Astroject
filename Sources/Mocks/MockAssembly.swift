@@ -10,16 +10,25 @@ import AstrojectCore
 // Mock Assembly for testing
 class MockAssembly: Assembly {
     var preassembleCalled = false
+    var preLoadedCalled = false
     var postAssembleCalled = false
     var assembleCalled = false
+    var postLoadedCalled = false
     
     var whenPreassemble: () throws -> Void = {}
+    var whenPreLoaded: () throws -> Void = {}
     var whenAssemble: () throws -> Void = {}
     var whenPostAssemble: () throws -> Void = {}
+    var whenPostLoaded: () throws -> Void = {}
     
     func preassemble() throws {
         preassembleCalled = true
         try whenPreassemble()
+    }
+    
+    func preloaded() throws {
+        preLoadedCalled = true
+        try whenPreLoaded()
     }
     
     func assemble(container: Container) throws {
@@ -30,5 +39,18 @@ class MockAssembly: Assembly {
     func postAssemble(resolver: any Resolver) throws {
         postAssembleCalled = true
         try whenPostAssemble()
+    }
+    
+    func postLoaded(resolver: any Resolver) throws {
+        postLoadedCalled = true
+        try whenPostLoaded()
+    }
+    
+    func reset() {
+        preassembleCalled = false
+        preLoadedCalled = false
+        postAssembleCalled = false
+        assembleCalled = false
+        postLoadedCalled = false
     }
 }

@@ -85,9 +85,9 @@ public extension Assembly {
     
     /// Default implementation of deprecated `preloaded()`.
     @available(*, deprecated, message: "Use preassemble() instead")
-    func preloaded() throws { try preassemble() }
+    func preloaded() throws {}
     
     /// Default implementation of deprecated `loaded(resolver:)`.
     @available(*, deprecated, message: "Use postAssemble(resolver:) instead")
-    func loaded(resolver: Resolver) throws { try postAssemble(resolver: resolver) }
+    func loaded(resolver: Resolver) throws {}
 }

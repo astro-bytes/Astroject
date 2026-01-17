@@ -145,6 +145,17 @@ struct LegacyAssemblerTests {
         #expect(assembler.isAssembled)
     }
     
+    @Test("Apply Single Assembly Calls Pre/Post Assemble")
+    func applySingleAssemblyCallsPrePost() throws {
+        let assembly = MockAssembly()
+        let assembler = Assembler(container: MockContainer())
+        
+        try assembler.apply(assembly: assembly)
+        
+        #expect(assembly.preassembleCalled)
+        #expect(assembly.assembleCalled)
+        #expect(assembly.postAssembleCalled)
+    }
 }
 
 // MARK: - Modern Assembler Tests
@@ -341,5 +352,26 @@ final class AssemblerTests {
         #expect(assembly.preassembleCalled)
         #expect(assembly.assembleCalled)
         #expect(assembly.postAssembleCalled)
+    }
+    
+    @Test("Multiple Assemblies Pre/Post Assemble Sequence")
+    func multipleAssembliesPrePostSequence() throws {
+        let container = MockContainer()
+        let assembly1 = MockAssembly()
+        let assembly2 = MockAssembly()
+        
+        var sequence: [String] = []
+        assembly1.whenPreassemble = { sequence.append("pre1") }
+        assembly1.whenAssemble = { sequence.append("assemble1") }
+        assembly1.whenPostAssemble = { sequence.append("post1") }
+        
+        assembly2.whenPreassemble = { sequence.append("pre2") }
+        assembly2.whenAssemble = { sequence.append("assemble2") }
+        assembly2.whenPostAssemble = { sequence.append("post2") }
+        
+        let assembler = Assembler(container: container)
+        try assembler.add(assemblies: [assembly1, assembly2]).assemble()
+        
+        #expect(sequence == ["pre1","pre2","assemble1","assemble2","post1","post2"])
     }
 }
