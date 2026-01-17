@@ -1,17 +1,44 @@
 //
-//  AssemblerTests.swift
-//  Astroject
+// AssemblerTests.swift
+// Astroject
 //
-//  Created by Porter McGary on 5/30/25.
+// Created by Porter McGary on 1/16/26.
 //
 
-import Foundation
 import Testing
-@testable import Mocks
 @testable import AstrojectCore
+@testable import Mocks
 
-@Suite("Assembler Tests")
-struct AssemblerTests {
+// MARK: - Test Assemblies
+
+struct NetworkingAssembly: Assembly {
+    func assemble(container: Container) throws {}
+}
+
+struct FeatureAssembly: Assembly {
+    static let dependencies = requires([
+        MockAssembly.self,
+        NetworkingAssembly.self
+    ])
+    
+    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
+    
+    func assemble(container: Container) throws {}
+}
+
+struct AnalyticsAssembly: Assembly {
+    static let dependencies = requires([MockAssembly.self])
+    
+    func requiredAssemblies() -> Set<ObjectIdentifier> { Self.dependencies }
+    
+    func assemble(container: Container) throws {}
+}
+
+// MARK: - Legacy Assembler Tests
+
+@Suite("Legacy Assembler Tests")
+struct LegacyAssemblerTests {
+    
     @Test("Init with Container")
     func initWithContainer() {
         let container = MockContainer()
@@ -79,7 +106,7 @@ struct AssemblerTests {
         #expect(assembly2.loadedCalled)
     }
     
-    @Test("Runs Assembly in Correct Squence")
+    @Test("Runs Assembly in Correct Sequence")
     func correctSequence() throws {
         let container = MockContainer()
         let assembly = MockAssembly()
@@ -92,5 +119,227 @@ struct AssemblerTests {
         try assembler.run(assemblies: [assembly])
         
         #expect(sequence == ["preloaded", "assembled", "loaded"])
+    }
+    
+    @Test("Deprecated Initializer with Single Assembly")
+    func deprecatedInitSingleAssembly() throws {
+        let assembly = MockAssembly()
+        let assembler = try Assembler(assembly: assembly, container: MockContainer())
+        
+        #expect(assembly.preloadedCalled)
+        #expect(assembly.assembleCalled)
+        #expect(assembly.loadedCalled)
+        #expect(assembler.isAssembled)
+    }
+    
+    @Test("Deprecated Initializer with Multiple Assemblies")
+    func deprecatedInitMultipleAssemblies() throws {
+        let assemblies = [MockAssembly(), MockAssembly()]
+        let assembler = try Assembler(assemblies: assemblies, container: MockContainer())
+        
+        assemblies.forEach {
+            #expect($0.preloadedCalled)
+            #expect($0.assembleCalled)
+            #expect($0.loadedCalled)
+        }
+        #expect(assembler.isAssembled)
+    }
+    
+}
+
+// MARK: - Modern Assembler Tests
+
+@Suite("Assembler Tests")
+final class AssemblerTests {
+    
+    // MARK: Dependency validation tests
+    
+    @Test("Missing Assemblies")
+    func missingRequiredAssembliesThrows() throws {
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        #expect(throws: Assembler.Error.missingRequiredAssemblies) {
+            try assembler.add(assemblies: [FeatureAssembly()]).assemble()
+        }
+    }
+    
+    @Test("All Assemblies Present")
+    func allRequiredAssembliesPresentSucceeds() {
+        let assemblies: [Assembly] = [
+            MockAssembly(),
+            NetworkingAssembly(),
+            FeatureAssembly()
+        ]
+        
+        #expect(throws: Never.self) {
+            try Assembler(
+                container: MockContainer(),
+                assemblies: assemblies
+            )
+        }
+        
+        #expect(throws: Never.self) {
+            let assembler = Assembler(container: MockContainer())
+            try assembler.add(assemblies: assemblies).assemble()
+        }
+    }
+    
+    @Test("Order Does Not Matter")
+    func assemblyOrderDoesNotMatter() {
+        #expect(throws: Never.self) {
+            try Assembler(
+                container: MockContainer(),
+                assemblies: [FeatureAssembly(), NetworkingAssembly(), MockAssembly()]
+            )
+        }
+    }
+    
+    @Test("No Required Dependencies is OK")
+    func assemblyWithNoDependenciesAlwaysValid() {
+        #expect(throws: Never.self) {
+            try Assembler(container: MockContainer(), assemblies: [MockAssembly()])
+        }
+    }
+    
+    @Test("Multiple Assemblies with Shared Dependencies")
+    func multipleAssembliesWithSharedDependencies() {
+        let container = MockContainer()
+        #expect(throws: Never.self) {
+            try Assembler(
+                container: container,
+                assemblies: [MockAssembly(), FeatureAssembly(), NetworkingAssembly(), AnalyticsAssembly()]
+            )
+        }
+    }
+    
+    @Test("Duplicated Required Assemblies")
+    func duplicateAssembliesAreHandled() {
+        let container = MockContainer()
+        #expect(throws: Never.self) {
+            try Assembler(
+                container: container,
+                assemblies: [MockAssembly(), MockAssembly(), NetworkingAssembly(), FeatureAssembly()]
+            )
+        }
+    }
+    
+    // MARK: Chaining Tests
+    
+    @Test("Add Single Assembly Chaining")
+    func addSingleAssemblyChaining() throws {
+        let container = MockContainer()
+        let assembly = MockAssembly()
+        let assembler = Assembler(container: container)
+        
+        try assembler.add(assembly: assembly)
+            .assemble()
+        
+        #expect(assembly.preloadedCalled)
+        #expect(assembly.assembleCalled)
+        #expect(assembly.loadedCalled)
+    }
+    
+    @Test("Add Multiple Assemblies Chaining")
+    func addMultipleAssembliesChaining() throws {
+        let container = MockContainer()
+        let assembly1 = MockAssembly()
+        let assembly2 = MockAssembly()
+        let assembler = Assembler(container: container)
+        
+        try assembler.add(assemblies: [assembly1, assembly2])
+            .assemble()
+        
+        #expect(assembly1.preloadedCalled)
+        #expect(assembly1.assembleCalled)
+        #expect(assembly1.loadedCalled)
+        #expect(assembly2.preloadedCalled)
+        #expect(assembly2.assembleCalled)
+        #expect(assembly2.loadedCalled)
+    }
+    
+    @Test("IsAssembled Updates Correctly")
+    func isAssembledFlagDoesNotUpdateWithNoAssemblies() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [])
+        
+        #expect(!assembler.isAssembled)
+        try assembler.assemble()
+        #expect(!assembler.isAssembled)
+    }
+    
+    @Test("IsAssembled Updates Correctly")
+    func isAssembledFlagUpdatesUpdatesOnInit() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(
+            container: container,
+            assemblies: [MockAssembly()]
+        )
+        
+        #expect(assembler.isAssembled)
+    }
+    
+    @Test("IsAssembled Is False After Adding an Assembly")
+    func isAssembledFlagUpdatesDuringAdditionOfAssemblies() throws {
+        let container = MockContainer()
+        let assembler = try Assembler(container: container, assemblies: [])
+        
+        #expect(!assembler.isAssembled)
+        assembler.add(assembly: MockAssembly())
+        #expect(!assembler.isAssembled)
+    }
+    
+    @Test("Assemble Chaining Returns Self")
+    func assembleChainingReturnsSelf() throws {
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        let returned = try assembler.assemble()
+        #expect(returned === assembler)
+    }
+    
+    @Test("Assemble Twice Throws AlreadyAssembled")
+    func assembleTwiceThrowsAlreadyAssembled() throws {
+        let assembler = try Assembler(container: MockContainer(), assemblies: [MockAssembly()])
+        
+        #expect(throws: Assembler.Error.alreadyAssembled) {
+            try assembler.assemble() // second call
+        }
+    }
+    
+    @Test("Add and Assemble Chaining Sequence")
+    func addAndAssembleChainingSequence() throws {
+        let container = MockContainer()
+        let assembly1 = MockAssembly()
+        let assembly2 = MockAssembly()
+        let assembler = Assembler(container: container)
+        
+        try assembler.add(assembly: assembly1)
+            .add(assemblies: [assembly2])
+            .assemble()
+        
+        #expect(assembly1.preloadedCalled)
+        #expect(assembly2.assembleCalled)
+        #expect(assembler.isAssembled)
+    }
+    
+    @Test("Assemble With No Assemblies Returns Self")
+    func assembleWithNoAssembliesReturnsSelf() throws {
+        let assembler = Assembler(container: MockContainer())
+        let returned = try assembler.assemble()
+        #expect(returned === assembler)
+    }
+    
+    @Test("Assemblies Preloaded, Assembled, Loaded Called")
+    func assembliesPreloadedAssembledAndLoadedAreCalled() throws {
+        let container = MockContainer()
+        let assembly = MockAssembly()
+        let assembler = Assembler(container: container)
+        
+        try assembler.add(assembly: assembly).assemble()
+        
+        #expect(assembly.preloadedCalled)
+        #expect(assembly.assembleCalled)
+        #expect(assembly.loadedCalled)
     }
 }

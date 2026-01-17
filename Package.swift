@@ -51,7 +51,7 @@ let package = Package(
             dependencies: ["AstrojectCore"],
             path: "Sources/Sync"
         ),
-
+        
         // Test targets for each framework component
         .testTarget(
             name: "AsyncTests",

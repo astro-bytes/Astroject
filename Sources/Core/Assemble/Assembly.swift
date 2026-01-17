@@ -13,6 +13,9 @@ import Foundation
 /// dependencies within a dependency injection `Container`.
 /// Implementations of this protocol are responsible for registering dependencies and performing any necessary setup.
 public protocol Assembly {
+    // TODO: Comment
+    func requiredAssemblies() -> Set<ObjectIdentifier>
+    
     /// Performs any necessary setup or loading that needs to occur *before* the assembly's dependencies are registered.
     ///
     /// This function is typically used for tasks that must be completed prior to the main `assemble` phase,
@@ -38,6 +41,16 @@ public protocol Assembly {
 }
 
 public extension Assembly {
+    // TODO: Comment
+    static func requires(_ assemblies: [Assembly.Type] = []) -> Set<ObjectIdentifier> {
+        Set(assemblies.map(ObjectIdentifier.init))
+    }
+    
+    // TODO: Comment
+    func requiredAssemblies() -> Set<ObjectIdentifier> {
+        Self.requires()
+    }
+    
     /// Default implementation of `preloaded()`, which does nothing.
     ///
     /// This default implementation is provided for convenience, allowing assemblies

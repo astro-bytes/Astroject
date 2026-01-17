@@ -156,12 +156,10 @@ struct AsyncContainerTests {
         
         #expect(container.registrations.count == 2)
         #expect(container.registrations[key] != nil)
-        await #expect(throws: Never.self) {
-            try await container.resolve(Classes.ObjectD.self)
-        }
-        await #expect(throws: Never.self) {
-            try await container.resolve(Protocols.Dinosaur.self)
-        }
+        // Verify direct resolution succeeds
+        _ = try await container.resolve(Classes.ObjectD.self)
+        // Verify forwarded protocol resolution succeeds
+        _ = try await container.resolve(Protocols.Dinosaur.self)
     }
     
     @Suite("Without Arguments")
