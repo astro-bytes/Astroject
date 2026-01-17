@@ -631,7 +631,7 @@ final class AssemblerTests {
     func assemblyFailureIsThrown() throws {
         struct FailingAssembly: Assembly {
             init() {}
-            var requiredAssemblies: [Assembly.Type] { [] }
+            static var requiredAssemblies: [Assembly.Type] { [] }
             
             func preassemble() throws {
                 throw MockError()
