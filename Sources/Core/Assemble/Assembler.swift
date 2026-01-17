@@ -50,10 +50,10 @@ public class Assembler {
     ///
     /// Once `assemble()` has successfully run, attempting to assemble again
     /// will throw `Assembler.Error.alreadyAssembled`.
-    var isAssembled: Bool = false
+    private(set) var isAssembled: Bool = false
     
     /// Assemblies that will be applied to the container.
-    var assemblies: [Assembly]
+    private(set) var assemblies: [Assembly]
     
     // MARK: - Initializers
     
