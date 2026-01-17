@@ -25,7 +25,8 @@ public extension Assembler {
         self.init(container: container)
     }
     
-    /// Creates an `Assembler` and registers a list of `Assembly` instances using the specified asynchronous container (legacy API).
+    /// Creates an `Assembler` and registers a list of `Assembly` instances using the specified
+    /// asynchronous container (legacy API).
     ///
     /// Deprecated: Use `Assembler(container:)` + `add(assemblies:)` + `assemble()` instead.
     ///
@@ -39,7 +40,8 @@ public extension Assembler {
         try self.init(assemblies: assemblies, container: container)
     }
     
-    /// Creates an `Assembler` and registers a single `Assembly` instance using the specified asynchronous container (legacy API).
+    /// Creates an `Assembler` and registers a single `Assembly` instance using the specified
+    /// asynchronous container (legacy API).
     ///
     /// Deprecated: Use `Assembler(container:)` + `add(assembly:)` + `assemble()` instead.
     ///

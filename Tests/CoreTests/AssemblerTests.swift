@@ -372,6 +372,8 @@ final class AssemblerTests {
         let assembler = Assembler(container: container)
         try assembler.add(assemblies: [assembly1, assembly2]).assemble()
         
-        #expect(sequence == ["pre1","pre2","assemble1","assemble2","post1","post2"])
+        #expect(sequence == [
+            "pre1", "pre2", "assemble1", "assemble2", "post1", "post2"
+        ])
     }
 }

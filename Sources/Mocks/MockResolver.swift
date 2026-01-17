@@ -1,10 +1,12 @@
-////
-////  MockResolver.swift
-////  Astroject
-////
-////  Created by Porter McGary on 3/4/25.
-////
 //
+//  MockResolver.swift
+//  Astroject
+//
+//  Created by Porter McGary on 3/4/25.
+//
+
+// swiftlint:disable all
+
 //import Foundation
 //import AstrojectCore
 //
@@ -51,3 +53,5 @@
 //        return try whenResolve() as! Product
 //    }
 //}
+
+// swiftlint:enable all

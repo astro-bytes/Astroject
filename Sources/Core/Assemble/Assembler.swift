@@ -63,6 +63,7 @@ public class Assembler {
     ///
     /// - Parameter container: The container to assemble dependencies into.
     public convenience init(container: Container) {
+        // swiftlint:disable:next force_try
         try! self.init(container: container, assemblies: [])
     }
     
@@ -94,7 +95,6 @@ public class Assembler {
     public convenience init(assembly: Assembly, container: Container) throws {
         try self.init(assemblies: [assembly], container: container)
     }
-    
     
     // MARK: - Assembly Management
     
@@ -139,7 +139,9 @@ public class Assembler {
     
     /// Validates and assembles all added assemblies into the container.
     ///
-    /// - Throws: `Assembler.Error.alreadyAssembled` if already assembled, or `Assembler.Error.missingRequiredAssemblies` if required assemblies are missing.
+    /// - Throws: `Assembler.Error.alreadyAssembled` if already assembled, or
+    ///           `Assembler.Error.missingRequiredAssemblies` if required
+    ///           assemblies are missing.
     /// - Returns: The `Assembler` instance for chaining.
     @discardableResult
     public func assemble() throws -> Assembler {
