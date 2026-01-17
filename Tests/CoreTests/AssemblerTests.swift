@@ -279,7 +279,7 @@ final class AssemblerTests {
         #expect(!assembler.isAssembled)
     }
     
-    @Test("IsAssembled Updates Correctly")
+    @Test("IsAssembled Updates on Init With Assemblies")
     func isAssembledFlagUpdatesUpdatesOnInit() throws {
         let container = MockContainer()
         let assembler = try Assembler(
