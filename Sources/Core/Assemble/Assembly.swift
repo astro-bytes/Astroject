@@ -14,7 +14,19 @@ import Foundation
 /// and declare dependencies on other assemblies.
 public protocol Assembly {
     
-    // TODO: Comment
+    /// Required default initializer.
+    ///
+    /// This initializer allows the Assembler to automatically create instances
+    /// of assemblies when `initializeMissingAssemblies` is true and a required
+    /// assembly is missing. All assemblies that may be automatically initialized
+    /// must implement a public, parameterless `init()`.
+    ///
+    /// Example:
+    /// ```swift
+    /// struct FeatureAssembly: Assembly {
+    ///     init() { /* default setup */ }
+    /// }
+    /// ```
     init()
     
     /// A list of assemblies that must also be present for this assembly to run.
@@ -61,7 +73,6 @@ public protocol Assembly {
     @available(*, deprecated, message: "Use postAssemble(resolver:) instead")
     func loaded(resolver: Resolver) throws
 }
-
 
 public extension Assembly {
     /// Default implementation returns an empty set, meaning no required assemblies.
