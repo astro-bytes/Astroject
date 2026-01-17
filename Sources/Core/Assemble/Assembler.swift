@@ -96,7 +96,8 @@ public class Assembler {
     /// - Parameters:
     ///   - container: The container to assemble dependencies into.
     ///   - assemblies: An array of `Assembly` instances to apply. Defaults to an empty array.
-    /// - Throws: `Assembler.Error.alreadyAssembled` or `Assembler.Error.missingRequiredAssemblies` if validation fails.
+    /// - Throws: `Assembler.Error.missingRequiredAssemblies`, `Assembler.Error.circularDependency`,
+    ///   or `Assembler.Error.assemblyFailure` if validation or assembly fails.
     public init(container: Container, assemblies: [Assembly], initializeMissingAssemblies: Bool = true) throws {
         self.container = container
         self.assemblies = assemblies
