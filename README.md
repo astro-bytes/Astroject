@@ -614,6 +614,7 @@ Behavior:
 ## Assembly Rules
 
 - Assemblies execute in the order they are added
+- When `initializeMissingAssemblies` is enabled, any missing assemblies are automatically added in dependency order before their dependents
 - All required assemblies must be present
 - Assemblies are assembled only once per assembler
 - Legacy lifecycle hooks are executed automatically
