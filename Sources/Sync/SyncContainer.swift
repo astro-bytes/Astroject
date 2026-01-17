@@ -1,14 +1,14 @@
 //  SyncContainer.swift
 //  Astroject
 //
-//  Created by Porter McGady on 5/21/25.
+//  Created by Porter McGary on 5/21/25.
 //
 
 import Foundation
 import AstrojectCore
 
 /// A dependency injection container that manages registrations and resolves dependencies.
-public final class SyncContainer: Container, @unchecked Sendable {
+public final class SyncContainer: Container, Assemblable, @unchecked Sendable {
     /// A serial dispatch queue used to ensure thread-safe access to the container's internal state.
     /// This prevents race conditions when multiple threads try to access or modify the `registrations` dictionary.
     private let serialQueue: DispatchQueue = .init(label: "com.astrobytes.astroject.sync.container")
@@ -21,8 +21,18 @@ public final class SyncContainer: Container, @unchecked Sendable {
     /// like logging, validation, or modifying registrations.
     private(set) var behaviors: [Behavior] = []
     
-    /// Initializes a new `Container` instance.
-    public init() {}
+    public private(set) var assembler: Assembler?
+    
+    // TODO: Comment
+    public init(createAssembler: Bool = false) {
+        guard createAssembler else { return }
+        self.assembler = Assembler(container: self)
+    }
+    
+    // TODO: Comment
+    public init(assemblies: [Assembly]) throws {
+        self.assembler = try Assembler(container: self, assemblies: assemblies)
+    }
     
     @discardableResult
     public func register<Product>(
@@ -220,6 +230,8 @@ extension SyncContainer {
         name: String?,
         argument: Argument? = nil
     ) throws -> Product {
+        try isAssembled()
+        
         let key: RegistrationKey
         
         if argument != nil {

@@ -8,13 +8,16 @@
 import Foundation
 import AstrojectCore
 
-final class MockContainer: Container, @unchecked Sendable {
+final class MockContainer: Container, Assemblable, @unchecked Sendable {
     var callsRegister: Bool = false
     var callsResolve: Bool = false
     var callsIsRegister: Bool = false
     var callsClear: Bool = false
     var callsAdd: Bool = false
     var callsForward: Bool = false
+    var callsSet: Bool = false
+    
+    var assembler: Assembler?
     
     var whenRegister: () throws -> Void = {}
     var whenResolve: () throws -> Any = { 42 }
