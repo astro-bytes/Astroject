@@ -96,6 +96,8 @@ public class Assembler {
     /// - Parameters:
     ///   - container: The container to assemble dependencies into.
     ///   - assemblies: An array of `Assembly` instances to apply. Defaults to an empty array.
+    ///   - initializeMissingAssemblies: A flag indicating whether to automatically initialize
+    ///     and add any required assemblies that are missing when `assemble()` is called. Defaults to `true`.
     /// - Throws: `Assembler.Error.missingRequiredAssemblies`, `Assembler.Error.circularDependency`,
     ///   or `Assembler.Error.assemblyFailure` if validation or assembly fails.
     public init(container: Container, assemblies: [Assembly], initializeMissingAssemblies: Bool = true) throws {
@@ -112,6 +114,8 @@ public class Assembler {
     /// Dependencies can be added later using `add(assembly:)` or `add(assemblies:)`.
     ///
     /// - Parameter container: The container to assemble dependencies into.
+    /// - Parameter initializeMissingAssemblies: A flag indicating whether to automatically initialize
+    ///     and add any required assemblies that are missing when `assemble()` is called. Defaults to `true`.
     public init(container: Container, initializeMissingAssemblies: Bool = true) {
         self.container = container
         self.assemblies = []
@@ -130,8 +134,7 @@ public class Assembler {
     /// - Throws: Any errors thrown by assembly.
     @available(*, deprecated, message: "Use Assembler(container:) + add(assemblies:) + assemble() instead")
     public convenience init(assemblies: [Assembly], container: Container) throws {
-        self.init(container: container)
-        try self.add(assemblies: assemblies).assemble()
+        try self.init(container: container, assemblies: assemblies)
     }
     
     /// Initializes an assembler with a single assembly and a container (legacy API).
