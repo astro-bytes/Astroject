@@ -14,7 +14,7 @@ import AstrojectCore
 /// and then resolving instances of these products. It handles both dependencies without arguments
 /// and those requiring an argument for resolution. It also includes thread-safety mechanisms
 /// using a serial dispatch queue and supports behaviors to extend its functionality.
-public final class AsyncContainer: Container, @unchecked Sendable {
+public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
     /// A serial dispatch queue used to ensure thread-safe access to the container's internal state.
     /// This prevents race conditions when multiple threads try to access or modify the `registrations` dictionary.
     private let serialQueue: DispatchQueue = .init(label: "com.astrobytes.astroject.async.container")
@@ -27,8 +27,32 @@ public final class AsyncContainer: Container, @unchecked Sendable {
     /// like logging, validation, or modifying registrations.
     private(set) var behaviors: [Behavior] = []
     
-    /// Initializes a new `AsyncContainer` instance.
-    public init() {}
+    public private(set) var assembler: Assembler?
+    
+    /// Initializes a new container with an optional assembler.
+    ///
+    /// - Parameter createAssembler: A Boolean flag indicating whether to automatically
+    ///   create and assign an `Assembler` to this container. Defaults to `false`.
+    ///
+    /// If `createAssembler` is `true`, a new `Assembler` is created with this container
+    /// as its owner. If `false`, the container starts without an assembler and one
+    /// can be assigned later.
+    public init(createAssembler: Bool = false) {
+        guard createAssembler else { return }
+        self.assembler = Assembler(container: self)
+    }
+
+    /// Initializes a new container and sets up an `Assembler` with the provided assemblies.
+    ///
+    /// - Parameter assemblies: An array of `Assembly` objects used to configure the assembler.
+    ///
+    /// - Throws: Any error thrown by the `Assembler` initializer if the assembly process fails.
+    ///
+    /// This initializer automatically creates an `Assembler` for the container and
+    /// immediately attempts to assemble it using the provided assemblies.
+    public init(assemblies: [Assembly]) throws {
+        self.assembler = try Assembler(container: self, assemblies: assemblies)
+    }
     
     @discardableResult
     public func register<Product>(
@@ -243,6 +267,8 @@ extension AsyncContainer {
         name: String?,
         argument: Argument?
     ) async throws -> Product {
+        try isAssembled()
+        
         let key: RegistrationKey
         
         if argument != nil {

@@ -1,14 +1,14 @@
 //  SyncContainer.swift
 //  Astroject
 //
-//  Created by Porter McGady on 5/21/25.
+//  Created by Porter McGary on 5/21/25.
 //
 
 import Foundation
 import AstrojectCore
 
 /// A dependency injection container that manages registrations and resolves dependencies.
-public final class SyncContainer: Container, @unchecked Sendable {
+public final class SyncContainer: Container, Assemblable, @unchecked Sendable {
     /// A serial dispatch queue used to ensure thread-safe access to the container's internal state.
     /// This prevents race conditions when multiple threads try to access or modify the `registrations` dictionary.
     private let serialQueue: DispatchQueue = .init(label: "com.astrobytes.astroject.sync.container")
@@ -21,8 +21,32 @@ public final class SyncContainer: Container, @unchecked Sendable {
     /// like logging, validation, or modifying registrations.
     private(set) var behaviors: [Behavior] = []
     
-    /// Initializes a new `Container` instance.
-    public init() {}
+    public private(set) var assembler: Assembler?
+    
+    /// Initializes a new container with an optional assembler.
+    ///
+    /// - Parameter createAssembler: A Boolean flag indicating whether to automatically
+    ///   create and assign an `Assembler` to this container. Defaults to `false`.
+    ///
+    /// If `createAssembler` is `true`, a new `Assembler` is created with this container
+    /// as its owner. If `false`, the container starts without an assembler and one
+    /// can be assigned later.
+    public init(createAssembler: Bool = false) {
+        guard createAssembler else { return }
+        self.assembler = Assembler(container: self)
+    }
+
+    /// Initializes a new container and sets up an `Assembler` with the provided assemblies.
+    ///
+    /// - Parameter assemblies: An array of `Assembly` objects used to configure the assembler.
+    ///
+    /// - Throws: Any error thrown by the `Assembler` initializer if the assembly process fails.
+    ///
+    /// This initializer automatically creates an `Assembler` for the container and
+    /// immediately attempts to assemble it using the provided assemblies.
+    public init(assemblies: [Assembly]) throws {
+        self.assembler = try Assembler(container: self, assemblies: assemblies)
+    }
     
     @discardableResult
     public func register<Product>(
@@ -220,6 +244,8 @@ extension SyncContainer {
         name: String?,
         argument: Argument? = nil
     ) throws -> Product {
+        try isAssembled()
+        
         let key: RegistrationKey
         
         if argument != nil {

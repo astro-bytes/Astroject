@@ -462,4 +462,141 @@ struct SyncContainerTests {
             }
         }
     }
+    
+    @Suite("Assembler Integration")
+    struct AssemblerIntegration {
+        @Test("Initialize Without Assembler")
+        func initWithoutAssembler() {
+            let container = SyncContainer(createAssembler: false)
+            
+            #expect(container.assembler == nil)
+        }
+        
+        @Test("Initialize With Empty Assembler")
+        func initWithEmptyAssembler() {
+            let container = SyncContainer(createAssembler: true)
+            
+            #expect(container.assembler != nil)
+            #expect(container.assembler?.container === container)
+            #expect(!container.assembler!.isAssembled)
+        }
+        
+        @Test("Initialize With Assemblies")
+        func initWithAssemblies() throws {
+            let assembly1 = MockAssembly()
+            let assembly2 = MockAssembly()
+            let container = try SyncContainer(assemblies: [assembly1, assembly2])
+            
+            #expect(container.assembler != nil)
+            #expect(container.assembler?.container === container)
+            #expect(container.assembler!.isAssembled)
+            #expect(assembly1.assembleCalled)
+            #expect(assembly2.assembleCalled)
+        }
+        
+        @Test("Initialize With Empty Assembly Array")
+        func initWithEmptyAssemblyArray() throws {
+            let container = try SyncContainer(assemblies: [])
+            
+            #expect(container.assembler != nil)
+            #expect(container.assembler?.container === container)
+            #expect(!container.assembler!.isAssembled)
+        }
+        
+        @Test("Assembly Registers Dependencies")
+        func assemblyRegistersDependencies() throws {
+            struct TestAssembly: Assembly {
+                func assemble(container: Container) throws {
+                    try container.register(Int.self) { 42 }
+                    try container.register(String.self) { "hello" }
+                }
+            }
+            
+            let container = try SyncContainer(assemblies: [TestAssembly()])
+            
+            #expect(container.isRegistered(Int.self))
+            #expect(container.isRegistered(String.self))
+            
+            let intValue = try container.resolve(Int.self)
+            let stringValue = try container.resolve(String.self)
+            
+            #expect(intValue == 42)
+            #expect(stringValue == "hello")
+        }
+        
+        @Test("Multiple Assemblies with Dependencies")
+        func multipleAssembliesWithDependencies() throws {
+            struct NetworkingAssembly: Assembly {
+                func assemble(container: Container) throws {
+                    try container.register(String.self, name: "api_url") { "https://api.example.com" }
+                }
+            }
+            
+            struct ServiceAssembly: Assembly {
+                static var requiredAssemblies: [Assembly.Type] { [NetworkingAssembly.self] }
+                
+                func assemble(container: Container) throws {
+                    try container.register(Int.self) { 
+                        let url = try container.resolve(String.self, name: "api_url")
+                        return url.count
+                    }
+                }
+            }
+            
+            let container = try SyncContainer(assemblies: [ServiceAssembly()])
+            
+            #expect(container.isRegistered(String.self, with: "api_url"))
+            #expect(container.isRegistered(Int.self))
+        }
+        
+        @Test("Assembly Failure Propagates Error")
+        func assemblyFailurePropagatesError() throws {
+            struct FailingAssembly: Assembly {
+                func assemble(container: Container) throws {
+                    throw MockError()
+                }
+            }
+            
+            #expect(throws: Assembler.Error.assemblyFailure(MockError())) {
+                _ = try SyncContainer(assemblies: [FailingAssembly()])
+            }
+        }
+        
+        @Test("Missing Required Assemblies Throws Error")
+        func missingRequiredAssembliesThrows() throws {
+            struct DependentAssembly: Assembly {
+                static var requiredAssemblies: [Assembly.Type] { [MockAssembly.self] }
+                func assemble(container: Container) throws {}
+            }
+            
+            #expect(throws: Assembler.Error.missingRequiredAssemblies(["MockAssembly"])) {
+                let container = SyncContainer()
+                let assembler = Assembler(
+                    container: container,
+                    initializeMissingAssemblies: false
+                )
+                try assembler.add(assembly: DependentAssembly()).assemble()
+            }
+        }
+        
+        @Test("Assembly Lifecycle Methods Called")
+        func assemblyLifecycleMethodsCalled() throws {
+            let assembly = MockAssembly()
+            _ = try SyncContainer(assemblies: [assembly])
+            
+            #expect(assembly.preassembleCalled)
+            #expect(assembly.assembleCalled)
+            #expect(assembly.postAssembleCalled)
+        }
+        
+        @Test("Accessing Assembler After Init")
+        func accessingAssemblerAfterInit() throws {
+            let assembly = MockAssembly()
+            let container = try SyncContainer(assemblies: [assembly])
+            
+            let assembler = try #require(container.assembler)
+            #expect(assembler.container === container)
+            #expect(assembler.isAssembled)
+        }
+    }
 }

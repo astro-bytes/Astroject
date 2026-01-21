@@ -82,7 +82,7 @@ public class Assembler {
     ///
     /// Once `assemble()` has successfully run, attempting to assemble again
     /// will throw `Assembler.Error.alreadyAssembled`.
-    private(set) var isAssembled: Bool = false
+    public private(set) var isAssembled: Bool = false
     
     /// Assemblies that will be applied to the container.
     private(set) var assemblies: [Assembly]
@@ -104,6 +104,7 @@ public class Assembler {
         self.container = container
         self.assemblies = assemblies
         self.initializeMissingAssemblies = initializeMissingAssemblies
+        
         if !assemblies.isEmpty {
             try self.assemble()
         }
