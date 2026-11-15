@@ -91,10 +91,10 @@ struct BranchD: Assembly {
     func assemble(container: Container) throws {}
 }
 
-// MARK: - Legacy Assembler Tests
+// MARK: - Assembler Initialization Tests
 
-@Suite("Legacy Assembler Tests")
-struct LegacyAssemblerTests {
+@Suite("Assembler Initialization Tests")
+struct AssemblerInitializationTests {
     
     @Test("Init with Container")
     func initWithContainer() {
@@ -111,56 +111,14 @@ struct LegacyAssemblerTests {
         let assembly1 = MockAssembly()
         let assembly2 = MockAssembly()
         
-        let assembler = try Assembler(assemblies: [assembly1, assembly2], container: container)
+        let assembler = try Assembler(container: container, assemblies: [assembly1, assembly2])
         
         #expect(assembler.container === container)
         #expect(assembler.resolver === container)
         #expect(assembly1.preassembleCalled)
         #expect(assembly1.assembleCalled)
         #expect(assembly1.postAssembleCalled)
-    }
-    
-    @Test("Init with Assembly")
-    func initWithAssembly() throws {
-        let container = MockContainer()
-        let assembly = MockAssembly()
-        
-        let assembler = try Assembler(assembly: assembly, container: container)
-        
-        #expect(assembler.container === container)
-        #expect(assembler.resolver === container)
-        #expect(assembly.preassembleCalled)
-        #expect(assembly.assembleCalled)
-        #expect(assembly.postAssembleCalled)
-    }
-    
-    @Test("Apply Single Assembly")
-    func applySingleAssembly() throws {
-        let assembly = MockAssembly()
-        let assembler = Assembler(container: MockContainer())
-        
-        try assembler.apply(assembly: assembly)
-        
-        #expect(assembly.preassembleCalled)
-        #expect(assembly.assembleCalled)
-        #expect(assembly.postAssembleCalled)
-    }
-    
-    @Test("Apply Multiple Assemblies")
-    func applyMultipleAssemblies() throws {
-        let container = MockContainer()
-        let assembly1 = MockAssembly()
-        let assembly2 = MockAssembly()
-        let assembler = Assembler(container: container)
-        
-        try assembler.apply(assemblies: [assembly1, assembly2])
-        
-        #expect(assembly1.preassembleCalled)
-        #expect(assembly1.assembleCalled)
-        #expect(assembly1.postAssembleCalled)
-        #expect(assembly2.preassembleCalled)
         #expect(assembly2.assembleCalled)
-        #expect(assembly2.postAssembleCalled)
     }
     
     @Test("Runs Assembly in Correct Sequence")
@@ -172,46 +130,9 @@ struct LegacyAssemblerTests {
         assembly.whenAssemble = { sequence.append("assembled") }
         assembly.whenPostAssemble = { sequence.append("post-assembled") }
         
-        let assembler = Assembler(container: container)
-        try assembler.run(assemblies: [assembly])
+        try Assembler(container: container).add(assembly: assembly).assemble()
         
         #expect(sequence == ["preassembled", "assembled", "post-assembled"])
-    }
-    
-    @Test("Deprecated Initializer with Single Assembly")
-    func deprecatedInitSingleAssembly() throws {
-        let assembly = MockAssembly()
-        let assembler = try Assembler(assembly: assembly, container: MockContainer())
-        
-        #expect(assembly.preassembleCalled)
-        #expect(assembly.assembleCalled)
-        #expect(assembly.postAssembleCalled)
-        #expect(assembler.isAssembled)
-    }
-    
-    @Test("Deprecated Initializer with Multiple Assemblies")
-    func deprecatedInitMultipleAssemblies() throws {
-        let assemblies = [MockAssembly(), MockAssembly()]
-        let assembler = try Assembler(assemblies: assemblies, container: MockContainer())
-        
-        assemblies.forEach {
-            #expect($0.preassembleCalled)
-            #expect($0.assembleCalled)
-            #expect($0.postAssembleCalled)
-        }
-        #expect(assembler.isAssembled)
-    }
-    
-    @Test("Apply Single Assembly Calls Pre/Post Assemble")
-    func applySingleAssemblyCallsPrePost() throws {
-        let assembly = MockAssembly()
-        let assembler = Assembler(container: MockContainer())
-        
-        try assembler.apply(assembly: assembly)
-        
-        #expect(assembly.preassembleCalled)
-        #expect(assembly.assembleCalled)
-        #expect(assembly.postAssembleCalled)
     }
 }
 
@@ -416,8 +337,8 @@ final class AssemblerTests {
         #expect(returned === assembler)
     }
     
-    @Test("Assemblies Preloaded, Assembled, Loaded Called")
-    func assembliesPreloadedAssembledAndLoadedAreCalled() throws {
+    @Test("Assemblies Preassembled, Assembled, PostAssembled Called")
+    func assembliesLifecycleHooksAreCalled() throws {
         let container = MockContainer()
         let assembly = MockAssembly()
         let assembler = Assembler(container: container)

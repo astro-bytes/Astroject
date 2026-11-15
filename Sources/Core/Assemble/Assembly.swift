@@ -58,20 +58,6 @@ public protocol Assembly {
     ///
     /// This method is required and is where all registrations should occur.
     func assemble(container: Container) throws
-    
-    // MARK: - Legacy Hooks
-    
-    /// Deprecated legacy pre-assembly hook.
-    ///
-    /// This method is still invoked after `preassemble()` for backward compatibility.
-    @available(*, deprecated, message: "Use preassemble() instead")
-    func preloaded() throws
-    
-    /// Deprecated legacy post-assembly hook.
-    ///
-    /// This method is still invoked after `postAssemble(resolver:)` for backward compatibility.
-    @available(*, deprecated, message: "Use postAssemble(resolver:) instead")
-    func loaded(resolver: Resolver) throws
 }
 
 public extension Assembly {
@@ -83,12 +69,4 @@ public extension Assembly {
     
     /// Default implementation of `postAssemble(resolver:)`, which does nothing.
     func postAssemble(resolver: Resolver) throws {}
-    
-    /// Default implementation of deprecated `preloaded()`.
-    @available(*, deprecated, message: "Use preassemble() instead")
-    func preloaded() throws {}
-    
-    /// Default implementation of deprecated `loaded(resolver:)`.
-    @available(*, deprecated, message: "Use postAssemble(resolver:) instead")
-    func loaded(resolver: Resolver) throws {}
 }
