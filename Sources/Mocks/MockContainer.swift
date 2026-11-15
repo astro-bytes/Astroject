@@ -9,6 +9,13 @@ import Foundation
 import AstrojectCore
 
 final class MockContainer: Container, Assemblable, @unchecked Sendable {
+    /// Thrown when `whenResolve` returns a value that is not the requested product type.
+    struct TypeMismatchError: Error, CustomStringConvertible {
+        let expected: String
+        let actual: String
+        var description: String { "MockContainer.whenResolve returned \(actual), expected \(expected)" }
+    }
+    
     var callsRegister: Bool = false
     var callsResolve: Bool = false
     var callsIsRegister: Bool = false
@@ -66,7 +73,7 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
         name: String?
     ) async throws -> Product {
         callsResolve = true
-        return try whenResolve() as! Product
+        return try cast(whenResolve(), to: Product.self)
     }
     
     func resolve<Product>(
@@ -74,7 +81,7 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
         name: String?
     ) throws -> Product {
         callsResolve = true
-        return try whenResolve() as! Product
+        return try cast(whenResolve(), to: Product.self)
     }
     
     func resolve<Product, Argument: Hashable>(
@@ -83,7 +90,7 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
         argument: Argument
     ) async throws -> Product {
         callsResolve = true
-        return try whenResolve() as! Product
+        return try cast(whenResolve(), to: Product.self)
     }
     
     func resolve<Product, Argument: Hashable>(
@@ -92,7 +99,7 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
         argument: Argument
     ) throws -> Product {
         callsResolve = true
-        return try whenResolve() as! Product
+        return try cast(whenResolve(), to: Product.self)
     }
     
     func isRegistered<Product>(
@@ -128,5 +135,15 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
     ) {
         callsForward = true
         whenForward()
+    }
+    
+    private func cast<Product>(_ value: Any, to type: Product.Type) throws -> Product {
+        guard let product = value as? Product else {
+            throw TypeMismatchError(
+                expected: String(describing: Product.self),
+                actual: String(describing: Swift.type(of: value))
+            )
+        }
+        return product
     }
 }
