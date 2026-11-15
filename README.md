@@ -80,6 +80,22 @@ let package = Package(
 
 Let's see Astroject in action with some simple examples:
 
+### Module Organization
+
+Astroject is organized into several modules for flexibility:
+
+- **AstrojectCore**: Core protocols and types (Container, Assembly, Registrable, etc.)
+- **AstrojectAsync**: AsyncContainer implementation for async/await workflows
+- **AstrojectSync**: SyncContainer implementation for synchronous workflows
+
+Import the modules you need:
+
+```swift
+import AstrojectCore  // Always needed for Assembly, Container protocols
+import AstrojectAsync // When using AsyncContainer
+import AstrojectSync  // When using SyncContainer
+```
+
 #### 1.0 Define your dependencies and services
 ```Swift
 import Astroject
@@ -129,8 +145,45 @@ class WeakObject {
 }
 ```
 #### 2.0 Create a Container instance
+
+Choose between async and sync containers based on your needs:
+
 ```Swift
-let container = Container()
+import AstrojectAsync
+
+// For async/await based resolution
+let asyncContainer = AsyncContainer()
+
+// Or use SyncContainer for synchronous resolution
+import AstrojectSync
+let syncContainer = SyncContainer()
+```
+
+For the following examples, we'll use AsyncContainer:
+
+```Swift
+let container = AsyncContainer()
+```
+
+You can also optionally create a container with an assembler attached:
+
+```Swift
+// Create container with an empty assembler
+let containerWithAssembler = AsyncContainer(createAssembler: true)
+
+// Create container with assemblies (assembler is automatically created and populated)
+let containerWithAssemblies = try AsyncContainer(assemblies: [
+    NetworkingAssembly(),
+    FeatureAssembly()
+])
+
+// Access the assembler from the container
+if let assembler = containerWithAssembler.assembler {
+    // Add more assemblies and assemble
+    try assembler
+        .add(assembly: AnotherAssembly())
+        .assemble()
+}
 ```
 
 #### 3.0 Register your dependencies
@@ -402,6 +455,137 @@ Assemblies themselves do not perform registration until applied by an Assembler.
 
 ---
 
+## Using Assemblies with AsyncContainer and SyncContainer
+
+Astroject provides two specialized container implementations that fully support the Assembly system:
+
+- **AsyncContainer**: For async/await based dependency resolution
+- **SyncContainer**: For synchronous dependency resolution
+
+Both containers work seamlessly with the Assembler to organize and apply your dependency configurations.
+
+### Container-Managed Assemblers
+
+Both `AsyncContainer` and `SyncContainer` can optionally manage their own assembler instance. This provides a convenient way to handle assembly directly through the container:
+
+```swift
+import AstrojectAsync
+
+// Create a container with an automatically managed assembler
+let container = AsyncContainer(createAssembler: true)
+
+// Add and assemble through the container's assembler
+try container.assembler?
+    .add(assembly: NetworkingAssembly())
+    .add(assembly: FeatureAssembly())
+    .assemble()
+
+// Resolve directly from the container
+let service = try await container.resolve(MyService.self)
+```
+
+This approach is useful when you want the container to manage the assembler lifecycle and keep everything in one place.
+
+### Quick Start with Containers
+
+#### Using AsyncContainer
+
+```swift
+import AstrojectAsync
+
+// Create an assembler with an async container
+let assembler = Assembler(AsyncContainer())
+
+try assembler
+    .add(assembly: NetworkingAssembly())
+    .add(assembly: FeatureAssembly())
+    .assemble()
+
+// Resolve dependencies asynchronously
+let service = try await assembler.resolver.resolve(MyService.self)
+```
+
+#### Using SyncContainer
+
+```swift
+import AstrojectSync
+
+// Create an assembler with a sync container
+let assembler = Assembler(SyncContainer())
+
+try assembler
+    .add(assembly: CoreAssembly())
+    .add(assembly: UIAssembly())
+    .assemble()
+
+// Resolve dependencies synchronously
+let viewModel = try assembler.resolver.resolve(MyViewModel.self)
+```
+
+### Initialize Container with Assemblies
+
+You can create a container and immediately assemble it with assemblies:
+
+```swift
+import AstrojectAsync
+
+// Create container and automatically assemble all provided assemblies
+let container = try AsyncContainer(assemblies: [
+    DatabaseAssembly(),
+    NetworkingAssembly(),
+    FeatureAssembly()
+])
+
+// The assembler is already created and assembled
+if let assembler = container.assembler {
+    #expect(assembler.isAssembled)
+}
+
+// Resolve directly from container
+let service = try await container.resolve(MyService.self)
+```
+
+### Container-First Approach
+
+You can also create containers directly and apply assemblies to them:
+
+```swift
+import AstrojectAsync
+
+// Create the container first
+let container = AsyncContainer()
+
+// Create assembler with the container
+let assembler = Assembler(container: container)
+
+try assembler
+    .add(assemblies: [
+        DatabaseAssembly(),
+        NetworkingAssembly(),
+        RepositoryAssembly()
+    ])
+    .assemble()
+
+// Use the container directly
+let repository = try await container.resolve(UserRepository.self)
+```
+
+### Choosing Between AsyncContainer and SyncContainer
+
+**Use AsyncContainer when:**
+- Your dependencies involve async operations (network calls, database queries)
+- You're building an async/await-first application
+- You need to resolve dependencies in async contexts
+
+**Use SyncContainer when:**
+- All your dependencies can be created synchronously
+- You're working with legacy code or synchronous APIs
+- You need immediate, blocking dependency resolution
+
+Both containers support the full Assembly lifecycle and all dependency management features.
+
+---
+
 ## Assembly Lifecycle
 
 Assemblies participate in a structured lifecycle when applied by an Assembler.
@@ -654,6 +838,185 @@ try assembler
 
 ---
 
+## Complete Example: Building a Feature with Assemblies
+
+Here's a complete example showing how to structure a feature using assemblies with both async and sync containers:
+
+### Define Your Services
+
+```swift
+// Domain models and protocols
+protocol NetworkService {
+    func fetch(url: String) async throws -> Data
+}
+
+protocol UserRepository {
+    func getUser(id: String) async throws -> User
+}
+
+class User {
+    let id: String
+    let name: String
+    init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+}
+
+// Implementations
+class URLNetworkService: NetworkService {
+    func fetch(url: String) async throws -> Data {
+        // Implementation here
+        return Data()
+    }
+}
+
+class RemoteUserRepository: UserRepository {
+    let networkService: NetworkService
+    
+    init(networkService: NetworkService) {
+        self.networkService = networkService
+    }
+    
+    func getUser(id: String) async throws -> User {
+        let data = try await networkService.fetch(url: "https://api.example.com/users/\(id)")
+        // Parse and return user
+        return User(id: id, name: "John Doe")
+    }
+}
+
+class UserViewModel {
+    let repository: UserRepository
+    
+    init(repository: UserRepository) {
+        self.repository = repository
+    }
+    
+    func loadUser(id: String) async throws -> User {
+        try await repository.getUser(id: id)
+    }
+}
+```
+
+### Create Assemblies
+
+```swift
+import AstrojectCore
+import AstrojectAsync
+
+// Networking layer assembly
+struct NetworkingAssembly: Assembly {
+    func assemble(container: Container) throws {
+        try container.register(NetworkService.self) {
+            URLNetworkService()
+        }.asSingleton()
+    }
+}
+
+// Repository layer assembly
+struct RepositoryAssembly: Assembly {
+    static var requiredAssemblies: [Assembly.Type] {
+        [NetworkingAssembly.self]
+    }
+    
+    func assemble(container: Container) throws {
+        try container.register(UserRepository.self) { resolver in
+            let networkService = try await resolver.resolve(NetworkService.self)
+            return RemoteUserRepository(networkService: networkService)
+        }.asSingleton()
+    }
+}
+
+// Presentation layer assembly
+struct PresentationAssembly: Assembly {
+    static var requiredAssemblies: [Assembly.Type] {
+        [RepositoryAssembly.self]
+    }
+    
+    func assemble(container: Container) throws {
+        try container.register(UserViewModel.self) { resolver in
+            let repository = try await resolver.resolve(UserRepository.self)
+            return UserViewModel(repository: repository)
+        }
+    }
+}
+```
+
+### Wire It All Together
+
+```swift
+import AstrojectAsync
+
+// Approach 1: Fluent API with AsyncContainer
+let assembler = Assembler(AsyncContainer())
+
+try assembler
+    .add(assembly: PresentationAssembly())
+    .assemble()
+
+// All required assemblies are automatically initialized!
+// NetworkingAssembly and RepositoryAssembly were added automatically
+
+// Use your dependencies
+let viewModel = try await assembler.resolver.resolve(UserViewModel.self)
+let user = try await viewModel.loadUser(id: "123")
+print("Loaded user: \(user.name)")
+
+// Approach 2: Direct container initialization
+let container = AsyncContainer()
+let assembler2 = Assembler(container: container)
+
+try assembler2
+    .add(assemblies: [
+        NetworkingAssembly(),
+        RepositoryAssembly(),
+        PresentationAssembly()
+    ])
+    .assemble()
+
+// Use the container directly
+let anotherViewModel = try await container.resolve(UserViewModel.self)
+```
+
+### Synchronous Version
+
+For synchronous-only dependencies, use SyncContainer:
+
+```swift
+import AstrojectSync
+
+// Define synchronous services
+protocol ConfigService {
+    var apiKey: String { get }
+}
+
+class AppConfigService: ConfigService {
+    let apiKey: String = "your-api-key"
+}
+
+// Create assembly
+struct ConfigAssembly: Assembly {
+    func assemble(container: Container) throws {
+        try container.register(ConfigService.self) {
+            AppConfigService()
+        }.asSingleton()
+    }
+}
+
+// Use SyncContainer
+let syncAssembler = Assembler(SyncContainer())
+
+try syncAssembler
+    .add(assembly: ConfigAssembly())
+    .assemble()
+
+// Resolve synchronously
+let config = try syncAssembler.resolver.resolve(ConfigService.self)
+print("API Key: \(config.apiKey)")
+```
+
+---
+
 ## Key Takeaways
 
 - Assemblies are modular and self-contained
@@ -662,15 +1025,130 @@ try assembler
 - Assemblers guarantee safe, single-pass assembly
 - Supports both fluent and automatic assembly styles
 
+---
+
+## Best Practices for Using Assemblies
+
+### 1. **Organize by Layer or Feature**
+
+Structure your assemblies around architectural layers or features:
+
+```swift
+// Layer-based
+struct DataLayerAssembly: Assembly { }
+struct DomainLayerAssembly: Assembly { }
+struct PresentationLayerAssembly: Assembly { }
+
+// Feature-based
+struct UserManagementAssembly: Assembly { }
+struct AuthenticationAssembly: Assembly { }
+struct AnalyticsAssembly: Assembly { }
+```
+
+### 2. **Declare Dependencies Explicitly**
+
+Always declare required assemblies to ensure proper initialization order:
+
+```swift
+struct FeatureAssembly: Assembly {
+    static var requiredAssemblies: [Assembly.Type] {
+        [CoreAssembly.self, NetworkingAssembly.self]
+    }
+    
+    func assemble(container: Container) throws {
+        // Your registrations here
+    }
+}
+```
+
+### 3. **Choose the Right Container**
+
+- Use `AsyncContainer` for modern async/await workflows
+- Use `SyncContainer` for legacy code or purely synchronous operations
+- Both support the full assembly system
+
+### 4. **Keep Assemblies Focused**
+
+Each assembly should have a single responsibility:
+
+```swift
+// Good ✅
+struct DatabaseAssembly: Assembly {
+    func assemble(container: Container) throws {
+        try container.register(Database.self) { /* ... */ }
+        try container.register(DatabaseMigrator.self) { /* ... */ }
+    }
+}
+
+// Avoid ❌
+struct EverythingAssembly: Assembly {
+    func assemble(container: Container) throws {
+        // Registering database, networking, UI, analytics, etc.
+        // Too many responsibilities!
+    }
+}
+```
+
+### 5. **Use Lifecycle Hooks Appropriately**
+
+- `preassemble()`: For validation and setup
+- `assemble(container:)`: For dependency registration
+- `postAssemble(resolver:)`: For resolving and wiring dependencies
+
+```swift
+struct ValidatedAssembly: Assembly {
+    func preassemble() throws {
+        // Validate configuration before registration
+        guard isConfigurationValid() else {
+            throw AssemblyError.invalidConfiguration
+        }
+    }
+    
+    func assemble(container: Container) throws {
+        // Register dependencies
+    }
+    
+    func postAssemble(resolver: Resolver) throws {
+        // Resolve and initialize eager singletons
+        _ = try await resolver.resolve(DatabaseMigrator.self)
+    }
+}
+```
+
+### 6. **Test Your Assemblies**
+
+Assemblies are testable units of configuration:
+
+```swift
+import Testing
+@testable import YourApp
+
+@Test func testUserAssembly() throws {
+    let container = AsyncContainer()
+    let assembler = Assembler(container: container)
+    
+    try assembler.add(assembly: UserAssembly()).assemble()
+    
+    // Verify registrations
+    #expect(container.isRegistered(UserService.self))
+    #expect(container.isRegistered(UserRepository.self))
+    
+    // Verify resolution
+    let service = try await container.resolve(UserService.self)
+    #expect(service != nil)
+}
+```
+
 ## 💡 Sample Code
 Checkout our sample code under the [playgrounds](/Playgrounds) directory. (Coming Soon!)
 
 ## 🚧 Roadmap
 Astroject is continually evolving! Here are some exciting features planned for the future:
 
-- **Sync Container:** Support for a non async/await version of the container with all the same flexibility as the current async/await container.
+- **✅ Sync Container:** Support for a non async/await version of the container with all the same flexibility as the async/await container. (Completed!)
+- **✅ Assembly System:** Modular dependency configuration with lifecycle hooks and automatic dependency resolution. (Completed!)
 - **Parent/Child Container Relationships:** Support for hierarchical containers, allowing for more granular scope management and overriding.
-- **Custom Containers:** Support for building custom container objects that can be used in tandom with other public components/protocols.
+- **Custom Containers:** Support for building custom container objects that can be used in tandem with other public components/protocols.
 - **Interactive Code Examples:** Swift Playgrounds will be created to provide hands-on, executable examples of Astroject's features.
 - **Comprehensive DocC Comments:** Full, detailed documentation for all public APIs will be provided.
 - **Nexus Integration:** A new sub-library, Nexus, is planned to introduce automatic registration of objects, significantly reducing boilerplate. (Completion date TBD)
@@ -678,15 +1156,16 @@ Astroject is continually evolving! Here are some exciting features planned for t
  
 ```mermaid
 graph TD
-    A[🔁 Sync Container]
-    B[🧬 Parent/Child Containers]
-    C[🧱 Custom Containers]
-    D[🎮 Interactive Examples]
-    E[📚 DocC Comments]
-    F[🧾 Singularity Integration]
+    A[✅ Sync Container - Complete]
+    B[✅ Assembly System - Complete]
+    C[🧬 Parent/Child Containers]
+    D[🧱 Custom Containers]
+    E[🎮 Interactive Examples]
+    F[📚 DocC Comments]
     G[⚡ Nexus Integration]
+    H[🧾 Singularity Integration]
 
-    A --> B --> C --> D --> E --> G --> F
+    A --> B --> C --> D --> E --> F --> G --> H
 ```
 
 ## 👋🏼 Contributing

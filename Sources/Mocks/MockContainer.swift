@@ -8,7 +8,7 @@
 import Foundation
 import AstrojectCore
 
-final class MockContainer: Container, @unchecked Sendable {
+final class MockContainer: Container, Assemblable, @unchecked Sendable {
     /// Thrown when `whenResolve` returns a value that is not the requested product type.
     struct TypeMismatchError: Error, CustomStringConvertible {
         let expected: String
@@ -22,6 +22,9 @@ final class MockContainer: Container, @unchecked Sendable {
     var callsClear: Bool = false
     var callsAdd: Bool = false
     var callsForward: Bool = false
+    var callsSet: Bool = false
+    
+    var assembler: Assembler?
     
     var whenRegister: () throws -> Void = {}
     var whenResolve: () throws -> Any = { 42 }
