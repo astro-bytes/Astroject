@@ -1,5 +1,8 @@
 name: Linter
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "main" ]
@@ -13,7 +16,7 @@ jobs:
       matrix:
         dir: [Sources, Tests]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
 
       - name: Run SwiftLint in ${{ matrix.dir }}
         uses: norio-nomura/action-swiftlint@3.2.1
