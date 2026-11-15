@@ -594,12 +594,10 @@ Assemblies participate in a structured lifecycle when applied by an Assembler.
 For each assembly, lifecycle methods are executed in the following order:
 
 1. preassemble()
-2. preloaded() (deprecated, still executed)
-3. assemble(container:)
-4. postAssemble(resolver:)
-5. loaded(resolver:) (deprecated, still executed)
+2. assemble(container:)
+3. postAssemble(resolver:)
 
-All assemblies complete steps 1–3 for every assembly before any assembly enters steps 4–5.
+Every assembly completes each step before any assembly moves on to the next one.
 
 ---
 
@@ -652,16 +650,19 @@ func postAssemble(resolver: Resolver) throws
 
 ---
 
-## Legacy Lifecycle Hooks
+## Removed Legacy APIs (2.0)
 
-Astroject maintains backward compatibility with legacy lifecycle hooks.
+The following deprecated APIs were removed in 2.0. Use the replacements below.
 
-| Legacy Hook         | Modern Replacement      |
-|---------------------|-------------------------|
-| preloaded()         | preassemble()           |
-| loaded(resolver:)   | postAssemble(resolver:) |
-
-These hooks are deprecated but still executed to avoid breaking existing assemblies.
+| Removed                                   | Replacement                                         |
+|-------------------------------------------|-----------------------------------------------------|
+| `Assembly.preloaded()`                    | `preassemble()`                                     |
+| `Assembly.loaded(resolver:)`              | `postAssemble(resolver:)`                           |
+| `Assembler(assemblies:container:)`        | `Assembler(container:assemblies:)`                  |
+| `Assembler(assembly:container:)`          | `Assembler(container:assemblies:)` or `add(assembly:)` + `assemble()` |
+| `Assembler(_:container:)` (Sync/Async)    | `Assembler(_:)` + `add(assemblies:)` + `assemble()` |
+| `Assembler.apply(assembly:)`              | `add(assembly:)` + `assemble()`                     |
+| `Assembler.apply(assemblies:)`            | `add(assemblies:)` + `assemble()`                   |
 
 ---
 
@@ -800,7 +801,6 @@ Behavior:
 - When `initializeMissingAssemblies` is enabled, any missing assemblies are automatically added in dependency order before their dependents
 - All required assemblies must be present
 - Assemblies are assembled only once per assembler
-- Legacy lifecycle hooks are executed automatically
 
 ---
 

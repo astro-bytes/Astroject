@@ -10,8 +10,7 @@ import Foundation
 /// Manages the assembly of dependencies into a `Container` using `Assembly` instances.
 ///
 /// `Assembler` is responsible for applying one or more `Assembly` instances to a `Container`,
-/// which registers dependencies and performs necessary setup. This class combines legacy
-/// functionality with modern assembly validation.
+/// which registers dependencies and performs necessary setup.
 public class Assembler {
     
     /// Errors that may occur during assembly.
@@ -121,34 +120,6 @@ public class Assembler {
         self.container = container
         self.assemblies = []
         self.initializeMissingAssemblies = initializeMissingAssemblies
-    }
-    
-    // MARK: - Legacy Initializers
-    
-    /// Initializes an assembler with an array of assemblies and a container (legacy API).
-    ///
-    /// Deprecated: Use `Assembler(container:)` + `add(assemblies:)` + `assemble()` instead.
-    ///
-    /// - Parameters:
-    ///   - assemblies: An array of assemblies to apply.
-    ///   - container: The container to assemble dependencies into.
-    /// - Throws: Any errors thrown by assembly.
-    @available(*, deprecated, message: "Use Assembler(container:) + add(assemblies:) + assemble() instead")
-    public convenience init(assemblies: [Assembly], container: Container) throws {
-        try self.init(container: container, assemblies: assemblies)
-    }
-    
-    /// Initializes an assembler with a single assembly and a container (legacy API).
-    ///
-    /// Deprecated: Use `Assembler(container:)` + `add(assembly:)` + `assemble()` instead.
-    ///
-    /// - Parameters:
-    ///   - assembly: The assembly to apply.
-    ///   - container: The container to assemble dependencies into.
-    /// - Throws: Any errors thrown by assembly.
-    @available(*, deprecated, message: "Use Assembler(container:) + add(assembly:) + assemble() instead")
-    public convenience init(assembly: Assembly, container: Container) throws {
-        try self.init(assemblies: [assembly], container: container)
     }
     
     // MARK: - Assembly Management
@@ -297,71 +268,19 @@ public class Assembler {
     /// For each assembly, the following lifecycle is executed in order:
     ///
     /// 1. `preassemble()`
-    /// 2. `preloaded()` (deprecated)
-    /// 3. `assemble(container:)`
-    /// 4. `postAssemble(resolver:)`
-    /// 5. `loaded(resolver:)` (deprecated)
+    /// 2. `assemble(container:)`
+    /// 3. `postAssemble(resolver:)`
     ///
     /// - Throws: Any error thrown by an assembly hook.
     func run() throws(Assembler.Error) {
         do {
-            try self.assemblies.forEach {
-                try $0.preassemble()
-                try $0.preloaded()
-            }
+            try self.assemblies.forEach { try $0.preassemble() }
             
             try self.assemblies.forEach { try $0.assemble(container: self.container) }
             
-            try self.assemblies.forEach {
-                try $0.postAssemble(resolver: self.resolver)
-                try $0.loaded(resolver: self.resolver)
-            }
+            try self.assemblies.forEach { try $0.postAssemble(resolver: self.resolver) }
         } catch {
             throw Self.Error.assemblyFailure(error)
         }
-    }
-    
-    // MARK: - Legacy Compatibility
-    
-    /// Applies a single assembly to the container (legacy API).
-    ///
-    /// Deprecated: Use `add(assembly:)` + `assemble()` instead.
-    ///
-    /// - Parameter assembly: The assembly to apply.
-    @available(*, deprecated, message: "Use add(assembly:) followed by assemble() instead")
-    public func apply(assembly: Assembly) throws {
-        try run(assemblies: [assembly])
-    }
-    
-    /// Applies multiple assemblies to the container (legacy API).
-    ///
-    /// Deprecated: Use `add(assemblies:)` followed by `assemble()` instead.
-    ///
-    /// - Parameter assemblies: The assemblies to apply.
-    @available(*, deprecated, message: "Use add(assemblies:) followed by assemble() instead")
-    public func apply(assemblies: [Assembly]) throws {
-        try run(assemblies: assemblies)
-    }
-    
-    /// Runs a set of assemblies without affecting `self.assemblies`.
-    ///
-    /// Used internally and for legacy API.
-    ///
-    /// - Parameter assemblies: The assemblies to run.
-    /// - Throws: Any errors thrown by the assemblies.
-    @available(*, deprecated, message: "Internal use only; use assemble() for modern usage")
-    func run(assemblies: [Assembly]) throws {
-        try assemblies.forEach {
-            try $0.preassemble()
-            try $0.preloaded()
-        }
-        
-        try assemblies.forEach { try $0.assemble(container: self.container) }
-        
-        try assemblies
-            .forEach {
-                try $0.postAssemble(resolver: self.resolver)
-                try $0.loaded(resolver: resolver)
-            }
     }
 }
