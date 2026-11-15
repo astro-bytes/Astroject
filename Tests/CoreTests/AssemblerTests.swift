@@ -648,4 +648,277 @@ final class AssemblerTests {
         }
     }
     
+    // MARK: - Add and Assemble Chaining Tests
+    
+    @Test("Add Assembly Returns Self")
+    func addAssemblyReturnsSelf() {
+        let assembler = Assembler(container: MockContainer())
+        let returned = assembler.add(assembly: MockAssembly())
+        
+        #expect(returned === assembler)
+    }
+    
+    @Test("Add Assemblies Returns Self")
+    func addAssembliesReturnsSelf() {
+        let assembler = Assembler(container: MockContainer())
+        let returned = assembler.add(assemblies: [MockAssembly()])
+        
+        #expect(returned === assembler)
+    }
+    
+    @Test("Assemble Returns Self For Chaining")
+    func assembleReturnsSelf() throws {
+        let assembler = Assembler(container: MockContainer())
+        let returned = try assembler.assemble()
+        
+        #expect(returned === assembler)
+    }
+    
+    @Test("Multiple Adds Before Assemble")
+    func multipleAddsBeforeAssemble() throws {
+        let container = MockContainer()
+        let assembly1 = MockAssembly()
+        let assembly2 = MockAssembly()
+        let assembly3 = MockAssembly()
+        let assembler = Assembler(container: container)
+        
+        try assembler
+            .add(assembly: assembly1)
+            .add(assembly: assembly2)
+            .add(assemblies: [assembly3])
+            .assemble()
+        
+        #expect(assembly1.preassembleCalled)
+        #expect(assembly2.preassembleCalled)
+        #expect(assembly3.preassembleCalled)
+        #expect(assembler.isAssembled)
+    }
+    
+    // MARK: - Container Integration Tests
+    
+    @Test("Assembler Container Reference")
+    func assemblerContainerReference() {
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        #expect(assembler.container === container)
+    }
+    
+    @Test("Assembler Resolver Is Container")
+    func assemblerResolverIsContainer() {
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        #expect(assembler.resolver === container)
+    }
+    
+    // MARK: - Initialization Tests
+    
+    @Test("Initialize With Auto Init True")
+    func initWithAutoInitTrue() throws {
+        let container = MockContainer()
+        let assembler = Assembler(
+            container: container,
+            initializeMissingAssemblies: true
+        )
+        
+        #expect(!assembler.isAssembled)
+        try assembler.add(assembly: FeatureAssembly()).assemble()
+        #expect(assembler.isAssembled)
+    }
+    
+    @Test("Initialize With Auto Init False")
+    func initWithAutoInitFalse() throws {
+        let container = MockContainer()
+        let assembler = Assembler(
+            container: container,
+            initializeMissingAssemblies: false
+        )
+        
+        #expect(throws: Assembler.Error.missingRequiredAssemblies(["MockAssembly", "NetworkingAssembly"])) {
+            try assembler.add(assembly: FeatureAssembly()).assemble()
+        }
+    }
+    
+    // MARK: - Assembly Array Tests
+    
+    @Test("Assemblies List Initially Empty")
+    func assembliesListInitiallyEmpty() {
+        let assembler = Assembler(container: MockContainer())
+        
+        #expect(assembler.assemblies.isEmpty)
+    }
+    
+    @Test("Assemblies List Contains Added Assemblies")
+    func assembliesListContainsAdded() {
+        let assembler = Assembler(container: MockContainer())
+        let assembly1 = MockAssembly()
+        let assembly2 = MockAssembly()
+        
+        assembler.add(assembly: assembly1)
+        assembler.add(assembly: assembly2)
+        
+        #expect(assembler.assemblies.count == 2)
+    }
+    
+    @Test("Assemblies List Contains Initial Assemblies")
+    func assembliesListContainsInitial() throws {
+        let assembly1 = MockAssembly()
+        let assembly2 = MockAssembly()
+        let assembler = try Assembler(
+            container: MockContainer(),
+            assemblies: [assembly1, assembly2]
+        )
+        
+        #expect(assembler.assemblies.count == 2)
+        #expect(assembler.isAssembled)
+    }
+    
+    // MARK: - Assembly Failure Tests
+    
+    @Test("Preassemble Failure Throws")
+    func preassembleFailureThrows() throws {
+        struct PreassembleFailingAssembly: Assembly {
+            func preassemble() throws {
+                throw MockError()
+            }
+            
+            func assemble(container: Container) throws {}
+            func postAssemble(resolver: Resolver) throws {}
+        }
+        
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        #expect(throws: Assembler.Error.assemblyFailure(MockError())) {
+            try assembler.add(assembly: PreassembleFailingAssembly()).assemble()
+        }
+    }
+    
+    @Test("Assemble Failure Throws")
+    func assembleFailureThrows() throws {
+        struct AssembleFailingAssembly: Assembly {
+            func assemble(container: Container) throws {
+                throw MockError()
+            }
+        }
+        
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        #expect(throws: Assembler.Error.assemblyFailure(MockError())) {
+            try assembler.add(assembly: AssembleFailingAssembly()).assemble()
+        }
+    }
+    
+    @Test("PostAssemble Failure Throws")
+    func postAssembleFailureThrows() throws {
+        struct PostAssembleFailingAssembly: Assembly {
+            func assemble(container: Container) throws {}
+            
+            func postAssemble(resolver: Resolver) throws {
+                throw MockError()
+            }
+        }
+        
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        #expect(throws: Assembler.Error.assemblyFailure(MockError())) {
+            try assembler.add(assembly: PostAssembleFailingAssembly()).assemble()
+        }
+    }
+    
+    // MARK: - IsAssembled Flag Tests
+    
+    @Test("IsAssembled Initially False")
+    func isAssembledInitiallyFalse() {
+        let assembler = Assembler(container: MockContainer())
+        
+        #expect(!assembler.isAssembled)
+    }
+    
+    @Test("IsAssembled True After Successful Assemble")
+    func isAssembledTrueAfterAssemble() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            assemblies: [MockAssembly()]
+        )
+        
+        #expect(assembler.isAssembled)
+    }
+    
+    @Test("IsAssembled False After Adding Assemblies")
+    func isAssembledFalseAfterAddingAssemblies() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            assemblies: [MockAssembly()]
+        )
+        
+        #expect(assembler.isAssembled)
+        assembler.add(assembly: NetworkingAssembly())
+        #expect(!assembler.isAssembled)
+    }
+    
+    // MARK: - Error Wrapping Tests
+    
+    @Test("Assembly Error Is Wrapped In AssemblyFailure")
+    func assemblyErrorIsWrapped() throws {
+        struct FailingAssembly: Assembly {
+            func assemble(container: Container) throws {
+                throw MockError()
+            }
+        }
+        
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        do {
+            try assembler.add(assembly: FailingAssembly()).assemble()
+            #expect(Bool(false), "Should have thrown")
+        } catch Assembler.Error.assemblyFailure(let error) {
+            #expect(error is MockError)
+        } catch {
+            #expect(Bool(false), "Should have thrown Assembler.Error.assemblyFailure")
+        }
+    }
+    
+    // MARK: - Resolver Tests
+    
+    @Test("Resolver Returns Container")
+    func resolverReturnsContainer() {
+        let container = MockContainer()
+        let assembler = Assembler(container: container)
+        
+        #expect(assembler.resolver === container)
+    }
+    
+    // MARK: - Empty And Edge Cases
+    
+    @Test("Add Empty Assembly Array")
+    func addEmptyAssemblyArray() throws {
+        let assembler = Assembler(container: MockContainer())
+        
+        try assembler.add(assemblies: []).assemble()
+        #expect(!assembler.isAssembled)
+    }
+    
+    @Test("Multiple Assemble Calls On Fresh Assemblies")
+    func multipleAssemblesOnFreshAssemblies() throws {
+        let assembler = Assembler(container: MockContainer())
+        let assembly1 = MockAssembly()
+        
+        try assembler.add(assembly: assembly1).assemble()
+        #expect(assembler.isAssembled)
+        #expect(assembly1.preassembleCalled)
+        
+        // Reset for next assembly
+        let assembly2 = MockAssembly()
+        assembler.add(assembly: assembly2)
+        #expect(!assembler.isAssembled)
+        
+        try assembler.assemble()
+        #expect(assembler.isAssembled)
+        #expect(assembly2.preassembleCalled)
+    }
 }
