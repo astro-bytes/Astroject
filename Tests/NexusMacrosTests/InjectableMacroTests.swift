@@ -293,11 +293,11 @@ final class InjectableMacroTests: XCTestCase {
             extension RemoteRepository: AstrojectNexus.Injectable {
                 static func register(in container: any AstrojectCore.Container) throws {
                     _ = { (instance: RemoteRepository) -> Repository in
-                            instance
-                        }
+                        instance
+                    }
                     _ = { (instance: RemoteRepository) -> Cache in
-                            instance
-                        }
+                        instance
+                    }
                     try container.register(RemoteRepository.self, initializer: RemoteRepository.init(api:), fileID: "TestModule/test.swift", line: 1).asSingleton().implements(Repository.self).implements(Cache.self)
                 }
             }
