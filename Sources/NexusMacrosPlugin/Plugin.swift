@@ -14,6 +14,7 @@ struct AstrojectNexusMacrosPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         InjectableMacro.self,
         InjectableInitMacro.self,
-        AssemblyMacro.self
+        AssemblyMacro.self,
+        ProvidesMacro.self
     ]
 }
