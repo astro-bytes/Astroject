@@ -329,6 +329,19 @@ The macro generates an `Injectable` conformance whose `register(in:)` calls `reg
 final class RemotePuzzleRepository: PuzzleRepositoryProtocol { ... }
 ```
 
+##### `@Assembly`
+
+`@Assembly` turns a struct into an `Assembly` that registers the listed `@Injectable` types, in the order listed. `requires:` becomes `requiredAssemblies`, so those run first:
+
+```swift
+@Assembly(PuzzleViewModel.self, ScoreService.self, requires: [DataAssembly.self])
+struct PuzzleFeatureAssembly {}
+
+let container = try SyncContainer(assemblies: [PuzzleFeatureAssembly()])
+```
+
+Registration is last one wins, so a later type in the list replaces an earlier one for the same key. Listing the same type twice is a warning.
+
  A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
 
 ### Before and After

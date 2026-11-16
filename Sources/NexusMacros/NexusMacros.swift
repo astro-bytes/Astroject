@@ -64,3 +64,41 @@ public macro Injectable(
 /// Marks the initializer `@Injectable` registers, when the type has more than one.
 @attached(peer)
 public macro InjectableInit() = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "InjectableInitMacro")
+
+/// Makes a class or struct an `Assembly` that registers the listed `Injectable` types.
+///
+/// `assemble(container:)` calls each type's `register(in:)` in the order listed. Registration
+/// is last one wins, so a later type replaces an earlier one registered for the same key.
+/// `requires:` becomes `requiredAssemblies`, and those assemblies run first.
+///
+/// ```swift
+/// @Assembly(PuzzleViewModel.self, ScoreService.self, requires: [DataAssembly.self])
+/// struct PuzzleFeatureAssembly {}
+///
+/// // Generated:
+/// extension PuzzleFeatureAssembly: Assembly {
+///     static var requiredAssemblies: [any Assembly.Type] {
+///         [DataAssembly.self]
+///     }
+///
+///     func assemble(container: any Container) throws {
+///         try PuzzleViewModel.register(in: container)
+///         try ScoreService.register(in: container)
+///     }
+/// }
+/// ```
+///
+/// Listing a type that isn't `Injectable` is a compile error. Listing the same type twice is a warning.
+///
+/// - Parameters:
+///   - types: The `Injectable` types to register, in order.
+///   - requires: Assemblies that must run before this one.
+@attached(
+    extension,
+    conformances: AstrojectCore.Assembly,
+    names: named(requiredAssemblies), named(assemble(container:))
+)
+public macro Assembly(
+    _ types: any AstrojectNexus.Injectable.Type...,
+    requires: [any AstrojectCore.Assembly.Type] = []
+) = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "AssemblyMacro")
