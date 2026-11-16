@@ -53,7 +53,10 @@ let package = Package(
         .macro(
             name: "AstrojectNexusMacrosPlugin",
             dependencies: [
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftDiagnostics", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
             ],
             path: "Sources/NexusMacrosPlugin"
@@ -90,9 +93,17 @@ let package = Package(
             name: "NexusMacrosTests",
             dependencies: [
                 "AstrojectNexusMacrosPlugin",
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax")
             ],
             path: "Tests/NexusMacrosTests"
+        ),
+        .testTarget(
+            name: "NexusMacrosRuntimeTests",
+            dependencies: ["AstrojectNexusMacros", "AstrojectSync", "AstrojectAsync"],
+            path: "Tests/NexusMacrosRuntimeTests"
         ),
         .testTarget(
             name: "NexusTests",
