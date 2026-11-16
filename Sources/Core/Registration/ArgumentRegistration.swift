@@ -245,3 +245,7 @@ extension ArgumentRegistration: Equatable where Product: Equatable {
         lhs.argumentType == rhs.argumentType
     }
 }
+
+extension ArgumentRegistration: LegacyOverridableRegistrable {
+    public var legacyIsOverridable: Bool { isOverridable }
+}

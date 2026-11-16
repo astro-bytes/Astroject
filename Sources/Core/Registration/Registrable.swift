@@ -24,6 +24,9 @@ public protocol Registrable<Product> {
     
     /// A boolean value indicating whether this registration can be overridden by another registration for
     /// the same product type.
+    ///
+    /// - Note: Deprecated. Registration is last one wins, and this property is removed in 3.0.
+    @available(*, deprecated, message: "Registration is last one wins. isOverridable is removed in 3.0.")
     var isOverridable: Bool { get }
     
     /// The type of argument required to resolve this registration.
@@ -229,3 +232,10 @@ public extension Registrable where Product: AnyObject {
 }
 
 // swiftlint:enable identifier_name
+
+/// Lets the containers read a registration's `isOverridable` without a deprecation warning
+/// while the flag is deprecated. Not for use outside Astroject; removed in 3.0 with the flag.
+public protocol LegacyOverridableRegistrable {
+    /// The registration's `isOverridable` value.
+    var legacyIsOverridable: Bool { get }
+}

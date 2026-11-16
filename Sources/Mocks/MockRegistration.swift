@@ -70,3 +70,7 @@ struct MockRegistration<Product>: Registrable {
         try whenRelease()
     }
 }
+
+extension MockRegistration: LegacyOverridableRegistrable {
+    var legacyIsOverridable: Bool { isOverridable }
+}

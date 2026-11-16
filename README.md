@@ -428,32 +428,13 @@ print("Initial Int value (should be 42): \(try await container.resolve(Int.self)
 try container.register(Int.self) {  99 }
 print("Overridden Int value (should be 99): \(try await container.resolve(Int.self))") // Output: Overridden Int value (should be 99): 99
 ```
-#### Protecting Registrations
+#### Assemblies and Ordering
 
-While overriding is powerful, there are times you need to enforce a single, definitive registration for a given type. Astroject provides a simple way to prevent accidental overrides by marking a registration as non-overridable.
+Because the last registration wins, the order assemblies run in decides which registration survives. Every assembly runs after the assemblies in its `requiredAssemblies`; otherwise assemblies run in the order you add them. To have a test or mocks assembly replace your app's registrations, list the app assembly in its `requiredAssemblies`.
 
-Simply set isOverridable to false during registration:
+#### `isOverridable` is deprecated
 
-```Swift
-let container = Container()
-
-// This registration is explicitly marked as non-overridable
-try container.register(Int.self, isOverridable: false) {  42 }
-print("Protected Int value: \(try await container.resolve(Int.self))") // Output: Protected Int value: 42
-
-// Attempting to register another Int will now throw an error
-do {
-    try container.register(Int.self) {  99 }
-    print("This line will not be reached.")
-} catch AstrojectError.alreadyRegistered(let type, let name) {
-    print("Error: Registration for \(type) with name \(name ?? "nil") already exists and cannot be overridden.")
-    // Output: Error: Registration for Int already exists and cannot be overridden.
-} catch {
-    print("An unexpected error occurred: \(error)")
-}
-```
-*This granular control empowers you, the developer, to manage your dependency graph with precision, preventing unintended changes to critical components.*
-
+Earlier versions let you mark a registration with `isOverridable: false` so a later registration would throw `AstrojectError.alreadyRegistered`. That flag is deprecated in 2.1 and will be removed in 3.0, so registration follows one rule: last one wins. Existing code that passes `isOverridable` keeps working in 2.x, with a deprecation warning. Drop the argument to silence it.
 
 ### 🔭 Extending Instance Scopes
 
