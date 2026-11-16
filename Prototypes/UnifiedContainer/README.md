@@ -22,3 +22,16 @@ swift test --package-path Prototypes/UnifiedContainer
 ## Not in the prototype
 
 Arguments, graph scope, weak and disposable singletons, behaviors, forwarding, the registration report, environments and Nexus. They don't depend on the sync/async question.
+
+## Results (Swift 6.2.4, Xcode 26.3 on macOS and `swift:6.2` on Linux)
+
+All 21 tests pass with strict concurrency and warnings as errors.
+
+1. **The design holds up.** Async setup, providers (transient and lazy singleton), actors, `@MainActor` view models and 200 concurrent resolves all work, and every error depends only on how a type was registered.
+2. **The container is checked `Sendable`.** Its only stored property is a `Mutex`. `Registration` and `ProviderSource` are still `@unchecked Sendable`, because they hold the user's factory closures, which aren't `@Sendable`. Requiring `@Sendable` factories would remove that, but it would also break factories that capture non-`Sendable` state.
+3. **`resolve` can't be overloaded on isolation alone.** Swift rejects two methods that differ only in `@MainActor`, so main-actor code resolves with `container.main.resolve(_:)`.
+4. **Async code has to `await` the container initializer.** In an async function, Swift picks `init(assemblies:) async` over the sync one, so it's `try await UnifiedContainer(assemblies:)` there.
+5. **Default main-actor isolation needs Swift 6.2 features.** In those apps assemblies are main-actor types. The async initializer and `AsyncSetup.setUp` had to be `nonisolated(nonsending)` (run on the caller's actor), or the compiler reports sending main-actor assemblies off the main actor as a data race. Plain `register` closures and `registerMainActor` worked without changes.
+6. **A lazy async singleton must be `Sendable`.** `registerProvider(...).asSingleton()` is only available for `Sendable` products, because one instance goes to many tasks. The compiler enforces it.
+
+Not tested yet: resolving from a background thread a sync factory that was written in a module with default main-actor isolation.
