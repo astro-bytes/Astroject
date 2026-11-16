@@ -242,7 +242,7 @@ struct InjectableArguments {
     
     /// The statement that skips the registration outside `environments`, or empty when there are none.
     var environmentGuard: String {
-        environments.map { "guard AstrojectCore.AstrojectEnvironment.includes(\($0)) else {\n    return\n}\n" } ?? ""
+        environments.map { "guard AstrojectCore.AstrojectEnvironment.includes(\($0)) else { return }\n" } ?? ""
     }
 
     init(_ node: AttributeSyntax) throws {
