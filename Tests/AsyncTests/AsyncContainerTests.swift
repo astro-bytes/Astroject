@@ -543,6 +543,28 @@ struct AsyncContainerTests {
             #expect(try await container.resolve(Int.self) == 2)
         }
         
+        @Test("Environment Skips Assemblies That Don't Match")
+        func environmentSkipsAssemblies() async throws {
+            struct RealAssembly: Assembly {
+                func assemble(container: Container) throws {
+                    try container.register(Int.self) { 1 }
+                }
+            }
+            
+            struct StubAssembly: Assembly {
+                static var environments: Set<AstrojectEnvironment>? { [.test] }
+                func assemble(container: Container) throws {
+                    try container.register(Int.self) { 2 }
+                }
+            }
+            
+            let release = try AsyncContainer(environment: .release, assemblies: [RealAssembly(), StubAssembly()])
+            let test = try AsyncContainer(environment: .test, assemblies: [RealAssembly(), StubAssembly()])
+            
+            #expect(try await release.resolve(Int.self) == 1)
+            #expect(try await test.resolve(Int.self) == 2)
+        }
+        
         @Test("Assembly Failure Propagates Error")
         func assemblyFailurePropagatesError() throws {
             struct FailingAssembly: Assembly {

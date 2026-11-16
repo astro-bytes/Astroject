@@ -893,4 +893,113 @@ final class AssemblerTests {
         #expect(names == ["MockAssembly", "Dependent"])
         #expect(sequence == ["base"])
     }
+    
+    // MARK: - Environments
+    
+    @Test("Assemblies outside the environment are skipped, order kept")
+    func environmentSkipsAssemblies() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            environment: .release,
+            assemblies: [EverywhereAssembly(), DebugOnlyAssembly(), ReleaseOnlyAssembly(), TestStubsAssembly()]
+        )
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["EverywhereAssembly", "ReleaseOnlyAssembly"])
+    }
+    
+    @Test("Custom environments match by name")
+    func customEnvironmentMatches() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            environment: .custom("staging"),
+            assemblies: [StagingAssembly(), DebugOnlyAssembly(), EverywhereAssembly()]
+        )
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["StagingAssembly", "EverywhereAssembly"])
+    }
+    
+    @Test("No environment runs every assembly")
+    func noEnvironmentRunsEverything() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            assemblies: [DebugOnlyAssembly(), ReleaseOnlyAssembly()]
+        )
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["DebugOnlyAssembly", "ReleaseOnlyAssembly"])
+    }
+    
+    @Test("Requiring an assembly outside the environment throws")
+    func requiredOutsideEnvironmentThrows() throws {
+        #expect(throws: Assembler.Error.requiredAssemblyOutsideEnvironment(
+            assembly: "NeedsStubsAssembly",
+            required: "TestStubsAssembly",
+            environment: .release
+        )) {
+            _ = try Assembler(
+                container: MockContainer(),
+                environment: .release,
+                assemblies: [NeedsStubsAssembly()]
+            )
+        }
+    }
+    
+    @Test("A skipped assembly's requirements are not checked")
+    func skippedAssemblyRequirementsIgnored() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            environment: .debug,
+            assemblies: [EverywhereAssembly(), TestOnlyNeedsStubsAssembly()]
+        )
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["EverywhereAssembly"])
+    }
+    
+    @Test("Override logging follows the environment by default")
+    func logsOverridesDefault() {
+        #expect(Assembler(container: MockContainer(), environment: .debug).logsOverrides)
+        #expect(Assembler(container: MockContainer(), environment: .test).logsOverrides)
+        #expect(!Assembler(container: MockContainer(), environment: .release).logsOverrides)
+        #expect(Assembler(container: MockContainer()).logsOverrides == Assembler.isDebugBuild)
+    }
+}
+
+// MARK: - Environment Assemblies
+
+struct EverywhereAssembly: Assembly {
+    func assemble(container: Container) throws {}
+}
+
+struct DebugOnlyAssembly: Assembly {
+    static var environments: Set<AstrojectEnvironment>? { [.debug] }
+    func assemble(container: Container) throws {}
+}
+
+struct ReleaseOnlyAssembly: Assembly {
+    static var environments: Set<AstrojectEnvironment>? { [.release] }
+    func assemble(container: Container) throws {}
+}
+
+struct TestStubsAssembly: Assembly {
+    static var environments: Set<AstrojectEnvironment>? { [.test] }
+    func assemble(container: Container) throws {}
+}
+
+struct StagingAssembly: Assembly {
+    static var environments: Set<AstrojectEnvironment>? { [.custom("staging")] }
+    func assemble(container: Container) throws {}
+}
+
+struct NeedsStubsAssembly: Assembly {
+    static var requiredAssemblies: [Assembly.Type] { [TestStubsAssembly.self] }
+    func assemble(container: Container) throws {}
+}
+
+struct TestOnlyNeedsStubsAssembly: Assembly {
+    static var environments: Set<AstrojectEnvironment>? { [.test] }
+    static var requiredAssemblies: [Assembly.Type] { [TestStubsAssembly.self] }
+    func assemble(container: Container) throws {}
 }

@@ -30,6 +30,13 @@ public class Assembler {
                 return left == right
             case (.assemblyFailure(let left), .assemblyFailure(let right)):
                 return String(describing: left) == String(describing: right)
+            case (
+                .requiredAssemblyOutsideEnvironment(let leftAssembly, let leftRequired, let leftEnvironment),
+                .requiredAssemblyOutsideEnvironment(let rightAssembly, let rightRequired, let rightEnvironment)
+            ):
+                return leftAssembly == rightAssembly
+                    && leftRequired == rightRequired
+                    && leftEnvironment == rightEnvironment
             default:
                 return false
             }
@@ -60,10 +67,26 @@ public class Assembler {
         /// The associated `Swift.Error` contains the original error thrown by the assembly,
         /// allowing the caller to inspect or propagate the underlying cause.
         case assemblyFailure(Swift.Error)
+        
+        /// Thrown when an assembly that runs in the assembler's environment requires an
+        /// assembly whose `environments` leave it out.
+        ///
+        /// For example, a `FeatureAssembly` that runs everywhere can't require a
+        /// `StubsAssembly` that only runs in `.test` when the environment is `.release`.
+        case requiredAssemblyOutsideEnvironment(
+            assembly: String,
+            required: String,
+            environment: AstrojectEnvironment
+        )
     }
     
     /// The container that holds assembled dependencies.
     public let container: Container
+    
+    /// The environment the app is running in, or `nil` to run every assembly.
+    ///
+    /// The assembler skips assemblies whose `environments` don't contain it.
+    public let environment: AstrojectEnvironment?
     
     /// Resolver that provides access to the assembled dependencies.
     ///
@@ -89,8 +112,9 @@ public class Assembler {
     /// registered more than once, where each registration came from, and which one wins, through
     /// `os.Logger` with the subsystem `Astroject`. Nothing is written when no key was overridden.
     ///
-    /// Defaults to `true` in debug builds and `false` in release builds.
-    public var logsOverrides: Bool = Assembler.isDebugBuild
+    /// Defaults to `true` for the `.debug` and `.test` environments and `false` for `.release`.
+    /// With a custom environment or none, it defaults to `true` when Astroject is built for debug.
+    public lazy var logsOverrides: Bool = Assembler.logsOverridesByDefault(in: environment)
     
     /// Assemblies that will be applied to the container.
     private(set) var assemblies: [Assembly]
@@ -103,13 +127,20 @@ public class Assembler {
     ///
     /// - Parameters:
     ///   - container: The container to assemble dependencies into.
-    ///   - assemblies: An array of `Assembly` instances to apply. Defaults to an empty array.
+    ///   - environment: The environment the app is running in, or `nil` to run every assembly. Defaults to `nil`.
+    ///   - assemblies: An array of `Assembly` instances to apply.
     ///   - initializeMissingAssemblies: A flag indicating whether to automatically initialize
     ///     and add any required assemblies that are missing when `assemble()` is called. Defaults to `true`.
     /// - Throws: `Assembler.Error.missingRequiredAssemblies`, `Assembler.Error.circularDependency`,
     ///   or `Assembler.Error.assemblyFailure` if validation or assembly fails.
-    public init(container: Container, assemblies: [Assembly], initializeMissingAssemblies: Bool = true) throws {
+    public init(
+        container: Container,
+        environment: AstrojectEnvironment? = nil,
+        assemblies: [Assembly],
+        initializeMissingAssemblies: Bool = true
+    ) throws {
         self.container = container
+        self.environment = environment
         self.assemblies = assemblies
         self.initializeMissingAssemblies = initializeMissingAssemblies
         
@@ -123,10 +154,17 @@ public class Assembler {
     /// Dependencies can be added later using `add(assembly:)` or `add(assemblies:)`.
     ///
     /// - Parameter container: The container to assemble dependencies into.
+    /// - Parameter environment: The environment the app is running in, or `nil` to run every assembly.
+    ///     Defaults to `nil`.
     /// - Parameter initializeMissingAssemblies: A flag indicating whether to automatically initialize
     ///     and add any required assemblies that are missing when `assemble()` is called. Defaults to `true`.
-    public init(container: Container, initializeMissingAssemblies: Bool = true) {
+    public init(
+        container: Container,
+        environment: AstrojectEnvironment? = nil,
+        initializeMissingAssemblies: Bool = true
+    ) {
         self.container = container
+        self.environment = environment
         self.assemblies = []
         self.initializeMissingAssemblies = initializeMissingAssemblies
     }
@@ -224,8 +262,11 @@ public class Assembler {
     ///   - `Assembler.Error.circularDependency` if a circular dependency is detected.
     func validateRequiredAssemblies() throws(Assembler.Error) {
         // Assemblies already present, grouped by type in the order they were added
+        // Assemblies outside the environment are skipped
+        let included = assemblies.filter { isIncluded(type(of: $0)) }
+        
         var present: [ObjectIdentifier: [Assembly]] = [:]
-        for assembly in assemblies {
+        for assembly in included {
             present[ObjectIdentifier(type(of: assembly)), default: []].append(assembly)
         }
         
@@ -260,6 +301,13 @@ public class Assembler {
             
             // Recursively visit required assemblies first
             for dep in assemblyType.requiredAssemblies {
+                if let environment, !isIncluded(dep) {
+                    throw Assembler.Error.requiredAssemblyOutsideEnvironment(
+                        assembly: String(describing: assemblyType),
+                        required: String(describing: dep),
+                        environment: environment
+                    )
+                }
                 try visit(dep)
             }
             
@@ -276,7 +324,7 @@ public class Assembler {
         }
         
         // Start visiting all assemblies in the order they were added
-        for assembly in assemblies {
+        for assembly in included {
             try visit(type(of: assembly))
         }
         
@@ -328,6 +376,21 @@ public class Assembler {
         let report = container.registrationReport()
         guard !report.overridden.isEmpty else { return }
         report.log()
+    }
+    
+    /// Whether `assembly` runs in this assembler's environment.
+    func isIncluded(_ assembly: Assembly.Type) -> Bool {
+        guard let environment, let environments = assembly.environments else { return true }
+        return environments.contains(environment)
+    }
+    
+    /// Whether overrides are logged by default in `environment`.
+    static func logsOverridesByDefault(in environment: AstrojectEnvironment?) -> Bool {
+        switch environment {
+        case .debug, .test: true
+        case .release: false
+        case .custom, nil: isDebugBuild
+        }
     }
     
     /// Whether this library was built in the debug configuration.

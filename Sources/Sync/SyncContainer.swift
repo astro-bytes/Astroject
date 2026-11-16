@@ -40,14 +40,17 @@ public final class SyncContainer: Container, Assemblable, @unchecked Sendable {
 
     /// Initializes a new container and sets up an `Assembler` with the provided assemblies.
     ///
-    /// - Parameter assemblies: An array of `Assembly` objects used to configure the assembler.
+    /// - Parameters:
+    ///   - environment: The environment the app is running in. Assemblies whose `environments`
+    ///     leave it out are skipped. Defaults to `nil`, which runs every assembly.
+    ///   - assemblies: An array of `Assembly` objects used to configure the assembler.
     ///
     /// - Throws: Any error thrown by the `Assembler` initializer if the assembly process fails.
     ///
     /// This initializer automatically creates an `Assembler` for the container and
     /// immediately attempts to assemble it using the provided assemblies.
-    public init(assemblies: [Assembly]) throws {
-        self.assembler = try Assembler(container: self, assemblies: assemblies)
+    public init(environment: AstrojectEnvironment? = nil, assemblies: [Assembly]) throws {
+        self.assembler = try Assembler(container: self, environment: environment, assemblies: assemblies)
     }
     
     @discardableResult
