@@ -154,7 +154,6 @@ final class ProvidesMacroTests: XCTestCase {
                 static func session() -> URLSession {
                     URLSession.shared
                 }
-
                 static func analyticsLogger(session: URLSession) async -> Logger {
                     Logger(session: session)
                 }
