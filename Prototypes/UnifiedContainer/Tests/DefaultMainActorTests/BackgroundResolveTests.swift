@@ -6,6 +6,16 @@ import Foundation
 import Testing
 import AstrojectUnified
 
+/// Main-actor state, like an app's shared settings. Main-actor by default in this module.
+let sharedSettings = Settings()
+
+/// Registers the way an app's assembly would. Main-actor by default in this module, so
+/// the closures below are main-actor closures: the compiler lets them read `sharedSettings`.
+func registerPlainClosures(on container: UnifiedContainer) {
+    container.register(String.self) { _ in sharedSettings.theme }
+    container.register(Bool.self) { _ in Thread.isMainThread }
+}
+
 /// Opted out of the module's default main-actor isolation.
 nonisolated final class BackgroundService: Sendable {
     let id = UUID()
@@ -13,25 +23,26 @@ nonisolated final class BackgroundService: Sendable {
 
 @Suite("Background resolving with default main-actor isolation")
 struct BackgroundResolveTests {
-    @Test("Plain register closure that builds a main-actor type, resolved off the main actor")
-    func mainActorTypeFromBackground() async {
-        await #expect(processExitsWith: .failure) {
+    // Exit codes from the child process: 3 means the factory ran off the main thread
+    // without trapping. A trap would show up as a signal instead.
+
+    @Test("Plain register closure that reads main-actor state, resolved off the main actor")
+    func mainActorStateFromBackground() async {
+        await #expect(processExitsWith: .exitCode(3)) {
             let container = UnifiedContainer()
-            container.register(Settings.self) { _ in Settings() }
-            await Task.detached {
-                _ = try? container.resolve(Settings.self)
-            }.value
+            await MainActor.run { registerPlainClosures(on: container) }
+            let theme = await Task.detached { try? container.resolve(String.self) }.value
+            exit(theme == "dark" ? 3 : 1)
         }
     }
 
-    @Test("Plain register closure that touches no main-actor state, resolved off the main actor")
-    func trivialClosureFromBackground() async {
-        await #expect(processExitsWith: .failure) {
+    @Test("Plain register closure, resolved off the main actor, runs on a background thread")
+    func plainClosureThread() async {
+        await #expect(processExitsWith: .exitCode(3)) {
             let container = UnifiedContainer()
-            container.register(Int.self) { _ in 42 }
-            await Task.detached {
-                _ = try? container.resolve(Int.self)
-            }.value
+            await MainActor.run { registerPlainClosures(on: container) }
+            let ranOnMain = await Task.detached { try? container.resolve(Bool.self) }.value
+            exit(ranOnMain == false ? 3 : 1)
         }
     }
 
