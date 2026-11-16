@@ -54,7 +54,7 @@
 ///   - scope: How instances are managed. Defaults to `.graph`.
 ///   - name: An optional name for the registration. Forwarded types use the same name.
 ///   - types: Protocols or superclasses to also register the type as.
-@attached(extension, conformances: Injectable, names: named(register(in:)))
+@attached(extension, conformances: Injectable, names: named(register(in:)), named(Factory))
 public macro Injectable(
     scope: InjectableScope = .graph,
     name: String? = nil,

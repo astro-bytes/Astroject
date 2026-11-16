@@ -355,6 +355,26 @@ struct DataAssembly {
 }
 ```
 
+##### `@Named` and `@Argument`
+
+Mark an initializer parameter `@Named("…")` to resolve it by name instead of by type alone. Mark it `@Argument` when the value is only known at runtime, such as an ID from navigation. A type with `@Argument` parameters isn't registered itself: the macro generates a nested `Factory` whose `make(…)` takes the arguments and resolves everything else, and registers that factory. Both are property wrappers that do nothing at runtime, so you still call the initializer with plain values.
+
+```swift
+@Injectable
+final class PuzzleDetailViewModel {
+    init(
+        @Argument puzzleID: String,
+        @Named("analytics") logger: Logger,
+        repository: PuzzleRepositoryProtocol
+    ) { ... }
+}
+
+let factory = try container.resolve(PuzzleDetailViewModel.Factory.self)
+let viewModel = try factory.make(puzzleID: "42")
+```
+
+`make` is `throws` for a synchronous initializer, and there is always an `async throws` version for `AsyncContainer`. A type made through a `Factory` can't use `as:`.
+
  A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
 
 ### Before and After
