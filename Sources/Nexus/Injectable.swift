@@ -51,3 +51,94 @@ public enum InjectableScope: Sendable {
     /// One instance for as long as something else holds a strong reference to it.
     case weak
 }
+
+// MARK: - Support for generated code
+
+public extension Container {
+    /// Registers a product from two closures, and uses the one that fits the container's `ResolutionMode`.
+    ///
+    /// `@Injectable` generates calls to this when the initializer has `@Named` or `@Argument`
+    /// parameters, because those are resolved explicitly rather than by type alone.
+    ///
+    /// - Parameters:
+    ///   - productType: The type of the product to register.
+    ///   - name: An optional name for the registration.
+    ///   - resolveSync: Creates the product for a `.sync` container, or `nil` when it can only be
+    ///     created asynchronously.
+    ///   - resolveAsync: Creates the product for an `.async` container.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
+    /// - Returns: The registration, for further configuration.
+    /// - Throws: `AstrojectError.invalidFactory` if the container is `.sync` and `resolveSync` is `nil`.
+    @discardableResult
+    func register<Product>(
+        _ productType: Product.Type,
+        name: String? = nil,
+        resolveSync: ((Resolver) throws -> Product)?,
+        resolveAsync: @escaping (Resolver) async throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
+    ) throws -> any Registrable<Product> {
+        let factory: Factory<Product, Resolver>
+        switch resolutionMode {
+        case .sync:
+            guard let resolveSync else { throw AstrojectError.invalidFactory }
+            factory = Factory(.sync(resolveSync))
+        case .async:
+            factory = Factory(.async(resolveAsync))
+        }
+        return try register(productType, name: name, factory: factory, fileID: fileID, line: line)
+    }
+}
+
+/// Resolves an `@Injectable` initializer parameter by name.
+///
+/// Swift macros can't attach to parameters, so `@Named` is a property wrapper that does nothing
+/// at runtime: callers still pass a plain value. `@Injectable` reads it and resolves the
+/// parameter with `resolve(_:name:)`.
+///
+/// ```swift
+/// @Injectable
+/// final class AnalyticsService {
+///     init(@Named("analytics") logger: Logger, session: URLSession) { ... }
+/// }
+/// ```
+@propertyWrapper
+public struct Named<Value> {
+    public var wrappedValue: Value
+    /// The registration name the parameter is resolved with.
+    public let name: String
+    
+    /// - Parameters:
+    ///   - wrappedValue: The parameter's value.
+    ///   - name: The registration name to resolve the parameter with.
+    public init(wrappedValue: Value, _ name: String) {
+        self.wrappedValue = wrappedValue
+        self.name = name
+    }
+}
+
+/// Marks an `@Injectable` initializer parameter as a runtime value.
+///
+/// A type with `@Argument` parameters isn't registered itself. `@Injectable` generates a nested
+/// `Factory` with a `make(…)` method that takes the `@Argument` values and resolves everything
+/// else, and registers the factory. Like `@Named`, it does nothing at runtime.
+///
+/// ```swift
+/// @Injectable
+/// final class PuzzleDetailViewModel {
+///     init(@Argument puzzleID: String, repository: PuzzleRepository) { ... }
+/// }
+///
+/// let factory = try container.resolve(PuzzleDetailViewModel.Factory.self)
+/// let viewModel = try factory.make(puzzleID: "42")
+/// ```
+@propertyWrapper
+public struct Argument<Value> {
+    public var wrappedValue: Value
+    
+    /// - Parameter wrappedValue: The parameter's value.
+    public init(wrappedValue: Value) {
+        self.wrappedValue = wrappedValue
+    }
+}

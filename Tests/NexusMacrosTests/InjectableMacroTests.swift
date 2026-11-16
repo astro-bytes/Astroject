@@ -332,4 +332,155 @@ final class InjectableMacroTests: XCTestCase {
         throw XCTSkip("Macros are only supported when running tests for the host platform")
         #endif
     }
+
+    func testNamedParameterIsResolvedByName() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable
+            final class Analytics {
+                init(@Named("analytics") logger: Logger, session: Session) {}
+            }
+            """,
+            expandedSource: """
+            final class Analytics {
+                init(@Named("analytics") logger: Logger, session: Session) {}
+            }
+
+            extension Analytics: AstrojectNexus.Injectable {
+                static func register(in container: any AstrojectCore.Container) throws {
+                    try container.register(Analytics.self, resolveSync: { resolver in
+                            try Analytics(logger: resolver.resolve(Logger.self, name: "analytics"), session: resolver.resolve(Session.self))
+                        }, resolveAsync: { resolver in
+                            try await Analytics(logger: resolver.resolve(Logger.self, name: "analytics"), session: resolver.resolve(Session.self))
+                        }, fileID: "TestModule/test.swift", line: 1)
+                }
+            }
+            """,
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testArgumentsGenerateFactory() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable
+            final class PuzzleViewModel {
+                init(@Argument puzzleID: String, @Argument _ difficulty: Difficulty, repository: Repository) {}
+            }
+            """,
+            expandedSource: """
+            final class PuzzleViewModel {
+                init(@Argument puzzleID: String, @Argument _ difficulty: Difficulty, repository: Repository) {}
+            }
+
+            extension PuzzleViewModel: AstrojectNexus.Injectable {
+                /// Makes `PuzzleViewModel` from its `@Argument` values, resolving everything else.
+                struct Factory {
+                    let resolver: any AstrojectCore.Resolver
+
+                    init(resolver: any AstrojectCore.Resolver) {
+                        self.resolver = resolver
+                    }
+
+                    func make(puzzleID: String, _ difficulty: Difficulty) throws -> PuzzleViewModel {
+                        try PuzzleViewModel(puzzleID: puzzleID, difficulty, repository: resolver.resolve(Repository.self))
+                    }
+
+                    func make(puzzleID: String, _ difficulty: Difficulty) async throws -> PuzzleViewModel {
+                        try await PuzzleViewModel(puzzleID: puzzleID, difficulty, repository: resolver.resolve(Repository.self))
+                    }
+                }
+
+                static func register(in container: any AstrojectCore.Container) throws {
+                    try container.register(Factory.self, resolveSync: { resolver in
+                            Factory(resolver: resolver)
+                        }, resolveAsync: { resolver in
+                            Factory(resolver: resolver)
+                        }, fileID: "TestModule/test.swift", line: 1)
+                }
+            }
+            """,
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testAsyncInitializerFactoryOnlyMakesAsynchronously() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable
+            public final class Loader {
+                public init(@Argument path: String) async throws {}
+            }
+            """,
+            expandedSource: """
+            public final class Loader {
+                public init(@Argument path: String) async throws {}
+            }
+
+            extension Loader: AstrojectNexus.Injectable {
+                /// Makes `Loader` from its `@Argument` values, resolving everything else.
+                public struct Factory {
+                    public let resolver: any AstrojectCore.Resolver
+
+                    public init(resolver: any AstrojectCore.Resolver) {
+                        self.resolver = resolver
+                    }
+
+                    public func make(path: String) async throws -> Loader {
+                        try await Loader(path: path)
+                    }
+                }
+
+                public static func register(in container: any AstrojectCore.Container) throws {
+                    try container.register(Factory.self, resolveSync: { resolver in
+                            Factory(resolver: resolver)
+                        }, resolveAsync: { resolver in
+                            Factory(resolver: resolver)
+                        }, fileID: "TestModule/test.swift", line: 1)
+                }
+            }
+            """,
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testAsWithArgumentsIsAnError() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable(as: Loading.self)
+            final class Loader: Loading {
+                init(@Argument path: String) {}
+            }
+            """,
+            expandedSource: """
+            final class Loader: Loading {
+                init(@Argument path: String) {}
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "as: can't be used with @Argument parameters; the type is made through its Factory instead",
+                    line: 1,
+                    column: 1
+                )
+            ],
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
 }

@@ -41,16 +41,11 @@ public struct InjectableMacro: ExtensionMacro {
             attribute: node
         )
 
-        var callArguments = ["\(typeName).self"]
-        if let name = arguments.name {
-            callArguments.append("name: \(name)")
+        var location = ""
+        if let source = context.location(of: node) {
+            location = ", fileID: \(source.file.trimmedDescription), line: \(source.line.trimmedDescription)"
         }
-        callArguments.append("initializer: \(initializer.reference(to: typeName))")
-        if let location = context.location(of: node) {
-            callArguments.append("fileID: \(location.file.trimmedDescription)")
-            callArguments.append("line: \(location.line.trimmedDescription)")
-        }
-
+        let nameArgument = arguments.name.map { ", name: \($0)" } ?? ""
         let access = accessModifier(of: declaration)
         let conformance = protocols.isEmpty ? "" : ": AstrojectNexus.Injectable"
         let chain = arguments.scopeCall + arguments.forwardedTypes.map { ".implements(\($0).self)" }.joined()
@@ -59,17 +54,105 @@ public struct InjectableMacro: ExtensionMacro {
         let conformanceChecks = arguments.forwardedTypes.map {
             "_ = { (instance: \(typeName)) -> \($0) in instance }\n"
         }.joined()
+        
+        let members: String
+        if initializer.hasArguments {
+            if !arguments.forwardedTypes.isEmpty {
+                throw DiagnosticsError(diagnostics: [
+                    Diagnostic(node: node, message: InjectableDiagnostic.asWithArguments)
+                ])
+            }
+            members = factoryMembers(
+                typeName: typeName,
+                initializer: initializer,
+                access: access,
+                registration: "try container.register(Factory.self\(nameArgument), "
+                    + "resolveSync: { resolver in Factory(resolver: resolver) }, "
+                    + "resolveAsync: { resolver in Factory(resolver: resolver) }\(location))\(chain)"
+            )
+        } else if initializer.hasNamed {
+            let syncClosure = initializer.isAsync
+                ? "nil"
+                : "{ resolver in \(initializer.call(typeName: typeName, isAsync: false)) }"
+            let asyncClosure = "{ resolver in \(initializer.call(typeName: typeName, isAsync: true)) }"
+            let registration = "try container.register(\(typeName).self\(nameArgument), "
+                + "resolveSync: \(syncClosure), resolveAsync: \(asyncClosure)\(location))\(chain)"
+            members = """
+                    \(access)static func register(in container: any AstrojectCore.Container) throws {
+                        \(conformanceChecks)\(registration)
+                    }
+                """
+        } else {
+            let reference = initializer.reference(to: typeName)
+            let registration = "try container.register(\(typeName).self\(nameArgument), "
+                + "initializer: \(reference)\(location))\(chain)"
+            members = """
+                    \(access)static func register(in container: any AstrojectCore.Container) throws {
+                        \(conformanceChecks)\(registration)
+                    }
+                """
+        }
+        
         let decl: DeclSyntax = """
             extension \(raw: typeName)\(raw: conformance) {
-                \(raw: access)static func register(in container: any AstrojectCore.Container) throws {
-                    \(raw: conformanceChecks)try container.register(\(raw: callArguments.joined(separator: ", ")))\(raw: chain)
-                }
+            \(raw: members)
             }
             """
         guard let extensionDecl = decl.as(ExtensionDeclSyntax.self) else { return [] }
         return [extensionDecl]
     }
 
+    /// The nested `Factory` and `register(in:)` for a type with `@Argument` parameters.
+    ///
+    /// `Factory.make(…)` takes the `@Argument` parameters and resolves the rest. It is
+    /// registered instead of the type. A synchronous `make` is generated for synchronous
+    /// initializers, and an `async` one always, for `AsyncContainer`.
+    static func factoryMembers(
+        typeName: String,
+        initializer: InitializerChoice,
+        access: String,
+        registration: String
+    ) -> String {
+        let makeParameters = initializer.parameters.compactMap { parameter -> String? in
+            guard case .argument = parameter.kind else { return nil }
+            let names = parameter.label == parameter.internalName
+                ? parameter.label
+                : "\(parameter.label) \(parameter.internalName)"
+            return "\(names): \(parameter.type)"
+        }.joined(separator: ", ")
+        
+        var makes: [String] = []
+        if !initializer.isAsync {
+            makes.append("""
+                        \(access)func make(\(makeParameters)) throws -> \(typeName) {
+                            \(initializer.call(typeName: typeName, isAsync: false))
+                        }
+                """)
+        }
+        makes.append("""
+                    \(access)func make(\(makeParameters)) async throws -> \(typeName) {
+                        \(initializer.call(typeName: typeName, isAsync: true))
+                    }
+            """)
+        
+        return """
+                /// Makes `\(typeName)` from its `@Argument` values, resolving everything else.
+                \(access)struct Factory {
+                    \(access)let resolver: any AstrojectCore.Resolver
+
+                    \(access)init(resolver: any AstrojectCore.Resolver) {
+                        self.resolver = resolver
+                    }
+
+            \(makes.joined(separator: "\n\n"))
+                }
+
+                \(access)static func register(in container: any AstrojectCore.Container) throws {
+                    \(registration)
+                }
+            """
+    }
+    
     /// `public ` when the type is `public` or `open`, `package ` when it is `package`, otherwise empty.
     static func accessModifier(of declaration: some DeclGroupSyntax) -> String {
         for modifier in declaration.modifiers {
@@ -162,10 +245,85 @@ struct InjectableArguments {
 
 /// The initializer `@Injectable` registers.
 struct InitializerChoice {
+    /// How one initializer parameter gets its value.
+    struct Parameter {
+        enum Kind {
+            /// Resolved from the container by its type.
+            case resolved
+            /// Resolved by its type and the name in `@Named("…")`.
+            case named(String)
+            /// Passed at runtime through the generated `Factory`, marked `@Argument`.
+            case argument
+        }
+        
+        /// The argument label, or `_`.
+        let label: String
+        /// The name used inside the initializer.
+        let internalName: String
+        /// The parameter's type, as written.
+        let type: String
+        let kind: Kind
+        
+        /// The metatype expression for `type`, such as `Logger.self` or `(any Logger).self`.
+        var metatype: String {
+            type.hasPrefix("any ") || type.hasPrefix("some ") ? "(\(type)).self" : "\(type).self"
+        }
+        
+        init(_ syntax: FunctionParameterSyntax) {
+            label = syntax.firstName.text
+            internalName = (syntax.secondName ?? syntax.firstName).text
+            type = syntax.type.trimmedDescription
+            var kind = Kind.resolved
+            for element in syntax.attributes {
+                guard let attribute = element.as(AttributeSyntax.self) else { continue }
+                switch attribute.attributeName.trimmedDescription {
+                case "Named", "AstrojectNexus.Named":
+                    let name = attribute.arguments?.as(LabeledExprListSyntax.self)?.first?.expression
+                    kind = .named(name?.trimmedDescription ?? "nil")
+                case "Argument", "AstrojectNexus.Argument":
+                    kind = .argument
+                default:
+                    continue
+                }
+            }
+            self.kind = kind
+        }
+    }
+    
     /// The argument labels, with `_` for unlabeled parameters.
     let labels: [String]
     let isAsync: Bool
     let isThrowing: Bool
+    /// The chosen initializer's parameters. Empty for an implicit initializer.
+    var parameters: [Parameter] = []
+    
+    /// Whether any parameter is marked `@Argument`, so a `Factory` is generated.
+    var hasArguments: Bool {
+        parameters.contains { if case .argument = $0.kind { true } else { false } }
+    }
+    
+    /// Whether any parameter is marked `@Named`, so the initializer is called from a resolving closure.
+    var hasNamed: Bool {
+        parameters.contains { if case .named = $0.kind { true } else { false } }
+    }
+    
+    /// A call to the initializer, such as `try await Type(logger: resolver.resolve(Logger.self))`.
+    /// `@Argument` parameters are passed by their internal names.
+    func call(typeName: String, isAsync: Bool) -> String {
+        let arguments = parameters.map { parameter -> String in
+            let value: String
+            switch parameter.kind {
+            case .resolved:
+                value = "resolver.resolve(\(parameter.metatype))"
+            case .named(let name):
+                value = "resolver.resolve(\(parameter.metatype), name: \(name))"
+            case .argument:
+                value = parameter.internalName
+            }
+            return parameter.label == "_" ? value : "\(parameter.label): \(value)"
+        }
+        return "try \(isAsync ? "await " : "")\(typeName)(\(arguments.joined(separator: ", ")))"
+    }
 
     /// The expression passed as `initializer:`.
     ///
@@ -228,7 +386,8 @@ struct InitializerChoice {
         return InitializerChoice(
             labels: chosen.signature.parameterClause.parameters.map(\.firstName.text),
             isAsync: effects?.asyncSpecifier != nil,
-            isThrowing: effects?.throwsClause != nil
+            isThrowing: effects?.throwsClause != nil,
+            parameters: chosen.signature.parameterClause.parameters.map(Parameter.init)
         )
     }
 
@@ -298,6 +457,7 @@ enum InjectableDiagnostic: String, DiagnosticMessage {
     case scopeNotLiteral
     case injectableInitNotOnInitializer
     case asNotType
+    case asWithArguments
 
     var message: String {
         switch self {
@@ -317,6 +477,8 @@ enum InjectableDiagnostic: String, DiagnosticMessage {
             "@InjectableInit can only be applied to an initializer"
         case .asNotType:
             "as: takes types, such as PuzzleRepositoryProtocol.self"
+        case .asWithArguments:
+            "as: can't be used with @Argument parameters; the type is made through its Factory instead"
         }
     }
 
