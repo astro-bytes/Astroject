@@ -239,22 +239,24 @@ public class Assembler {
         var missingTypes: [Assembly.Type] = []
         
         // Cycle detection helpers
-        var visitingStack: [Assembly.Type] = [] // stack to track current recursion path
+        var visitingStack: [Assembly.Type] = [] // current recursion path, kept for the error message
+        var visiting = Set<ObjectIdentifier>()  // the same path, for O(1) cycle checks
         var visited = Set<ObjectIdentifier>()   // visited nodes
         
         // Recursive visit function (post-order: requirements are emitted before the assembly)
         func visit(_ assemblyType: Assembly.Type) throws(Assembler.Error) {
             // Detect circular dependency
-            if visitingStack.contains(where: { $0 == assemblyType }) {
+            let id = ObjectIdentifier(assemblyType)
+            if visiting.contains(id) {
                 let cycle = visitingStack.map { String(describing: $0) } + [String(describing: assemblyType)]
                 throw Assembler.Error.circularDependency(cycle)
             }
             
-            let id = ObjectIdentifier(assemblyType)
             guard !visited.contains(id) else { return } // already processed
             
             visited.insert(id)
             visitingStack.append(assemblyType)
+            visiting.insert(id)
             
             // Recursively visit required assemblies first
             for dep in assemblyType.requiredAssemblies {
@@ -262,6 +264,7 @@ public class Assembler {
             }
             
             visitingStack.removeLast()
+            visiting.remove(id)
             
             // Emit this assembly after its requirements
             if let instances = present[id] {
