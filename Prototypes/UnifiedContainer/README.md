@@ -4,6 +4,7 @@ Throwaway prototype for the Astroject 3.0/4.0 container design. It is a separate
 
 ```sh
 swift test --package-path Prototypes/UnifiedContainer
+Prototypes/CompileChecks/check.sh   # code that must not compile
 ```
 
 ## The idea
@@ -25,15 +26,20 @@ Arguments, graph scope, weak and disposable singletons, behaviors, forwarding, t
 
 ## Results (Swift 6.2.4, Xcode 26.3 on macOS and `swift:6.2` on Linux)
 
-All 26 tests pass with strict concurrency and warnings as errors.
+All 25 tests pass with strict concurrency and warnings as errors, and the compile checks fail where they should.
 
 1. **The design holds up.** Async setup, providers (transient and lazy singleton), actors, `@MainActor` view models and 200 concurrent resolves all work, and every error depends only on how a type was registered.
-2. **The container is checked `Sendable`.** Its only stored property is a `Mutex`. `Registration` and `ProviderSource` are still `@unchecked Sendable`, because they hold the user's factory closures, which aren't `@Sendable`. Requiring `@Sendable` factories would remove that, but it would also break factories that capture non-`Sendable` state.
+2. **The container and its registrations are checked `Sendable`.** The container's only stored property is a `Mutex`. `register` and `registerProvider` take `@Sendable` factories (see 7), so `Registration` and `ProviderSource` no longer need `@unchecked`. The one unchecked spot left is the cached singleton: a singleton of a non-`Sendable` type is handed to every caller, as in Astroject 2.x.
 3. **Main-actor resolving is a separate entry point.** Swift doesn't allow two methods that differ only in `@MainActor` (the prototype was written around that rule rather than testing it), so main-actor code resolves with `container.main.resolve(_:)`.
 4. **Async code has to `await` the container initializer.** In an async function, Swift picks `init(assemblies:) async` over the sync one, so it's `try await UnifiedContainer(assemblies:)` there.
-5. **Default main-actor isolation needs Swift 6.2 features.** In those apps assemblies are main-actor types. The async initializer and `AsyncSetup.setUp` had to be `nonisolated(nonsending)` (run on the caller's actor), or the compiler reports sending main-actor assemblies off the main actor as a data race. Plain `register` closures and `registerMainActor` worked without changes.
+5. **Default main-actor isolation needs Swift 6.2 features.** In those apps assemblies are main-actor types. The async initializer and `AsyncSetup.setUp` had to be `nonisolated(nonsending)` (run on the caller's actor), or the compiler reports sending main-actor assemblies off the main actor as a data race. `registerMainActor` worked without changes.
 6. **A lazy async singleton must be `Sendable`.** `registerProvider(...).asSingleton()` is only available for `Sendable` products, because one instance goes to many tasks. The compiler enforces it.
+7. **`register` factories must be `@Sendable`, or default main-actor apps get a silent data race.** Before this change, a plain closure written in a default main-actor module, like `register(String.self) { _ in sharedSettings.theme }`, was a main-actor closure. Resolved from `Task.detached`, it ran on a background thread and read main-actor state, on macOS and Linux, with no trap and no warning. The `@unchecked Sendable` registration storage hid it from the compiler, and Swift adds no runtime check there.
 
-7. **Plain `register` closures in default main-actor apps run off the main actor without any error.** This is a real data race, not a crash. In a module with default main-actor isolation, `register(String.self) { _ in sharedSettings.theme }` compiles as a main-actor closure, so it may read main-actor state. Resolved from `Task.detached`, it ran on a background thread and returned the value, on both macOS and Linux, with no trap and no warning (`BackgroundResolveTests`). The hole is `Registration`'s `@unchecked Sendable`: the compiler trusts it, and Swift adds no runtime isolation check for these closures. `registerMainActor` is safe (it throws `mainActorRequired` off the main actor), and so is a `@Sendable` factory building a `nonisolated` type (20 concurrent resolves, one singleton).
+   With `@Sendable` factories, `Prototypes/CompileChecks` (run by `check.sh` in CI) shows what the compiler now says:
+   - Reading main-actor state in a `register` closure: "main actor-isolated property 'theme' can not be referenced from a Sendable closure".
+   - Calling an explicit main-actor `init`: "call to main actor-isolated initializer 'init(theme:)' in a synchronous nonisolated context". Use `registerMainActor`.
+   - A main-actor class's synthesized `init()` still compiles in `register`. That's safe: the object is main-actor isolated, and every use of its state still needs the main actor.
+   - The cost: capturing a non-`Sendable` value no longer compiles ("capture of 'db' with non-Sendable type 'Database' in a '@Sendable' closure"). Register it with `register(_:instance:)` and resolve it instead, which is better DI style anyway.
 
-   The likely fix is to require `@Sendable` on `register` factories, so the same code becomes a compile error and main-actor types have to go through `registerMainActor`. That isn't in the prototype yet.
+   Nothing else in the tests had to change, apart from one default main-actor test moving to `registerMainActor`.
