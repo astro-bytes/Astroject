@@ -59,12 +59,17 @@ public final class UnifiedContainer: Resolver, Sendable {
 
     // MARK: Register
 
-    /// Registers a sync factory.
+    /// Registers a sync factory that can run on any thread.
+    ///
+    /// The factory is `@Sendable`, so it can't capture non-`Sendable` state or touch
+    /// main-actor state. Register `@MainActor` types with `registerMainActor` instead.
+    /// Without `@Sendable`, a closure written in a main-actor context would run off the
+    /// main actor when resolved from a background task, with no error (a data race).
     @discardableResult
     public func register<Product>(
         _ type: Product.Type,
         name: String? = nil,
-        factory: @escaping (any Resolver) throws -> Product
+        factory: @escaping @Sendable (any Resolver) throws -> Product
     ) -> RegistrationHandle {
         add(Registration(key: Key(type, name: name), kind: .sync { try factory($0) }))
     }

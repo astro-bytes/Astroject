@@ -10,15 +10,15 @@ public enum Scope: Sendable {
 
 /// One stored registration.
 ///
-/// This is `@unchecked Sendable` because it stores the user's factory closure, which is
-/// not `@Sendable` (requiring that would break factories that capture non-`Sendable`
-/// state). Its mutable state is behind a `Mutex`.
-final class Registration: @unchecked Sendable {
-    enum Kind {
+/// Checked `Sendable`: factories are `@Sendable` (or `@MainActor`), and mutable state is
+/// behind a `Mutex`. The one unchecked part is the cached singleton (`UncheckedBox`),
+/// because a singleton of a non-`Sendable` type is handed to every caller.
+final class Registration: Sendable {
+    enum Kind: Sendable {
         /// A sync factory. Resolves from anywhere.
-        case sync((any Resolver) throws -> Any)
+        case sync(@Sendable (any Resolver) throws -> Any)
         /// A `@MainActor` factory. Resolves only through `MainResolver`.
-        case mainActor(@MainActor (MainResolver) throws -> Any)
+        case mainActor(@MainActor @Sendable (MainResolver) throws -> Any)
         /// The type is created asynchronously; its `AsyncProvider` is registered separately.
         case providerMarker
     }

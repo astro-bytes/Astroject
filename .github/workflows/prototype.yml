@@ -28,6 +28,8 @@ jobs:
         run: swift --version
       - name: Run tests
         run: swift test --package-path Prototypes/UnifiedContainer -Xswiftc -warnings-as-errors
+      - name: Check code that must not compile
+        run: Prototypes/CompileChecks/check.sh
 
   linux:
     name: Unified container prototype (Linux)
@@ -39,3 +41,5 @@ jobs:
         run: swift --version
       - name: Run tests
         run: swift test --package-path Prototypes/UnifiedContainer -Xswiftc -warnings-as-errors
+      - name: Check code that must not compile
+        run: Prototypes/CompileChecks/check.sh

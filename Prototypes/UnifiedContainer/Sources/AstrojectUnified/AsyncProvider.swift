@@ -41,7 +41,7 @@ public extension UnifiedContainer {
     func registerProvider<Product>(
         _ type: Product.Type,
         name: String? = nil,
-        factory: @escaping (any Resolver) async throws -> sending Product
+        factory: @escaping @Sendable (any Resolver) async throws -> sending Product
     ) -> ProviderHandle<Product> {
         let source = ProviderSource(container: self, factory: factory)
         add(Registration(key: Key(type, name: name), kind: .providerMarker))
@@ -54,21 +54,20 @@ public extension UnifiedContainer {
 
 /// Backs every `AsyncProvider` for one registration.
 ///
-/// `@unchecked Sendable` for the same reason as `Registration`: it stores the user's
-/// non-`@Sendable` factory. The shared-instance state is behind a `Mutex`.
-final class ProviderSource<Product>: @unchecked Sendable {
+/// Checked `Sendable`: the factory is `@Sendable` and the shared-instance state is behind a `Mutex`.
+final class ProviderSource<Product>: Sendable {
     let container: UnifiedContainer
-    let factory: (any Resolver) async throws -> sending Product
-    private let shared = Mutex<UncheckedBox<AsyncProvider<Product>.Make>?>(nil)
+    let factory: @Sendable (any Resolver) async throws -> sending Product
+    private let shared = Mutex<AsyncProvider<Product>.Make?>(nil)
 
-    init(container: UnifiedContainer, factory: @escaping (any Resolver) async throws -> sending Product) {
+    init(container: UnifiedContainer, factory: @escaping @Sendable (any Resolver) async throws -> sending Product) {
         self.container = container
         self.factory = factory
     }
 
     func provider() -> AsyncProvider<Product> {
         if let shared = shared.withLock({ $0 }) {
-            return AsyncProvider(make: shared.value)
+            return AsyncProvider(make: shared)
         }
         return AsyncProvider(make: { [self] in
             try await self.factory(self.container)
@@ -76,7 +75,7 @@ final class ProviderSource<Product>: @unchecked Sendable {
     }
 
     func setShared(_ make: @escaping AsyncProvider<Product>.Make) {
-        shared.withLock { $0 = UncheckedBox(make) }
+        shared.withLock { $0 = make }
     }
 }
 

@@ -1,20 +1,14 @@
 // What happens when code off the main actor resolves registrations made in a module
-// with default main-actor isolation. Each risky case runs as an exit test (in its own
-// process), so a crash shows up as a result instead of ending the whole test run.
+// with default main-actor isolation.
+//
+// Before `register` required `@Sendable` factories, a closure written here was a
+// main-actor closure, and resolving it from a background task ran it off the main
+// actor with no error. Now that code doesn't compile (see CompileChecks), and what
+// does compile is safe to resolve from anywhere.
 
 import Foundation
 import Testing
 import AstrojectUnified
-
-/// Main-actor state, like an app's shared settings. Main-actor by default in this module.
-let sharedSettings = Settings()
-
-/// Registers the way an app's assembly would. Main-actor by default in this module, so
-/// the closures below are main-actor closures: the compiler lets them read `sharedSettings`.
-func registerPlainClosures(on container: UnifiedContainer) {
-    container.register(String.self) { _ in sharedSettings.theme }
-    container.register(Bool.self) { _ in Thread.isMainThread }
-}
 
 /// Opted out of the module's default main-actor isolation.
 nonisolated final class BackgroundService: Sendable {
@@ -23,30 +17,15 @@ nonisolated final class BackgroundService: Sendable {
 
 @Suite("Background resolving with default main-actor isolation")
 struct BackgroundResolveTests {
-    // Exit codes from the child process: 3 means the factory ran off the main thread
-    // without trapping. A trap would show up as a signal instead.
-
-    @Test("Plain register closure that reads main-actor state, resolved off the main actor")
-    func mainActorStateFromBackground() async {
-        await #expect(processExitsWith: .exitCode(3)) {
-            let container = UnifiedContainer()
-            await MainActor.run { registerPlainClosures(on: container) }
-            let theme = await Task.detached { try? container.resolve(String.self) }.value
-            exit(theme == "dark" ? 3 : 1)
-        }
+    @Test("A plain register closure written in main-actor code runs on the resolving thread")
+    func plainClosureRunsOffMain() async throws {
+        let container = UnifiedContainer()
+        container.register(Bool.self) { _ in Thread.isMainThread }
+        let ranOnMain = try await Task.detached { try container.resolve(Bool.self) }.value
+        #expect(ranOnMain == false)
     }
 
-    @Test("Plain register closure, resolved off the main actor, runs on a background thread")
-    func plainClosureThread() async {
-        await #expect(processExitsWith: .exitCode(3)) {
-            let container = UnifiedContainer()
-            await MainActor.run { registerPlainClosures(on: container) }
-            let ranOnMain = await Task.detached { try? container.resolve(Bool.self) }.value
-            exit(ranOnMain == false ? 3 : 1)
-        }
-    }
-
-    @Test("Plain register closure, resolved on the main actor, still works")
+    @Test("A plain register closure, resolved on the main actor, still works")
     func plainClosureOnMain() throws {
         let container = UnifiedContainer()
         container.register(Int.self) { _ in 42 }
@@ -70,10 +49,10 @@ struct BackgroundResolveTests {
         #expect(error == .mainActorRequired("Settings"))
     }
 
-    @Test("A @Sendable closure building a nonisolated type resolves off the main actor")
-    func sendableClosureFromBackground() async throws {
+    @Test("A nonisolated type resolves as one singleton from many tasks")
+    func nonisolatedSingletonFromBackground() async throws {
         let container = UnifiedContainer()
-        container.register(BackgroundService.self) { @Sendable _ in BackgroundService() }.asSingleton()
+        container.register(BackgroundService.self) { _ in BackgroundService() }.asSingleton()
         let ids = try await withThrowingTaskGroup(of: UUID.self) { group in
             for _ in 0..<20 {
                 group.addTask { try container.resolve(BackgroundService.self).id }

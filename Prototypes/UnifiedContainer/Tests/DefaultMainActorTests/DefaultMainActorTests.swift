@@ -54,10 +54,12 @@ struct DefaultMainActorTests {
         #expect(first.store.settings.theme == "dark")
     }
 
-    @Test("A plain register closure works for a value created up front")
-    func plainRegister() throws {
+    @Test("A main-actor type built on each resolve goes through registerMainActor")
+    func mainActorFactory() throws {
+        // `register(Settings.self) { _ in Settings() }` no longer compiles here: the
+        // factory is @Sendable, so it can't call a main-actor init. See CompileChecks.
         let container = UnifiedContainer()
-        container.register(Settings.self) { _ in Settings() }
+        container.registerMainActor(Settings.self) { _ in Settings() }
         #expect(try container.main.resolve(Settings.self).theme == "dark")
     }
 
