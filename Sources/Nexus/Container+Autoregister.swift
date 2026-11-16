@@ -24,7 +24,9 @@ public extension Container {
     /// container resolves them synchronously, an `.async` container resolves them with `await`.
     ///
     /// Pass the initializer with the `initializer:` label. A trailing closure calls the
-    /// existing `register(_:block:)` overloads instead.
+    /// existing `register(_:block:)` overloads instead. These overloads are marked
+    /// `@_disfavoredOverload` so that a closure taking a `Resolver`, which also fits a
+    /// one-dependency pack, always goes to `block:`.
     ///
     /// - Parameters:
     ///   - productType: The type of the product to register.
@@ -33,6 +35,7 @@ public extension Container {
     /// - Returns: The registration, for further configuration.
     /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
+    @_disfavoredOverload
     func register<Product, each Dependency>(
         _ productType: Product.Type,
         name: String? = nil,
@@ -70,6 +73,7 @@ public extension Container {
     /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously,
     ///           or `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
+    @_disfavoredOverload
     func register<Product, each Dependency>(
         _ productType: Product.Type,
         name: String? = nil,
@@ -113,6 +117,7 @@ public extension Container {
     /// - Returns: The registration, for further configuration.
     /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
+    @_disfavoredOverload
     func register<Product, Argument: Hashable, each Dependency>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
@@ -154,6 +159,7 @@ public extension Container {
     /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously,
     ///           or `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
+    @_disfavoredOverload
     func register<Product, Argument: Hashable, each Dependency>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
