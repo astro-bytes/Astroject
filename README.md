@@ -432,9 +432,9 @@ print("Overridden Int value (should be 99): \(try await container.resolve(Int.se
 
 Because the last registration wins, the order assemblies run in decides which registration survives. Every assembly runs after the assemblies in its `requiredAssemblies`; otherwise assemblies run in the order you add them. To have a test or mocks assembly replace your app's registrations, list the app assembly in its `requiredAssemblies`.
 
-#### `isOverridable` is deprecated
+#### `isOverridable` was removed in 3.0
 
-Earlier versions let you mark a registration with `isOverridable: false` so a later registration would throw `AstrojectError.alreadyRegistered`. That flag is deprecated in 2.1 and will be removed in 3.0, so registration follows one rule: last one wins. Existing code that passes `isOverridable` keeps working in 2.x, with a deprecation warning. Drop the argument to silence it.
+Earlier versions let you mark a registration with `isOverridable: false` so a later registration would throw `AstrojectError.alreadyRegistered`. 2.1 deprecated that flag and 3.0 removes it, along with `AstrojectError.alreadyRegistered`, so registration follows one rule: last one wins. To migrate, drop the `isOverridable:` argument, and control which registration survives through assembly order instead.
 
 ### 🔭 Extending Instance Scopes
 

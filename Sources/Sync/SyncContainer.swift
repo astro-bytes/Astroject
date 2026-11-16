@@ -52,23 +52,20 @@ public final class SyncContainer: Container, Assemblable, @unchecked Sendable {
     public func register<Product>(
         productType: Product.Type,
         name: String? = nil,
-        isOverridable: Bool = true,
         factory: Factory<Product, Resolver>
     ) throws -> any Registrable<Product> {
         // Create a unique key for the registration.
         let key = RegistrationKey(factory: factory, name: name)
         
-        // Create a registration instance that encapsulates the provided factory and the overridable setting.
+        // Create a registration instance that encapsulates the provided factory.
         let registration = Registration(
             container: self,
             key: key,
             factory: factory,
-            isOverridable: isOverridable,
             instanceType: Graph.self
         )
         
         // Before adding the new registration, ensure that it is allowed based on existing registrations.
-        try assertRegistrationAllowed(for: key, overridable: isOverridable)
         // Perform the actual registration by adding the key-registration pair to the dictionary
         // within a synchronized block to ensure thread safety.
         serialQueue.sync {
@@ -88,23 +85,20 @@ public final class SyncContainer: Container, Assemblable, @unchecked Sendable {
         productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
-        isOverridable: Bool = true,
         factory: Factory<Product, (Resolver, Argument)>
     ) throws -> any Registrable<Product> {
         // Create a unique key for the registration.
         let key = RegistrationKey(factory: factory, name: name)
         
-        // Create a registration instance that holds the factory, the overridable setting, and the argument type.
+        // Create a registration instance that holds the factory and the argument type.
         let registration = ArgumentRegistration(
             container: self,
             key: key,
             factory: factory,
-            isOverridable: isOverridable,
             instanceType: Graph.self
         )
         
         // Ensure that this registration is allowed based on any existing registrations.
-        try assertRegistrationAllowed(for: key, overridable: isOverridable)
         // Add the registration to the dictionary in a thread-safe manner.
         serialQueue.sync {
             registrations[key] = registration
@@ -355,30 +349,4 @@ extension SyncContainer {
         }
     }
     
-    /// Asserts whether a new registration is allowed based on existing registrations and their overridability.
-    ///
-    /// - Parameters:
-    ///   - key: The `RegistrationKey` for the new registration.
-    ///   - overridable: A boolean indicating if the new registration is overridable.
-    /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration for the same
-    ///           key already exists, or if an existing overridable registration is found but the new registration is
-    ///           not marked as overridable.
-    func assertRegistrationAllowed(for key: RegistrationKey, overridable: Bool) throws {
-        // Attempt to retrieve an existing registration using the key.
-        let existingRegistration = serialQueue.sync {
-            registrations[key]
-        }
-        
-        // Check if an existing registration was found.
-        if let existingRegistration {
-            // If an existing registration is found, check if both the existing registration and
-            // the new one are overridable.
-            // If the existing one is not overridable, we should not allow the new registration.
-            guard existingRegistration.isOverridable, overridable else {
-                // Throw an error indicating that a registration already exists and cannot be overridden.
-                throw AstrojectError.alreadyRegistered(key: key)
-            }
-        }
-        // If no existing registration is found, or if both are overridable, the validation passes.
-    }
 }

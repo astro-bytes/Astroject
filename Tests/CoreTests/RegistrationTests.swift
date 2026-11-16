@@ -16,11 +16,9 @@ struct RegistrationTests {
         let factory = Factory<Int, Resolver>(.sync { _ in 1 })
         let registration = Registration(
             factory: factory,
-            isOverridable: true,
             instanceType: MockInstance.self
         )
         
-        #expect(registration.isOverridable)
         #expect(type(of: registration.instance) == MockInstance<Int>.self)
         #expect(registration.actions.isEmpty)
         #expect(registration.factory == factory)
@@ -31,7 +29,6 @@ struct RegistrationTests {
         let factory = Factory<Int, Resolver>(.sync { _ in 1 })
         let registration = Registration(
             factory: factory,
-            isOverridable: true,
             instanceType: Singleton.self
         ).as(MockInstance.self)
         
@@ -43,7 +40,6 @@ struct RegistrationTests {
         let factory = Factory<Int, Resolver>(.sync { _ in 1 })
         let registration = Registration(
             factory: factory,
-            isOverridable: true,
             instanceType: MockInstance.self
         ).afterInit { _, _ in }
         #expect(registration.actions.count == 1)
@@ -75,7 +71,6 @@ struct RegistrationTests {
             })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instance: instance
             ).afterInit { _, _ in
                 calledAfterInit = true
@@ -101,7 +96,6 @@ struct RegistrationTests {
             let instance = MockInstance<Int>(whenGet: { 1 })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instance: instance
             ).afterInit { _, _ in
                 calledAfterInit = true
@@ -121,7 +115,6 @@ struct RegistrationTests {
             let factory = Factory<Int, Resolver>(.sync { _ in throw MockError() })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
@@ -137,7 +130,6 @@ struct RegistrationTests {
             })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
@@ -151,7 +143,6 @@ struct RegistrationTests {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             ).afterInit { _, _ in
                 throw MockError()
@@ -176,7 +167,6 @@ struct RegistrationTests {
             })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instance: instance
             ).afterInit { _, _ in
                 calledAfterInit = true
@@ -202,7 +192,6 @@ struct RegistrationTests {
             })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instance: instance
             ).afterInit { _, _ in
                 calledAfterInit = true
@@ -222,7 +211,6 @@ struct RegistrationTests {
             let factory = Factory<Int, Resolver>(.sync { _ in throw MockError() })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
@@ -238,7 +226,6 @@ struct RegistrationTests {
             })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
@@ -252,7 +239,6 @@ struct RegistrationTests {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             ).afterInit { _, _ in
                 throw MockError()
@@ -271,13 +257,11 @@ struct RegistrationTests {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration1 = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
             let registration2 = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
@@ -287,38 +271,17 @@ struct RegistrationTests {
             #expect(registration1 == registration1)
         }
         
-        @Test("IsOverridable Differs")
-        func whenIsOverridableDiffers() {
-            let factory = Factory<Int, Resolver>(.sync { _ in 1 })
-            let registration1 = Registration(
-                factory: factory,
-                isOverridable: true,
-                instanceType: MockInstance.self
-            )
-            
-            let registration2 = Registration(
-                factory: factory,
-                isOverridable: false,
-                instanceType: MockInstance.self
-            )
-            
-            #expect(!registration1.isEqual(to: registration2))
-            #expect(registration1 != registration2)
-        }
-        
         @Test("Factory Differs")
         func whenFactoryDiffers() {
             let factory1 = Factory<Int, Resolver>(.sync { _ in 1 })
             let factory2 = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration1 = Registration(
                 factory: factory1,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
             let registration2 = Registration(
                 factory: factory2,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
@@ -331,13 +294,11 @@ struct RegistrationTests {
             let factory = Factory<Int, Resolver>(.sync { _ in 1 })
             let registration1 = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: MockInstance.self
             )
             
             let registration2 = Registration(
                 factory: factory,
-                isOverridable: true,
                 instanceType: Singleton.self
             )
             
@@ -352,13 +313,11 @@ struct RegistrationTests {
             let instance2 = MockInstance<Int>(whenGet: { 2 })
             let registration1 = Registration(
                 factory: factory,
-                isOverridable: true,
                 instance: instance1
             )
             
             let registration2 = Registration(
                 factory: factory,
-                isOverridable: true,
                 instance: instance2
             )
             

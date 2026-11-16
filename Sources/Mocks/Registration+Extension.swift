@@ -11,14 +11,12 @@ extension Registration {
     convenience init(
         name: String? = nil,
         factory: Factory<Product, Resolver>,
-        isOverridable: Bool,
         instanceType: any Instance<Product>.Type
     ) {
         self.init(
             container: MockContainer(),
             key: RegistrationKey(factory: factory, name: name),
             factory: factory,
-            isOverridable: isOverridable,
             instanceType: instanceType
         )
     }
@@ -26,14 +24,12 @@ extension Registration {
     convenience init(
         name: String? = nil,
         factory: Factory<Product, Resolver>,
-        isOverridable: Bool,
         instance: any Instance<Product>
     ) {
         self.init(
             container: MockContainer(),
             key: RegistrationKey(factory: factory, name: name),
             factory: factory,
-            isOverridable: isOverridable,
             instance: instance
         )
     }

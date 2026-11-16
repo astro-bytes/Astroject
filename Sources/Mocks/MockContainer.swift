@@ -36,7 +36,6 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
     func register<Product>(
         productType: Product.Type,
         name: String?,
-        isOverridable: Bool,
         factory: Factory<Product, any Resolver>
     ) throws -> any Registrable<Product> {
         callsRegister = true
@@ -45,7 +44,6 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
             container: self,
             key: RegistrationKey(factory: factory, name: name),
             factory: factory,
-            isOverridable: isOverridable,
             instanceType: MockInstance.self
         )
     }
@@ -54,7 +52,6 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
         productType: Product.Type,
         argumentType: Argument.Type,
         name: String?,
-        isOverridable: Bool,
         factory: Factory<Product, (any Resolver, Argument)>
     ) throws -> any Registrable<Product> {
         callsRegister = true
@@ -63,7 +60,6 @@ final class MockContainer: Container, Assemblable, @unchecked Sendable {
             container: self,
             key: RegistrationKey(factory: factory, name: name),
             factory: factory,
-            isOverridable: isOverridable,
             instanceType: MockInstance.self
         )
     }

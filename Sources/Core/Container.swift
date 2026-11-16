@@ -22,19 +22,12 @@ public protocol Container: AnyObject, Resolver, Sendable {
     /// - Parameters:
     ///   - productType: The type of the product to register.
     ///   - name: An optional name to differentiate multiple registrations of the same `productType`.
-    ///   - isOverridable: A boolean indicating whether this registration can be overridden by
-    ///                    subsequent registrations with the same key. Defaults to `true`.
     ///   - factory: A `Factory` closure that takes a `Resolver` and returns an instance of `Product`.
     /// - Returns: The `Registrable` instance representing this registration, allowing for further configuration.
-    /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration
-    ///           for the same `productType` and `name` already exists.
-    /// - Note: The `isOverridable` parameter is deprecated. Registration is last one wins, and the
-    ///         parameter is removed from this requirement in 3.0. Pass `true` in new conformers.
     @discardableResult
     func register<Product>(
         productType: Product.Type,
         name: String?,
-        isOverridable: Bool,
         factory: Factory<Product, Resolver>
     ) throws -> any Registrable<Product>
     
@@ -48,21 +41,14 @@ public protocol Container: AnyObject, Resolver, Sendable {
     ///   - argumentType: The type of the argument required by the product's factory.
     ///   - name: An optional name to differentiate multiple registrations of the same `productType`
     ///           with the same `argumentType`.
-    ///   - isOverridable: A boolean indicating whether this registration can be overridden.
-    ///                    Defaults to `true`.
     ///   - factory: A `Factory` closure that takes a `Resolver` and an `Argument`,
     ///              then returns an instance of `Product`.
     /// - Returns: The `Registrable` instance representing this registration, allowing for further configuration.
-    /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration
-    ///           for the same `productType`, `argumentType`, and `name` already exists.
-    /// - Note: The `isOverridable` parameter is deprecated. Registration is last one wins, and the
-    ///         parameter is removed from this requirement in 3.0. Pass `true` in new conformers.
     @discardableResult
     func register<Product, Argument: Hashable>(
         productType: Product.Type,
         argumentType: Argument.Type,
         name: String?,
-        isOverridable: Bool,
         factory: Factory<Product, (Resolver, Argument)>
     ) throws -> any Registrable<Product>
     
@@ -142,7 +128,7 @@ public enum ResolutionMode: Sendable, Equatable {
 /// ### Default Implementations for `Container`
 ///
 /// These extensions provide convenience methods for registering and checking dependencies,
-/// allowing for more concise code when `name` or `isOverridable` parameters can use their defaults.
+/// allowing for more concise code when the `name` parameter can use its default.
 public extension Container {
     /// The default resolution mode, `.sync`.
     var resolutionMode: ResolutionMode { .sync }
@@ -155,7 +141,6 @@ public extension Container {
     ///   - name: An optional name. Defaults to `nil`.
     ///   - factory: The factory closure.
     /// - Returns: The `Registrable` instance.
-    /// - Throws: `AstrojectError.alreadyRegistered` if an unoverridable registration exists.
     @discardableResult
     func register<Product>(
         _ productType: Product.Type,
@@ -165,37 +150,6 @@ public extension Container {
         try self.register(
             productType: productType,
             name: name,
-            isOverridable: true,
-            factory: factory
-        )
-    }
-    
-    /// Registers a factory for a product that does not require an argument,
-    /// with `name` defaulting to `nil` and `isOverridable` defaulting to `true`.
-    ///
-    /// - Parameters:
-    ///   - productType: The type of the product to register.
-    ///   - name: An optional name. Defaults to `nil`.
-    ///   - isOverridable: A boolean indicating if the registration can be overridden. Defaults to `true`.
-    ///   - factory: The factory closure.
-    /// - Returns: The `Registrable` instance.
-    /// - Throws: `AstrojectError.alreadyRegistered` if an unoverridable registration exists.
-    @available(
-        *,
-        deprecated,
-        message: "Registration is last one wins. isOverridable is removed in 3.0; drop the argument."
-    )
-    @discardableResult
-    func register<Product>(
-        _ productType: Product.Type,
-        name: String? = nil,
-        isOverridable: Bool,
-        factory: Factory<Product, Resolver>
-    ) throws -> any Registrable<Product> {
-        try self.register(
-            productType: productType,
-            name: name,
-            isOverridable: isOverridable,
             factory: factory
         )
     }
@@ -209,7 +163,6 @@ public extension Container {
     ///   - name: An optional name. Defaults to `nil`.
     ///   - factory: The factory closure.
     /// - Returns: The `Registrable` instance.
-    /// - Throws: `AstrojectError.alreadyRegistered` if an un-overridable registration exists.
     @discardableResult
     func register<Product, Argument: Hashable>(
         _ productType: Product.Type,
@@ -221,40 +174,6 @@ public extension Container {
             productType: productType,
             argumentType: argumentType,
             name: name,
-            isOverridable: true,
-            factory: factory
-        )
-    }
-    
-    /// Registers a factory for a product that requires an argument,
-    /// with `name` defaulting to `nil` and `isOverridable` defaulting to `true`.
-    ///
-    /// - Parameters:
-    ///   - productType: The type of the product to register.
-    ///   - argumentType: The type of the argument required.
-    ///   - name: An optional name. Defaults to `nil`.
-    ///   - isOverridable: A boolean indicating if the registration can be overridden. Defaults to `true`.
-    ///   - factory: The factory closure.
-    /// - Returns: The `Registrable` instance.
-    /// - Throws: `AstrojectError.alreadyRegistered` if an un-overridable registration exists.
-    @available(
-        *,
-        deprecated,
-        message: "Registration is last one wins. isOverridable is removed in 3.0; drop the argument."
-    )
-    @discardableResult
-    func register<Product, Argument: Hashable>(
-        _ productType: Product.Type,
-        argumentType: Argument.Type,
-        name: String? = nil,
-        isOverridable: Bool,
-        factory: Factory<Product, (Resolver, Argument)>
-    ) throws -> any Registrable<Product> {
-        try self.register(
-            productType: productType,
-            argumentType: argumentType,
-            name: name,
-            isOverridable: isOverridable,
             factory: factory
         )
     }
