@@ -27,7 +27,7 @@ jobs:
       - name: Show toolchain
         run: swift --version
       - name: Run tests
-        run: swift test --package-path Prototypes/UnifiedContainer
+        run: swift test --package-path Prototypes/UnifiedContainer -Xswiftc -warnings-as-errors
 
   linux:
     name: Unified container prototype (Linux)
@@ -38,4 +38,4 @@ jobs:
       - name: Show toolchain
         run: swift --version
       - name: Run tests
-        run: swift test --package-path Prototypes/UnifiedContainer
+        run: swift test --package-path Prototypes/UnifiedContainer -Xswiftc -warnings-as-errors

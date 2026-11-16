@@ -43,7 +43,11 @@ public final class UnifiedContainer: Resolver, Sendable {
     }
 
     /// Builds the container, running each assembly's async setup first.
-    public init(assemblies: [any Assembly]) async throws {
+    ///
+    /// `nonisolated(nonsending)` runs it on the caller's actor. In apps with default
+    /// main-actor isolation, assemblies are main-actor types, and a plain nonisolated
+    /// async init would have to send them off the main actor (a data-race warning).
+    public nonisolated(nonsending) init(assemblies: [any Assembly]) async throws {
         for assembly in assemblies {
             if let setup = assembly as? any AsyncSetup {
                 try await setup.setUp(container: self)
