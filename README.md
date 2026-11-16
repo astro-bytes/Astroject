@@ -342,6 +342,19 @@ let container = try SyncContainer(assemblies: [PuzzleFeatureAssembly()])
 
 Registration is last one wins, so a later type in the list replaces an earlier one for the same key. Listing the same type twice is a warning.
 
+For types you can't annotate, such as `URLSession` or an SDK client, add `static` functions marked `@Provides`. They register after the listed types, top to bottom, and their parameters are resolved from the container. `@Provides` takes the same `scope:`, `name:` and `as:` options as `@Injectable`:
+
+```swift
+@Assembly(APIClient.self)
+struct DataAssembly {
+    @Provides(scope: .singleton)
+    static func session() -> URLSession { .shared }
+
+    @Provides(name: "analytics")
+    static func analyticsLogger(session: URLSession) -> Logger { Logger(session: session) }
+}
+```
+
  A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
 
 ### Before and After

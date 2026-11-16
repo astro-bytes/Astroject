@@ -88,7 +88,12 @@ public macro InjectableInit() = #externalMacro(module: "AstrojectNexusMacrosPlug
 /// }
 /// ```
 ///
-/// Listing a type that isn't `Injectable` is a compile error. Listing the same type twice is a warning.
+/// To register types you can't annotate, such as `URLSession` or an SDK client, add `static`
+/// functions marked `@Provides`. They are registered after the listed types, top to bottom,
+/// and their parameters are resolved from the container.
+///
+/// Listing a type that isn't `Injectable` is a compile error. Listing the same type twice,
+/// or providing the same type and name twice, is a warning.
 ///
 /// - Parameters:
 ///   - types: The `Injectable` types to register, in order.
@@ -102,3 +107,31 @@ public macro Assembly(
     _ types: any AstrojectNexus.Injectable.Type...,
     requires: [any AstrojectCore.Assembly.Type] = []
 ) = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "AssemblyMacro")
+
+/// Registers a `static` function's result from inside an `@Assembly`.
+///
+/// `@Provides` adds nothing by itself; `@Assembly` reads it and registers the function with
+/// `register(_:name:initializer:)`, after the listed types, top to bottom. The function's
+/// parameters are resolved from the container. `async` functions need an `AsyncContainer`.
+///
+/// ```swift
+/// @Assembly(APIClient.self)
+/// struct DataAssembly {
+///     @Provides(scope: .singleton)
+///     static func session() -> URLSession { .shared }
+///
+///     @Provides(name: "analytics")
+///     static func analyticsLogger(session: URLSession) -> Logger { ... }
+/// }
+/// ```
+///
+/// - Parameters:
+///   - scope: How instances are managed. Defaults to `.graph`.
+///   - name: An optional name for the registration.
+///   - types: Protocols or superclasses to also register the result as.
+@attached(peer)
+public macro Provides(
+    scope: InjectableScope = .graph,
+    name: String? = nil,
+    as types: Any.Type...
+) = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "ProvidesMacro")
