@@ -3,8 +3,8 @@ name: Tests
 on:
   push:
     branches: [ "main" ]
+  # Every pull request, including ones stacked on another PR's branch
   pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 
 concurrency:

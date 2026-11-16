@@ -923,8 +923,9 @@ Behavior:
 
 ## Assembly Rules
 
-- Assemblies execute in the order they are added
-- When `initializeMissingAssemblies` is enabled, any missing assemblies are automatically added in dependency order before their dependents
+- Every assembly runs after the assemblies in its `requiredAssemblies`, whether you added them yourself or they were initialized automatically
+- Apart from that, assemblies execute in the order they are added
+- Registration is last one wins, so when two assemblies register the same type and name, the one that runs later wins. To make an assembly replace another one's registrations (for example, mocks in tests), list the other assembly in its `requiredAssemblies`
 - All required assemblies must be present
 - Assemblies are assembled only once per assembler
 

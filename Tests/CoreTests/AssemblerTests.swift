@@ -842,4 +842,55 @@ final class AssemblerTests {
         #expect(assembler.isAssembled)
         #expect(assembly2.preassembleCalled)
     }
+    
+    // MARK: - Ordering (last one wins)
+    
+    @Test("Required assemblies come before the assembly that needs them")
+    func requiredAssembliesComeFirst() throws {
+        let assembler = try Assembler(container: MockContainer(), assemblies: [AAssembly()])
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["CAssembly", "BAssembly", "AAssembly"])
+    }
+    
+    @Test("A present requirement listed later is moved before its dependent")
+    func presentRequirementMovedFirst() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            assemblies: [FeatureAssembly(), NetworkingAssembly(), MockAssembly()]
+        )
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["MockAssembly", "NetworkingAssembly", "FeatureAssembly"])
+    }
+    
+    @Test("Order is kept when there are no requirements")
+    func orderKeptWithoutRequirements() throws {
+        let assembler = try Assembler(
+            container: MockContainer(),
+            assemblies: [NetworkingAssembly(), CAssembly(), MockAssembly()]
+        )
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["NetworkingAssembly", "CAssembly", "MockAssembly"])
+    }
+    
+    @Test("Required assemblies run their hooks first")
+    func requiredAssembliesRunHooksFirst() throws {
+        let base = MockAssembly()
+        let assembler = Assembler(container: MockContainer())
+        var sequence: [String] = []
+        base.whenAssemble = { sequence.append("base") }
+        
+        struct Dependent: Assembly {
+            static var requiredAssemblies: [Assembly.Type] { [MockAssembly.self] }
+            func assemble(container: Container) throws {}
+        }
+        
+        try assembler.add(assemblies: [Dependent(), base]).assemble()
+        let names = assembler.assemblies.map { String(describing: type(of: $0)) }
+        
+        #expect(names == ["MockAssembly", "Dependent"])
+        #expect(sequence == ["base"])
+    }
 }
