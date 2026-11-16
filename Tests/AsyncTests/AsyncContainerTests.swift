@@ -545,6 +545,27 @@ struct AsyncContainerTests {
             #expect(container.isRegistered(Int.self))
         }
         
+        @Test("Required Assemblies Run First, So the Dependent Wins")
+        func requiredAssembliesRunFirst() async throws {
+            struct BaseAssembly: Assembly {
+                func assemble(container: Container) throws {
+                    try container.register(Int.self) { 1 }
+                }
+            }
+            
+            struct OverridingAssembly: Assembly {
+                static var requiredAssemblies: [Assembly.Type] { [BaseAssembly.self] }
+                
+                func assemble(container: Container) throws {
+                    try container.register(Int.self) { 2 }
+                }
+            }
+            
+            let container = try AsyncContainer(assemblies: [OverridingAssembly()])
+            
+            #expect(try await container.resolve(Int.self) == 2)
+        }
+        
         @Test("Assembly Failure Propagates Error")
         func assemblyFailurePropagatesError() throws {
             struct FailingAssembly: Assembly {

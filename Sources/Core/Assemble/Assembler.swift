@@ -186,14 +186,20 @@ public class Assembler {
         return self
     }
     
-    /// Validates that all required assemblies declared by each assembly are present.
+    /// Validates that all required assemblies declared by each assembly are present,
+    /// and orders the assemblies so every assembly runs after the assemblies it requires.
     ///
     /// This method performs a **recursive check** of each assembly's `requiredAssemblies`,
     /// ensuring that all dependencies, including transitive ones, are present in the assembler.
     ///
     /// If `initializeMissingAssemblies` is `true`, any missing assemblies are automatically
-    /// instantiated and appended to the assembler. If `false`, a `missingRequiredAssemblies`
-    /// error is thrown listing all missing assemblies.
+    /// instantiated. If `false`, a `missingRequiredAssemblies` error is thrown listing all
+    /// missing assemblies.
+    ///
+    /// Registration is last one wins, so order matters. After validation, `assemblies` is
+    /// sorted so that each assembly comes after everything in its `requiredAssemblies`
+    /// (including auto-initialized ones). Apart from that constraint, the order the
+    /// assemblies were added in is kept.
     ///
     /// Additionally, this function detects **circular dependencies** between assemblies.
     /// If a cycle is detected, a `circularDependency` error is thrown containing
@@ -207,17 +213,26 @@ public class Assembler {
     ///     `initializeMissingAssemblies` is `false`.
     ///   - `Assembler.Error.circularDependency` if a circular dependency is detected.
     func validateRequiredAssemblies() throws(Assembler.Error) {
-        // Assemblies already present
-        var presentIdentifiers = Set(self.assemblies.map { ObjectIdentifier(type(of: $0)) })
+        // Assemblies already present, grouped by type in the order they were added
+        var present: [ObjectIdentifier: [Assembly]] = [:]
+        for assembly in assemblies {
+            present[ObjectIdentifier(type(of: assembly)), default: []].append(assembly)
+        }
         
-        // Assemblies that are missing and will be auto-initialized
+        // The final order: each entry is either the present instances of a type,
+        // or a missing type that still has to be initialized.
+        enum Step {
+            case present([Assembly])
+            case missing(Assembly.Type)
+        }
+        var steps: [Step] = []
         var missingTypes: [Assembly.Type] = []
         
         // Cycle detection helpers
         var visitingStack: [Assembly.Type] = [] // stack to track current recursion path
         var visited = Set<ObjectIdentifier>()   // visited nodes
         
-        // Recursive visit function
+        // Recursive visit function (post-order: requirements are emitted before the assembly)
         func visit(_ assemblyType: Assembly.Type) throws(Assembler.Error) {
             // Detect circular dependency
             if visitingStack.contains(where: { $0 == assemblyType }) {
@@ -231,21 +246,23 @@ public class Assembler {
             visited.insert(id)
             visitingStack.append(assemblyType)
             
-            // Recursively visit required assemblies
+            // Recursively visit required assemblies first
             for dep in assemblyType.requiredAssemblies {
                 try visit(dep)
             }
             
             visitingStack.removeLast()
             
-            // Queue this assembly for adding if not already present
-            if !presentIdentifiers.contains(id) {
+            // Emit this assembly after its requirements
+            if let instances = present[id] {
+                steps.append(.present(instances))
+            } else {
                 missingTypes.append(assemblyType)
-                presentIdentifiers.insert(id)
+                steps.append(.missing(assemblyType))
             }
         }
         
-        // Start visiting all assemblies currently in the assembler
+        // Start visiting all assemblies in the order they were added
         for assembly in assemblies {
             try visit(type(of: assembly))
         }
@@ -256,10 +273,14 @@ public class Assembler {
             throw Assembler.Error.missingRequiredAssemblies(missingNames)
         }
         
-        // Instantiate missing assemblies after recursion
-        for missingType in missingTypes {
-            let assembly = missingType.init()
-            assemblies.append(assembly)
+        // Build the ordered list, instantiating missing assemblies in place
+        assemblies = steps.flatMap { step -> [Assembly] in
+            switch step {
+            case .present(let instances):
+                return instances
+            case .missing(let assemblyType):
+                return [assemblyType.init()]
+            }
         }
     }
     
