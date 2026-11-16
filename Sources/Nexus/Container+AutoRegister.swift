@@ -1,5 +1,5 @@
 //
-//  Container+Autoregister.swift
+//  Container+AutoRegister.swift
 //  Astroject
 //
 //  Created by Porter McGary on 11/15/26.
