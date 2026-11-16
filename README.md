@@ -375,6 +375,23 @@ let viewModel = try factory.make(puzzleID: "42")
 
 `make` is `throws` for a synchronous initializer, and there is always an `async throws` version for `AsyncContainer`. A type made through a `Factory` can't use `as:`.
 
+##### `@Inject`
+
+Objects the system creates, such as storyboard or XIB view controllers, can't take their dependencies through an initializer. Mark their properties `@Inject` and `@Injectable` generates `inject(from:)`, which assigns each one. Such a type isn't registered, so `scope:`, `name:` and `as:` don't apply to it.
+
+```swift
+@Injectable
+final class SettingsViewController: UIViewController {
+    @Inject var analytics: AnalyticsService!
+    @Inject(name: "app") var defaults: UserDefaults!
+}
+
+// In prepare(for:sender:) or wherever the controller is created:
+try settingsViewController.inject(from: container)
+```
+
+An `@Inject` property must be a `var` with an optional or implicitly unwrapped type. `inject(from:)` resolves synchronously, so it needs a `SyncContainer`.
+
  A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
 
 ### Before and After
