@@ -35,14 +35,12 @@ struct MockRegistration<Product>: Registrable {
         throw MockError()
     }
     
-    var isOverridable: Bool = false
     var argumentType: Any.Type = Empty.self
     var key: RegistrationKey = .init(factoryType: Int.self, productType: Product.self)
     
     init(_ type: Product.Type) {}
     init() {}
-    init(isOverridable: Bool, key: RegistrationKey) {
-        self.isOverridable = isOverridable
+    init(key: RegistrationKey) {
         self.key = key
     }
     

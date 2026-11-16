@@ -36,7 +36,6 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     /// resolved by this registration, if an argument-specific instance is not already set.
     private(set) var instanceType: any Instance<Product>.Type
     
-    public let isOverridable: Bool
     public let argumentType: Any.Type
     public let key: RegistrationKey
     
@@ -44,19 +43,16 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     ///
     /// - Parameters:
     ///   - factory: The `Factory` responsible for creating product instances.
-    ///   - isOverridable: A boolean indicating whether this registration can be overridden by subsequent registrations.
     ///   - instanceType: The default instance management strategy to use for products resolved by this registration.
     public init(
         container: any Container,
         key: RegistrationKey,
         factory: Factory<Product, Arguments>,
-        isOverridable: Bool,
         instanceType: any Instance<Product>.Type
     ) {
         self.container = container
         self.key = key
         self.factory = factory
-        self.isOverridable = isOverridable
         self.argumentType = Argument.self
         self.instanceType = instanceType
     }
@@ -68,21 +64,18 @@ public final class ArgumentRegistration<Product, Argument: Hashable>: Registrabl
     ///
     /// - Parameters:
     ///   - factory: The factory used to produce product instances.
-    ///   - isOverridable: Indicates whether the registration is overridable.
     ///   - argument: The specific argument key for which to store the provided instance.
     ///   - instance: A pre-initialized instance manager to associate with the argument.
     init(
         container: any Container,
         key: RegistrationKey,
         factory: Factory<Product, Arguments>,
-        isOverridable: Bool,
         argument: Argument,
         instance: any Instance<Product>
     ) {
         self.container = container
         self.key = key
         self.factory = factory
-        self.isOverridable = isOverridable
         self.argumentType = type(of: argument)
         self.instanceType = type(of: instance)
         self.instances[argument] = instance
@@ -227,7 +220,7 @@ extension ArgumentRegistration: Equatable where Product: Equatable {
     
     /// Checks if two registrations are equal.
     ///
-    /// This function compares the instance management strategy, overridable status,
+    /// This function compares the instance management strategy,
     /// factory, and argument type of two `ArgumentRegistration` instances to
     /// determine if they are equal.
     ///
@@ -240,7 +233,6 @@ extension ArgumentRegistration: Equatable where Product: Equatable {
     ) -> Bool {
         lhs.instances.keys == rhs.instances.keys &&
         lhs.instanceType == rhs.instanceType &&
-        lhs.isOverridable == rhs.isOverridable &&
         lhs.factory == rhs.factory &&
         lhs.argumentType == rhs.argumentType
     }

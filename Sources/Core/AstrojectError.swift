@@ -8,15 +8,6 @@ import Foundation
 /// It conforms to `LocalizedError` to provide user-friendly error descriptions,
 /// failure reasons, and recovery suggestions.
 public enum AstrojectError: LocalizedError {
-    /// Indicates that a registration for the given key already exists.
-    ///
-    /// This error occurs when you try to register a dependency with a `RegistrationKey`
-    /// that has already been used, and the existing registration is not overridable,
-    /// or the new registration is not marked as overridable.
-    ///
-    /// - Parameter key: The `RegistrationKey` that is already registered.
-    case alreadyRegistered(key: RegistrationKey)
-    
     /// Indicates that no registration could be found for the given key.
     ///
     /// This error occurs when you try to resolve a dependency using a `RegistrationKey`
@@ -77,8 +68,6 @@ public enum AstrojectError: LocalizedError {
     /// Provides a user-friendly description of the error.
     public var errorDescription: String? {
         switch self {
-        case .alreadyRegistered(let key):
-            return "A registration for key '\(key)' already exists."
         case .noRegistrationFound(let key):
             return "No registration found for dependency for key '\(key)'."
         case .cyclicDependency(let key, let path):
@@ -101,8 +90,6 @@ public enum AstrojectError: LocalizedError {
     /// Provides a reason for the error, explaining why it occurred.
     public var failureReason: String? {
         switch self {
-        case .alreadyRegistered:
-            return "Attempting to register a dependency with a ProductKey that has already been used."
         case .noRegistrationFound:
             return "Register the dependency before attempting to resolve it."
         case .cyclicDependency:
@@ -126,8 +113,6 @@ public enum AstrojectError: LocalizedError {
     /// Provides a suggestion for recovering from the error.
     public var recoverySuggestion: String? {
         switch self {
-        case .alreadyRegistered:
-            return "Use a different ProductKey or remove the existing registration before registering a new one."
         case .noRegistrationFound:
             return "Use the `register` or `registerAsync` method to register the dependency."
         case .cyclicDependency:
@@ -162,10 +147,9 @@ extension AstrojectError: Equatable {
     /// - Returns: `true` if the errors are equal, `false` otherwise.
     public static func == (lhs: AstrojectError, rhs: AstrojectError) -> Bool {
         switch (lhs, rhs) {
-        case (.alreadyRegistered(let lhsKey), .alreadyRegistered(let rhsKey)),
-            (.noRegistrationFound(let lhsKey), .noRegistrationFound(let rhsKey)),
+        case (.noRegistrationFound(let lhsKey), .noRegistrationFound(let rhsKey)),
             (.invalidForwarding(let lhsKey), .invalidForwarding(let rhsKey)):
-            // Compare the associated keys for alreadyRegistered and noRegistrationFound errors.
+            // Compare the associated keys for noRegistrationFound and invalidForwarding errors.
             return lhsKey == rhsKey
         case (.cyclicDependency(let lhsKey, let lhsPath),
               .cyclicDependency(let rhsKey, let rhsPath)):

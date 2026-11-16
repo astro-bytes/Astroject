@@ -11,14 +11,12 @@ extension ArgumentRegistration {
     convenience init(
         name: String? = nil,
         factory: Factory<Product, Arguments>,
-        isOverridable: Bool,
         instanceType: any Instance<Product>.Type
     ) {
         self.init(
             container: MockContainer(),
             key: RegistrationKey(factory: factory, name: name),
             factory: factory,
-            isOverridable: isOverridable,
             instanceType: instanceType
         )
     }
@@ -26,7 +24,6 @@ extension ArgumentRegistration {
     convenience init(
         name: String? = nil,
         factory: Factory<Product, Arguments>,
-        isOverridable: Bool,
         argument: Argument,
         instance: any Instance<Product>
     ) {
@@ -34,7 +31,6 @@ extension ArgumentRegistration {
             container: MockContainer(),
             key: RegistrationKey(factory: factory, name: name),
             factory: factory,
-            isOverridable: isOverridable,
             argument: argument,
             instance: instance
         )

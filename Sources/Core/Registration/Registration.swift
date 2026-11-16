@@ -33,7 +33,6 @@ public final class Registration<Product>: Registrable {
     /// The instance management strategy for the product.
     private(set) var instance: any Instance<Product>
     
-    public let isOverridable: Bool
     public let argumentType: Any.Type = Empty.self
     public let key: RegistrationKey
     
@@ -41,19 +40,16 @@ public final class Registration<Product>: Registrable {
     ///
     /// - Parameters:
     ///   - factory: The factory used to create instances of the product.
-    ///   - isOverridable: Indicates whether this registration can be overridden.
     ///   - instanceType: The type of instance strategy used for managing product lifecycles.
     public init(
         container: any Container,
         key: RegistrationKey,
         factory: Factory<Product, Resolver>,
-        isOverridable: Bool,
         instanceType: any Instance<Product>.Type
     ) {
         self.container = container
         self.key = key
         self.factory = factory
-        self.isOverridable = isOverridable
         self.instance = instanceType.init()
     }
     
@@ -64,19 +60,16 @@ public final class Registration<Product>: Registrable {
     ///
     /// - Parameters:
     ///   - factory: The factory used to create instances of the product.
-    ///   - isOverridable: Indicates whether this registration can be overridden.
     ///   - instance: A custom instance management strategy to use, often a mock.
     init(
         container: any Container,
         key: RegistrationKey,
         factory: Factory<Product, Resolver>,
-        isOverridable: Bool,
         instance: any Instance<Product>
     ) {
         self.container = container
         self.key = key
         self.factory = factory
-        self.isOverridable = isOverridable
         self.instance = instance
     }
     
@@ -156,7 +149,6 @@ extension Registration: Equatable where Product: Equatable {
     
     public static func == (lhs: Registration<Product>, rhs: Registration<Product>) -> Bool {
         type(of: lhs.instance) == type(of: rhs.instance) &&
-        lhs.isOverridable == rhs.isOverridable &&
         lhs.factory == rhs.factory
     }
 }

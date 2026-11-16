@@ -87,17 +87,22 @@ struct SyncContainerTests {
         }
     }
     
-    @Test("Is Registration Allowed Throws Error")
-    func whenOverridingConflict_throwsError() throws {
+    @Test("Last Registration Wins")
+    func whenRegisteredTwice_lastRegistrationWins() throws {
         let container = SyncContainer()
-        let factory = Factory<Int, Resolver>(.sync { _ in 1 })
-        let key = RegistrationKey(factory: factory)
+        try container.register(Int.self) { 1 }
+        try container.register(Int.self) { 2 }
         
-        try container.register(Int.self, isOverridable: false, factory: factory)
+        #expect(try container.resolve(Int.self) == 2)
+    }
+    
+    @Test("Last Argument Registration Wins")
+    func whenArgumentRegisteredTwice_lastRegistrationWins() throws {
+        let container = SyncContainer()
+        try container.register(Int.self, argumentType: Int.self) { arg in arg }
+        try container.register(Int.self, argumentType: Int.self) { arg in arg * 2 }
         
-        #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
-            try container.register(Int.self) { 2 }
-        }
+        #expect(try container.resolve(Int.self, argument: 3) == 6)
     }
     
     @Test("New Context")
@@ -177,7 +182,6 @@ struct SyncContainerTests {
             let key = RegistrationKey(factory: factory)
             let registration = Registration<Int>(
                 factory: factory,
-                isOverridable: true,
                 instanceType: Graph.self
             )
             container.add(behavior)
@@ -205,19 +209,6 @@ struct SyncContainerTests {
             #expect(!container.isRegistered(Int.self))
         }
         
-        @Test("Prevent Registration Overrides")
-        func whenRegistrationOverridesDisabled_throwError() throws {
-            let container = SyncContainer()
-            let factory: Factory<Int, Resolver> = .init(.sync { _ in 1 })
-            let key = RegistrationKey(factory: factory)
-            
-            try container.register(Int.self, isOverridable: false, factory: factory)
-            
-            #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
-                try container.register(Int.self) { 2 }
-            }
-        }
-        
         @Test("Override Registration")
         func whenRegistrationOverridesEnabled_registerNewFactoryForKey() throws {
             let container = SyncContainer()
@@ -225,8 +216,8 @@ struct SyncContainerTests {
             let factory1 = Factory<Int, Resolver>(block)
             let factory2 = Factory<Int, Resolver>(block)
             let key = RegistrationKey(factory: factory1)
-            let registration1 = Registration(factory: factory1, isOverridable: true, instanceType: Graph.self)
-            let registration2 = Registration(factory: factory2, isOverridable: true, instanceType: Graph.self)
+            let registration1 = Registration(factory: factory1, instanceType: Graph.self)
+            let registration2 = Registration(factory: factory2, instanceType: Graph.self)
             
             try container.register(Int.self, factory: factory1)
             try container.register(Int.self, factory: factory2)
@@ -320,7 +311,6 @@ struct SyncContainerTests {
             let key = RegistrationKey(factory: factory)
             let registration = ArgumentRegistration<Int, Int>(
                 factory: factory,
-                isOverridable: true,
                 instanceType: Graph.self
             )
             container.add(behavior)
@@ -348,19 +338,6 @@ struct SyncContainerTests {
             #expect(!container.isRegistered(Int.self, and: Int.self))
         }
         
-        @Test("Prevent Registration Overrides")
-        func whenRegistrationOverridesDisabled_throwError() throws {
-            let container = SyncContainer()
-            let factory: Factory<Int, (Resolver, Int)> = .init(.sync { _, arg in arg })
-            let key = RegistrationKey(factory: factory)
-            
-            try container.register(Int.self, argumentType: Int.self, factory: factory)
-            
-            #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
-                try container.register(Int.self, argumentType: Int.self, isOverridable: false) { arg in arg }
-            }
-        }
-        
         @Test("Override Registration")
         func whenRegistrationOverridesEnabled_registerNewFactoryForKey() throws {
             let container = SyncContainer()
@@ -368,8 +345,8 @@ struct SyncContainerTests {
             let factory1 = Factory<Int, (Resolver, Int)>(block)
             let factory2 = Factory<Int, (Resolver, Int)>(block)
             let key = RegistrationKey(factory: factory1)
-            let registration1 = ArgumentRegistration(factory: factory1, isOverridable: true, instanceType: Graph.self)
-            let registration2 = ArgumentRegistration(factory: factory2, isOverridable: true, instanceType: Graph.self)
+            let registration1 = ArgumentRegistration(factory: factory1, instanceType: Graph.self)
+            let registration2 = ArgumentRegistration(factory: factory2, instanceType: Graph.self)
             
             try container.register(Int.self, argumentType: Int.self, factory: factory1)
             try container.register(Int.self, argumentType: Int.self, factory: factory2)

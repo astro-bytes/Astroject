@@ -33,7 +33,6 @@ public extension Container {
     ///   - name: An optional name for the registration.
     ///   - initializer: The initializer (or any function) that creates the product from its dependencies.
     /// - Returns: The registration, for further configuration.
-    /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
     @_disfavoredOverload
     func register<Product, each Dependency>(
@@ -55,7 +54,6 @@ public extension Container {
         return try register(
             productType: productType,
             name: name,
-            isOverridable: true,
             factory: factory
         )
     }
@@ -70,8 +68,7 @@ public extension Container {
     ///   - name: An optional name for the registration.
     ///   - initializer: The `async` initializer that creates the product from its dependencies.
     /// - Returns: The registration, for further configuration.
-    /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously,
-    ///           or `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
+    /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously.
     @discardableResult
     @_disfavoredOverload
     func register<Product, each Dependency>(
@@ -85,7 +82,6 @@ public extension Container {
         return try register(
             productType: productType,
             name: name,
-            isOverridable: true,
             factory: Factory(.async { resolver in
                 try await initializer(repeat resolver.resolve((each Dependency).self))
             })
@@ -115,7 +111,6 @@ public extension Container {
     ///   - name: An optional name for the registration.
     ///   - initializer: The initializer that creates the product from the argument and its dependencies.
     /// - Returns: The registration, for further configuration.
-    /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
     @_disfavoredOverload
     func register<Product, Argument: Hashable, each Dependency>(
@@ -139,7 +134,6 @@ public extension Container {
             productType: productType,
             argumentType: argumentType,
             name: name,
-            isOverridable: true,
             factory: factory
         )
     }
@@ -156,8 +150,7 @@ public extension Container {
     ///   - name: An optional name for the registration.
     ///   - initializer: The `async` initializer that creates the product from the argument and dependencies.
     /// - Returns: The registration, for further configuration.
-    /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously,
-    ///           or `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
+    /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously.
     @discardableResult
     @_disfavoredOverload
     func register<Product, Argument: Hashable, each Dependency>(
@@ -173,7 +166,6 @@ public extension Container {
             productType: productType,
             argumentType: argumentType,
             name: name,
-            isOverridable: true,
             factory: Factory(.async { resolver, argument in
                 try await initializer(argument, repeat resolver.resolve((each Dependency).self))
             })
