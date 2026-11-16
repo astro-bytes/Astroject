@@ -275,4 +275,61 @@ final class InjectableMacroTests: XCTestCase {
         throw XCTSkip("Macros are only supported when running tests for the host platform")
         #endif
     }
+    
+    func testAsForwardsEachTypeAndChecksConformance() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable(scope: .singleton, as: Repository.self, Cache.self)
+            final class RemoteRepository: Repository, Cache {
+                init(api: API) {}
+            }
+            """,
+            expandedSource: """
+            final class RemoteRepository: Repository, Cache {
+                init(api: API) {}
+            }
+
+            extension RemoteRepository: AstrojectNexus.Injectable {
+                static func register(in container: any AstrojectCore.Container) throws {
+                    _ = { (instance: RemoteRepository) -> Repository in
+                            instance
+                        }
+                    _ = { (instance: RemoteRepository) -> Cache in
+                            instance
+                        }
+                    try container.register(RemoteRepository.self, initializer: RemoteRepository.init(api:), fileID: "TestModule/test.swift", line: 1).asSingleton().implements(Repository.self).implements(Cache.self)
+                }
+            }
+            """,
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testAsRequiresTypes() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable(as: "Repository")
+            final class RemoteRepository {
+                init() {}
+            }
+            """,
+            expandedSource: """
+            final class RemoteRepository {
+                init() {}
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: "as: takes types, such as PuzzleRepositoryProtocol.self", line: 1, column: 17)
+            ],
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
 }

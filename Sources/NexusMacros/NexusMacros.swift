@@ -41,13 +41,24 @@
 /// A struct with no initializer uses its memberwise initializer. `async` and `throws`
 /// initializers work; an `async` one needs an `AsyncContainer`.
 ///
+/// List protocols (or superclasses) in `as:` to also resolve the type by them. Each one is
+/// forwarded to the same registration, so a singleton is shared. The macro also makes the
+/// compiler check that the type conforms, so a missing conformance is a build error:
+///
+/// ```swift
+/// @Injectable(scope: .singleton, as: PuzzleRepositoryProtocol.self)
+/// final class RemotePuzzleRepository: PuzzleRepositoryProtocol { ... }
+/// ```
+///
 /// - Parameters:
 ///   - scope: How instances are managed. Defaults to `.graph`.
-///   - name: An optional name for the registration.
+///   - name: An optional name for the registration. Forwarded types use the same name.
+///   - types: Protocols or superclasses to also register the type as.
 @attached(extension, conformances: Injectable, names: named(register(in:)))
 public macro Injectable(
     scope: InjectableScope = .graph,
-    name: String? = nil
+    name: String? = nil,
+    as types: Any.Type...
 ) = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "InjectableMacro")
 
 /// Marks the initializer `@Injectable` registers, when the type has more than one.
