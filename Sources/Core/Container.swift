@@ -106,6 +106,15 @@ public protocol Container: AnyObject, Resolver, Sendable {
         to registration: any Registrable<Product>
     )
     
+    /// A report of every registration this container has received, grouped by key.
+    ///
+    /// Registration is last one wins. The report lists, for each key, every registration made
+    /// for it in order and where each came from, so you can see which registration the
+    /// container resolves and which ones it replaced.
+    ///
+    /// Defaults to an empty report for containers that don't record registrations.
+    func registrationReport() -> RegistrationReport
+    
     /// How this container resolves dependencies from inside its factories.
     ///
     /// Synchronous containers call factories synchronously, so a factory must resolve its own
@@ -133,6 +142,20 @@ public extension Container {
     /// The default resolution mode, `.sync`.
     var resolutionMode: ResolutionMode { .sync }
     
+    /// The default registration report, which is empty.
+    func registrationReport() -> RegistrationReport { RegistrationReport() }
+    
+    /// Writes the registration report to the console through `os.Logger`, with the subsystem `Astroject`.
+    ///
+    /// An `Assembler` does this for you after `assemble()` in debug builds. Call it yourself
+    /// when you register without an assembler.
+    ///
+    /// - Parameter onlyOverridden: When `true`, lists only keys that were registered more
+    ///   than once. Defaults to `true`.
+    func printRegistrationReport(onlyOverridden: Bool = true) {
+        registrationReport().log(onlyOverridden: onlyOverridden)
+    }
+    
     /// Registers a factory for a product that does not require an argument,
     /// with `name` defaulting to `nil`.
     ///
@@ -140,18 +163,24 @@ public extension Container {
     ///   - productType: The type of the product to register.
     ///   - name: An optional name. Defaults to `nil`.
     ///   - factory: The factory closure.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The `Registrable` instance.
     @discardableResult
     func register<Product>(
         _ productType: Product.Type,
         name: String? = nil,
-        factory: Factory<Product, Resolver>
+        factory: Factory<Product, Resolver>,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        try self.register(
-            productType: productType,
-            name: name,
-            factory: factory
-        )
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            try self.register(
+                productType: productType,
+                name: name,
+                factory: factory
+            )
+        }
     }
     
     /// Registers a factory for a product that requires an argument,
@@ -162,20 +191,26 @@ public extension Container {
     ///   - argumentType: The type of the argument required.
     ///   - name: An optional name. Defaults to `nil`.
     ///   - factory: The factory closure.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The `Registrable` instance.
     @discardableResult
     func register<Product, Argument: Hashable>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
-        factory: Factory<Product, (Resolver, Argument)>
+        factory: Factory<Product, (Resolver, Argument)>,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        try self.register(
-            productType: productType,
-            argumentType: argumentType,
-            name: name,
-            factory: factory
-        )
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            try self.register(
+                productType: productType,
+                argumentType: argumentType,
+                name: name,
+                factory: factory
+            )
+        }
     }
     
     /// Checks if a registration exists for a given product type, with the name defaulting to `nil`.

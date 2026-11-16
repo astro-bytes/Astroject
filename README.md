@@ -432,6 +432,21 @@ print("Overridden Int value (should be 99): \(try await container.resolve(Int.se
 
 Because the last registration wins, the order assemblies run in decides which registration survives. Every assembly runs after the assemblies in its `requiredAssemblies`; otherwise assemblies run in the order you add them. To have a test or mocks assembly replace your app's registrations, list the app assembly in its `requiredAssemblies`.
 
+#### Seeing What Was Overridden
+
+Every container keeps a record of each registration it receives: the key, the assembly that made it, and the file and line it came from. `container.registrationReport()` returns that record, with every registration for each key in order and the one that wins.
+
+In debug builds, `Assembler` writes the keys that were registered more than once to the console after `assemble()`, through `os.Logger` with the subsystem `Astroject`:
+
+```text
+Astroject: 42 keys registered, 1 overridden
+PuzzleRepositoryProtocol
+  ├─ DataAssembly        DataAssembly.swift:12
+  └─ TestMocksAssembly   TestMocksAssembly.swift:4   ← wins
+```
+
+Set `assembler.logsOverrides` to turn it on or off. If you register without an assembler, call `container.printRegistrationReport()` yourself.
+
 #### `isOverridable` was removed in 3.0
 
 Earlier versions let you mark a registration with `isOverridable: false` so a later registration would throw `AstrojectError.alreadyRegistered`. 2.1 deprecated that flag and 3.0 removes it, along with `AstrojectError.alreadyRegistered`, so registration follows one rule: last one wins. To migrate, drop the `isOverridable:` argument, and control which registration survives through assembly order instead.

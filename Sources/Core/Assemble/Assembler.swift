@@ -83,6 +83,15 @@ public class Assembler {
     /// will throw `Assembler.Error.alreadyAssembled`.
     public private(set) var isAssembled: Bool = false
     
+    /// Whether `assemble()` writes a report of overridden registrations to the console.
+    ///
+    /// Registration is last one wins. After assembling, the assembler lists every key that was
+    /// registered more than once, where each registration came from, and which one wins, through
+    /// `os.Logger` with the subsystem `Astroject`. Nothing is written when no key was overridden.
+    ///
+    /// Defaults to `true` in debug builds and `false` in release builds.
+    public var logsOverrides: Bool = Assembler.isDebugBuild
+    
     /// Assemblies that will be applied to the container.
     private(set) var assemblies: [Assembly]
     
@@ -183,6 +192,7 @@ public class Assembler {
         try self.validateRequiredAssemblies()
         try self.run()
         self.isAssembled = true
+        self.logOverridesIfNeeded()
         return self
     }
     
@@ -297,11 +307,32 @@ public class Assembler {
         do {
             try self.assemblies.forEach { try $0.preassemble() }
             
-            try self.assemblies.forEach { try $0.assemble(container: self.container) }
+            try self.assemblies.forEach { assembly in
+                try RegistrationSource.$currentAssembly.withValue(String(describing: type(of: assembly))) {
+                    try assembly.assemble(container: self.container)
+                }
+            }
             
             try self.assemblies.forEach { try $0.postAssemble(resolver: self.resolver) }
         } catch {
             throw Self.Error.assemblyFailure(error)
         }
+    }
+    
+    /// Writes the report of overridden registrations when `logsOverrides` is on and a key was overridden.
+    func logOverridesIfNeeded() {
+        guard logsOverrides else { return }
+        let report = container.registrationReport()
+        guard !report.overridden.isEmpty else { return }
+        report.log()
+    }
+    
+    /// Whether this library was built in the debug configuration.
+    static var isDebugBuild: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
     }
 }

@@ -26,6 +26,8 @@ public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
     /// such as when registrations are added. Behaviors can be used for cross-cutting concerns
     /// like logging, validation, or modifying registrations.
     private(set) var behaviors: [Behavior] = []
+    /// Records every registration, for `registrationReport()`.
+    private let recorder = RegistrationRecorder()
     
     public private(set) var assembler: Assembler?
     
@@ -77,8 +79,10 @@ public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
         // Before adding the new registration, ensure that it is allowed based on existing registrations.
         // Perform the actual registration by adding the key-registration pair to the dictionary
         // within a synchronized block to ensure thread safety.
+        let source = RegistrationSource.current
         serialQueue.sync {
             registrations[key] = registration
+            recorder.record(key, source: source)
             // Notify all registered behaviors that a new registration has been added. This allows behaviors
             // to react to registration events, such as logging or performing additional setup.
             behaviors.forEach {
@@ -109,8 +113,10 @@ public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
         
         // Ensure that this registration is allowed based on any existing registrations.
         // Add the registration to the dictionary in a thread-safe manner.
+        let source = RegistrationSource.current
         serialQueue.sync {
             registrations[key] = registration
+            recorder.record(key, source: source)
             // Notify all registered behaviors about the new registration.
             behaviors.forEach {
                 $0.didRegister(type: productType, to: self, as: registration, with: name)
@@ -171,7 +177,12 @@ public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
         serialQueue.sync {
             registrations.removeAll()
             behaviors.removeAll()
+            recorder.reset()
         }
+    }
+    
+    public func registrationReport() -> RegistrationReport {
+        recorder.report()
     }
     
     public func add(_ behavior: Behavior) {
@@ -194,8 +205,13 @@ public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
             name: name
         )
         
+        let source = RegistrationSource(
+            assembly: RegistrationSource.currentAssembly,
+            forwardedFrom: String(describing: Product.self)
+        )
         serialQueue.sync {
             registrations[key] = registration
+            recorder.record(key, source: source)
             behaviors.forEach {
                 $0.didRegister(type: type, to: self, as: registration, with: name)
             }
