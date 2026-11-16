@@ -29,6 +29,9 @@ public final class AsyncContainer: Container, Assemblable, @unchecked Sendable {
     
     public private(set) var assembler: Assembler?
     
+    /// `AsyncContainer` only supports `async` resolution from inside factories.
+    public var resolutionMode: ResolutionMode { .async }
+    
     /// Initializes a new container with an optional assembler.
     ///
     /// - Parameter createAssembler: A Boolean flag indicating whether to automatically

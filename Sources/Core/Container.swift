@@ -115,6 +115,24 @@ public protocol Container: AnyObject, Resolver, Sendable {
         _: Conformance.Type,
         to registration: any Registrable<Product>
     )
+    
+    /// How this container resolves dependencies from inside its factories.
+    ///
+    /// Synchronous containers call factories synchronously, so a factory must resolve its own
+    /// dependencies with the synchronous `resolve`. Asynchronous containers require the `async`
+    /// `resolve`. Extensions that build factories for you, such as Nexus's `register(_:initializer:)`,
+    /// use this to pick the right kind of factory.
+    ///
+    /// Defaults to `.sync`.
+    var resolutionMode: ResolutionMode { get }
+}
+
+/// How a `Container` resolves dependencies from inside its factories.
+public enum ResolutionMode: Sendable, Equatable {
+    /// Factories resolve dependencies with the synchronous `resolve` methods.
+    case sync
+    /// Factories resolve dependencies with the `async` `resolve` methods.
+    case async
 }
 
 /// ### Default Implementations for `Container`
@@ -122,6 +140,9 @@ public protocol Container: AnyObject, Resolver, Sendable {
 /// These extensions provide convenience methods for registering and checking dependencies,
 /// allowing for more concise code when `name` or `isOverridable` parameters can use their defaults.
 public extension Container {
+    /// The default resolution mode, `.sync`.
+    var resolutionMode: ResolutionMode { .sync }
+    
     /// Registers a factory for a product that does not require an argument,
     /// with `name` defaulting to `nil` and `isOverridable` defaulting to `true`.
     ///

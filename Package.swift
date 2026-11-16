@@ -16,8 +16,8 @@ let package = Package(
         // Libraries for the Astroject framework
         .library(name: "Astroject", targets: ["AstrojectCore"]),
         .library(name: "Astroject-Async", targets: ["AstrojectCore", "AstrojectAsync"]),
-        .library(name: "Astroject-Sync", targets: ["AstrojectCore", "AstrojectSync"])
-//        .library(name: "Astroject-Nexus", targets: ["Nexus"]),
+        .library(name: "Astroject-Sync", targets: ["AstrojectCore", "AstrojectSync"]),
+        .library(name: "Astroject-Nexus", targets: ["AstrojectCore", "AstrojectNexus"])
 //        .library(name: "Astroject-Singularity", targets: ["Singularity"])
     ],
     targets: [
@@ -36,11 +36,11 @@ let package = Package(
             dependencies: ["AstrojectCore"],
             path: "Sources/Mocks"
         ),
-//        .target(
-//            name: "Nexus",
-//            dependencies: ["AstrojectCore"],
-//            path: "Sources/Nexus"
-//        ),
+        .target(
+            name: "AstrojectNexus",
+            dependencies: ["AstrojectCore"],
+            path: "Sources/Nexus"
+        ),
 //        .target(
 //            name: "Singularity",
 //            dependencies: ["AstrojectCore"],
@@ -63,10 +63,11 @@ let package = Package(
             dependencies: ["AstrojectCore", "Mocks"],
             path: "Tests/CoreTests"
         ),
-//        .testTarget(
-//            name: "NexusTests",
-//            dependencies: ["Nexus"]
-//        ),
+        .testTarget(
+            name: "NexusTests",
+            dependencies: ["AstrojectCore", "AstrojectSync", "AstrojectAsync", "AstrojectNexus"],
+            path: "Tests/NexusTests"
+        ),
 //        .testTarget(
 //            name: "SingularityTests",
 //            dependencies: ["Singularity"]
