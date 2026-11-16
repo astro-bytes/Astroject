@@ -32,30 +32,36 @@ public extension Container {
     ///   - productType: The type of the product to register.
     ///   - name: An optional name for the registration.
     ///   - initializer: The initializer (or any function) that creates the product from its dependencies.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The registration, for further configuration.
     @discardableResult
     @_disfavoredOverload
     func register<Product, each Dependency>(
         _ productType: Product.Type,
         name: String? = nil,
-        initializer: @escaping (repeat each Dependency) throws -> Product
+        initializer: @escaping (repeat each Dependency) throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        let factory: Factory<Product, Resolver>
-        switch resolutionMode {
-        case .sync:
-            factory = Factory(.sync { resolver in
-                try initializer(repeat resolver.resolve((each Dependency).self))
-            })
-        case .async:
-            factory = Factory(.async { resolver in
-                try await initializer(repeat resolver.resolve((each Dependency).self))
-            })
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            let factory: Factory<Product, Resolver>
+            switch resolutionMode {
+            case .sync:
+                factory = Factory(.sync { resolver in
+                    try initializer(repeat resolver.resolve((each Dependency).self))
+                })
+            case .async:
+                factory = Factory(.async { resolver in
+                    try await initializer(repeat resolver.resolve((each Dependency).self))
+                })
+            }
+            return try register(
+                productType: productType,
+                name: name,
+                factory: factory
+            )
         }
-        return try register(
-            productType: productType,
-            name: name,
-            factory: factory
-        )
     }
 
     /// Registers a product by its `async` initializer, resolving every initializer parameter from the container.
@@ -67,6 +73,8 @@ public extension Container {
     ///   - productType: The type of the product to register.
     ///   - name: An optional name for the registration.
     ///   - initializer: The `async` initializer that creates the product from its dependencies.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The registration, for further configuration.
     /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously.
     @discardableResult
@@ -74,18 +82,22 @@ public extension Container {
     func register<Product, each Dependency>(
         _ productType: Product.Type,
         name: String? = nil,
-        initializer: @escaping (repeat each Dependency) async throws -> Product
+        initializer: @escaping (repeat each Dependency) async throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        guard resolutionMode == .async else {
-            throw AstrojectError.invalidFactory
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            guard resolutionMode == .async else {
+                throw AstrojectError.invalidFactory
+            }
+            return try register(
+                productType: productType,
+                name: name,
+                factory: Factory(.async { resolver in
+                    try await initializer(repeat resolver.resolve((each Dependency).self))
+                })
+            )
         }
-        return try register(
-            productType: productType,
-            name: name,
-            factory: Factory(.async { resolver in
-                try await initializer(repeat resolver.resolve((each Dependency).self))
-            })
-        )
     }
 }
 
@@ -110,6 +122,8 @@ public extension Container {
     ///   - argumentType: The type of the runtime argument, passed as the initializer's first parameter.
     ///   - name: An optional name for the registration.
     ///   - initializer: The initializer that creates the product from the argument and its dependencies.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The registration, for further configuration.
     @discardableResult
     @_disfavoredOverload
@@ -117,25 +131,29 @@ public extension Container {
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
-        initializer: @escaping (Argument, repeat each Dependency) throws -> Product
+        initializer: @escaping (Argument, repeat each Dependency) throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        let factory: Factory<Product, (Resolver, Argument)>
-        switch resolutionMode {
-        case .sync:
-            factory = Factory(.sync { resolver, argument in
-                try initializer(argument, repeat resolver.resolve((each Dependency).self))
-            })
-        case .async:
-            factory = Factory(.async { resolver, argument in
-                try await initializer(argument, repeat resolver.resolve((each Dependency).self))
-            })
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            let factory: Factory<Product, (Resolver, Argument)>
+            switch resolutionMode {
+            case .sync:
+                factory = Factory(.sync { resolver, argument in
+                    try initializer(argument, repeat resolver.resolve((each Dependency).self))
+                })
+            case .async:
+                factory = Factory(.async { resolver, argument in
+                    try await initializer(argument, repeat resolver.resolve((each Dependency).self))
+                })
+            }
+            return try register(
+                productType: productType,
+                argumentType: argumentType,
+                name: name,
+                factory: factory
+            )
         }
-        return try register(
-            productType: productType,
-            argumentType: argumentType,
-            name: name,
-            factory: factory
-        )
     }
 
     /// Registers a product whose `async` initializer takes one runtime argument first,
@@ -149,6 +167,8 @@ public extension Container {
     ///   - argumentType: The type of the runtime argument, passed as the initializer's first parameter.
     ///   - name: An optional name for the registration.
     ///   - initializer: The `async` initializer that creates the product from the argument and dependencies.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The registration, for further configuration.
     /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously.
     @discardableResult
@@ -157,18 +177,22 @@ public extension Container {
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
-        initializer: @escaping (Argument, repeat each Dependency) async throws -> Product
+        initializer: @escaping (Argument, repeat each Dependency) async throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        guard resolutionMode == .async else {
-            throw AstrojectError.invalidFactory
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            guard resolutionMode == .async else {
+                throw AstrojectError.invalidFactory
+            }
+            return try register(
+                productType: productType,
+                argumentType: argumentType,
+                name: name,
+                factory: Factory(.async { resolver, argument in
+                    try await initializer(argument, repeat resolver.resolve((each Dependency).self))
+                })
+            )
         }
-        return try register(
-            productType: productType,
-            argumentType: argumentType,
-            name: name,
-            factory: Factory(.async { resolver, argument in
-                try await initializer(argument, repeat resolver.resolve((each Dependency).self))
-            })
-        )
     }
 }

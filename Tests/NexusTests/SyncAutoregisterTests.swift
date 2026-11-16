@@ -230,3 +230,18 @@ struct SyncAutoregisterTests {
         #expect(first.engine !== second.engine)
     }
 }
+
+@Suite("Autoregister: Registration Report")
+struct AutoregisterReportTests {
+    @Test("Reports the caller's line, not Nexus's")
+    func reportsCallerLine() throws {
+        let container = SyncContainer()
+        let line: UInt = #line + 1
+        try container.register(Engine.self, initializer: Engine.init)
+        
+        let entry = try #require(container.registrationReport().entries.first)
+        #expect(entry.sources == [
+            RegistrationSource(fileID: "NexusTests/SyncAutoregisterTests.swift", line: line)
+        ])
+    }
+}

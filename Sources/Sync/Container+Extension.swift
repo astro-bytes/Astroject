@@ -22,20 +22,26 @@ public extension Container {
     ///   - productType: The type of the product to register.
     ///   - name: An optional name to differentiate this registration. Defaults to `nil`.
     ///   - block: A `throws` closure that takes a `Resolver` and returns an instance of `Product`.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The `Registrable` instance for further configuration.
     @discardableResult
     func register<Product>(
         _ productType: Product.Type,
         name: String? = nil,
-        block: @escaping (Resolver) throws -> Product
+        block: @escaping (Resolver) throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        try self.register(
-            productType: productType,
-            name: name,
-            factory: Factory(.sync { resolver in
-                try block(resolver)
-            })
-        )
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            try self.register(
+                productType: productType,
+                name: name,
+                factory: Factory(.sync { resolver in
+                    try block(resolver)
+                })
+            )
+        }
     }
     
     /// Registers a synchronous factory for a product that takes no arguments.
@@ -47,20 +53,26 @@ public extension Container {
     ///   - productType: The type of the product to register.
     ///   - name: An optional name to differentiate this registration. Defaults to `nil`.
     ///   - block: A `throws` closure that takes no arguments and returns an instance of `Product`.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The `Registrable` instance for further configuration.
     @discardableResult
     func register<Product>(
         _ productType: Product.Type,
         name: String? = nil,
-        block: @escaping () throws -> Product
+        block: @escaping () throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        try self.register(
-            productType: productType,
-            name: name,
-            factory: Factory(.sync { _ in
-                try block()
-            })
-        )
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            try self.register(
+                productType: productType,
+                name: name,
+                factory: Factory(.sync { _ in
+                    try block()
+                })
+            )
+        }
     }
     
     /// Registers a synchronous factory for a product that requires both a `Resolver` and a specific `Argument`.
@@ -74,23 +86,29 @@ public extension Container {
     ///   - name: An optional name to differentiate this registration. Defaults to `nil`.
     ///   - block: A `throws` closure that takes a `Resolver` and an `Argument`,
     ///            then returns an instance of `Product`.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The `Registrable` instance for further configuration.
     @discardableResult
     func register<Product, Argument: Hashable>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
-        block: @escaping (Resolver, Argument) throws -> Product
+        block: @escaping (Resolver, Argument) throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        // Call the main `register` method with a synchronous `Factory` created from the block.
-        return try self.register(
-            productType: productType,
-            argumentType: argumentType,
-            name: name,
-            factory: Factory(.sync { resolver, argument in
-                try block(resolver, argument)
-            })
-        )
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            // Call the main `register` method with a synchronous `Factory` created from the block.
+            return try self.register(
+                productType: productType,
+                argumentType: argumentType,
+                name: name,
+                factory: Factory(.sync { resolver, argument in
+                    try block(resolver, argument)
+                })
+            )
+        }
     }
     
     /// Registers a synchronous factory for a product that takes only a specific `Argument`.
@@ -103,23 +121,29 @@ public extension Container {
     ///   - argumentType: The type of the argument required by the factory.
     ///   - name: An optional name to differentiate this registration. Defaults to `nil`.
     ///   - block: A `throws` closure that takes an `Argument` and returns an instance of `Product`.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The `Registrable` instance for further configuration.
     @discardableResult
     func register<Product, Argument: Hashable>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
-        block: @escaping (Argument) throws -> Product
+        block: @escaping (Argument) throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        // Call the main `register` method with a synchronous `Factory` created from the block.
-        return try self.register(
-            productType: productType,
-            argumentType: argumentType,
-            name: name,
-            factory: Factory(.sync { _, argument in
-                try block(argument)
-            })
-        )
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            // Call the main `register` method with a synchronous `Factory` created from the block.
+            return try self.register(
+                productType: productType,
+                argumentType: argumentType,
+                name: name,
+                factory: Factory(.sync { _, argument in
+                    try block(argument)
+                })
+            )
+        }
     }
     
     /// Registers a synchronous factory for a product that takes no arguments, even when an `argumentType` is specified.
@@ -133,23 +157,29 @@ public extension Container {
     ///   - argumentType: The type of the argument associated with this registration (even if not used in the block).
     ///   - name: An optional name to differentiate this registration. Defaults to `nil`.
     ///   - block: A `throws` closure that takes no arguments and returns an instance of `Product`.
+    ///   - fileID: The file the registration is made from, for the registration report. Defaults to `#fileID`.
+    ///   - line: The line the registration is made from, for the registration report. Defaults to `#line`.
     /// - Returns: The `Registrable` instance for further configuration.
     @discardableResult
     func register<Product, Argument: Hashable>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
-        block: @escaping () throws -> Product
+        block: @escaping () throws -> Product,
+        fileID: String = #fileID,
+        line: UInt = #line
     ) throws -> any Registrable<Product> {
-        // Call the main `register` method with a synchronous `Factory` created from the block.
-        return try self.register(
-            productType: productType,
-            argumentType: argumentType,
-            name: name,
-            factory: Factory(.sync { _, _ in
-                try block()
-            })
-        )
+        try RegistrationSource.withCallSite(fileID: fileID, line: line) { () throws -> any Registrable<Product> in
+            // Call the main `register` method with a synchronous `Factory` created from the block.
+            return try self.register(
+                productType: productType,
+                argumentType: argumentType,
+                name: name,
+                factory: Factory(.sync { _, _ in
+                    try block()
+                })
+            )
+        }
     }
     
 }
