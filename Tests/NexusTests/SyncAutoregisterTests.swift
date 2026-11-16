@@ -74,14 +74,13 @@ struct SyncAutoregisterTests {
         }
     }
     
-    @Test("Non-overridable registration")
-    func nonOverridable() throws {
+    @Test("A later registration replaces an earlier one")
+    func lastRegistrationWins() throws {
         let container = SyncContainer()
-        try container.register(Engine.self, isOverridable: false, initializer: Engine.init)
+        try container.register(String.self, initializer: { "first" })
+        try container.register(String.self, initializer: { "second" })
         
-        #expect(throws: AstrojectError.self) {
-            try container.register(Engine.self, initializer: Engine.init)
-        }
+        #expect(try container.resolve(String.self) == "second")
     }
     
     @Test("Singleton scope")

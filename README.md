@@ -342,7 +342,7 @@ try container.register(UserService.self, initializer: UserService.init)
 let service = try container.resolve(UserService.self)
 ```
 
-`register(_:initializer:)` returns the same `Registrable` as any other registration, so scopes (`.asSingleton()`, `.asWeak()`, `.asGraph()`), `implements`, names, `isOverridable`, behaviors and circular dependency detection all work as before. It also works inside an `Assembly`, where only `Container` is known.
+`register(_:initializer:)` returns the same `Registrable` as any other registration, so scopes (`.asSingleton()`, `.asWeak()`, `.asGraph()`), `implements`, names, behaviors and circular dependency detection all work as before. It also works inside an `Assembly`, where only `Container` is known.
 
 The initializer can be any function, not only an `init`:
 
@@ -394,6 +394,7 @@ let viewModel = try container.resolve(PuzzleViewModel.self, argument: "puzzle-42
 - Every dependency resolves by its type, with no name. For a parameter that needs a named registration, use a `register(_:block:)` closure for that type.
 - Only one runtime argument is supported, and it must be the first parameter. For anything else, use `register(_:argumentType:block:)`.
 - Trailing closures keep calling the existing `block:` overloads. Use the `initializer:` label to get automatic resolution.
+- There is no `isOverridable` parameter: a later registration for the same key replaces an earlier one.
 
 ## 📚 Core Concepts
 Astroject's design revolves around a few fundamental components, working together to provide a powerful dependency injection experience:
