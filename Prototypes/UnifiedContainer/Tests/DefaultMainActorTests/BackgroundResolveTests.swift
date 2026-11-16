@@ -67,7 +67,11 @@ struct BackgroundResolveTests {
             for _ in 0..<20 {
                 group.addTask { try container.resolve(BackgroundService.self).id }
             }
-            return try await group.reduce(into: Set<UUID>()) { $0.insert($1) }
+            var ids = Set<UUID>()
+            for try await id in group {
+                ids.insert(id)
+            }
+            return ids
         }
         #expect(ids.count == 1)
     }
