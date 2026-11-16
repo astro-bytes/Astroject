@@ -5,6 +5,7 @@
 //  Created by Porter McGary on 11/16/26.
 //
 
+import SwiftSyntaxMacroExpansion
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosGenericTestSupport
 import SwiftSyntaxMacrosTestSupport
