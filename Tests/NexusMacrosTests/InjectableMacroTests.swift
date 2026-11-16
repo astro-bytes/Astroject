@@ -120,7 +120,9 @@ final class InjectableMacroTests: XCTestCase {
 
             extension Database: AstrojectNexus.Injectable {
                 static func register(in container: any AstrojectCore.Container) throws {
-                    try container.register(Database.self, initializer: { try await Database() }, fileID: "TestModule/test.swift", line: 1)
+                    try container.register(Database.self, initializer: {
+                            try await Database()
+                        }, fileID: "TestModule/test.swift", line: 1)
                 }
             }
             """,
