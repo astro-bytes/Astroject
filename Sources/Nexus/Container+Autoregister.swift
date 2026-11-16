@@ -16,7 +16,7 @@ public extension Container {
     /// can be configured like any other, for example with `.asSingleton()` or `afterInit`.
     ///
     /// ```swift
-    /// try container.autoregister(UserService.self, initializer: UserService.init)
+    /// try container.register(UserService.self, initializer: UserService.init)
     ///     .asSingleton()
     /// ```
     ///
@@ -31,7 +31,7 @@ public extension Container {
     /// - Returns: The registration, for further configuration.
     /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
-    func autoregister<Product, each Dependency>(
+    func register<Product, each Dependency>(
         _ productType: Product.Type,
         name: String? = nil,
         isOverridable: Bool = true,
@@ -70,7 +70,7 @@ public extension Container {
     /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously,
     ///           or `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
-    func autoregister<Product, each Dependency>(
+    func register<Product, each Dependency>(
         _ productType: Product.Type,
         name: String? = nil,
         isOverridable: Bool = true,
@@ -98,7 +98,7 @@ public extension Container {
     ///
     /// ```swift
     /// // init(puzzleID: String, repository: PuzzleRepository)
-    /// try container.autoregister(
+    /// try container.register(
     ///     PuzzleViewModel.self,
     ///     argumentType: String.self,
     ///     initializer: PuzzleViewModel.init
@@ -115,7 +115,7 @@ public extension Container {
     /// - Returns: The registration, for further configuration.
     /// - Throws: `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
-    func autoregister<Product, Argument: Hashable, each Dependency>(
+    func register<Product, Argument: Hashable, each Dependency>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,
@@ -158,7 +158,7 @@ public extension Container {
     /// - Throws: `AstrojectError.invalidFactory` if the container resolves synchronously,
     ///           or `AstrojectError.alreadyRegistered` if a non-overridable registration already exists.
     @discardableResult
-    func autoregister<Product, Argument: Hashable, each Dependency>(
+    func register<Product, Argument: Hashable, each Dependency>(
         _ productType: Product.Type,
         argumentType: Argument.Type,
         name: String? = nil,

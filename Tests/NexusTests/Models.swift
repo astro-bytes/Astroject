@@ -69,6 +69,32 @@ final class AsyncPuzzle {
     }
 }
 
+protocol Vehicle: AnyObject {}
+
+extension Car: Vehicle {}
+
+final class Dashboard {
+    let engine: Engine
+    let car: Car
+    
+    init(engine: Engine, car: Car) {
+        self.engine = engine
+        self.car = car
+    }
+}
+
+final class Trip {
+    let id: String
+    let engine: Engine
+    let car: Car
+    
+    init(id: String, engine: Engine, car: Car) {
+        self.id = id
+        self.engine = engine
+        self.car = car
+    }
+}
+
 final class Chicken {
     init(egg: Egg) {}
 }
@@ -79,8 +105,8 @@ final class Egg {
 
 struct VehicleAssembly: Assembly {
     func assemble(container: Container) throws {
-        try container.autoregister(Engine.self, initializer: Engine.init)
-        try container.autoregister(Wheels.self, initializer: Wheels.init)
-        try container.autoregister(Car.self, initializer: Car.init)
+        try container.register(Engine.self, initializer: Engine.init)
+        try container.register(Wheels.self, initializer: Wheels.init)
+        try container.register(Car.self, initializer: Car.init)
     }
 }

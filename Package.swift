@@ -68,12 +68,6 @@ let package = Package(
             dependencies: ["AstrojectCore", "AstrojectSync", "AstrojectAsync", "AstrojectNexus"],
             path: "Tests/NexusTests"
         ),
-        // Temporary: naming spike for #15, removed once it has run in CI.
-        .testTarget(
-            name: "NexusNamingSpikeTests",
-            dependencies: ["AstrojectCore", "AstrojectSync", "AstrojectNexus"],
-            path: "Tests/NexusNamingSpikeTests"
-        ),
 //        .testTarget(
 //            name: "SingularityTests",
 //            dependencies: ["Singularity"]

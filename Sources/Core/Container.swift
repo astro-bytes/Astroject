@@ -120,7 +120,7 @@ public protocol Container: AnyObject, Resolver, Sendable {
     ///
     /// Synchronous containers call factories synchronously, so a factory must resolve its own
     /// dependencies with the synchronous `resolve`. Asynchronous containers require the `async`
-    /// `resolve`. Extensions that build factories for you, such as Nexus's `autoregister`,
+    /// `resolve`. Extensions that build factories for you, such as Nexus's `register(_:initializer:)`,
     /// use this to pick the right kind of factory.
     ///
     /// Defaults to `.sync`.

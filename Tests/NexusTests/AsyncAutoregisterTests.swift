@@ -14,8 +14,8 @@ import Testing
 struct AsyncAutoregisterTests {
     func makeContainer() throws -> AsyncContainer {
         let container = AsyncContainer()
-        try container.autoregister(Engine.self, initializer: Engine.init)
-        try container.autoregister(Wheels.self, initializer: Wheels.init)
+        try container.register(Engine.self, initializer: Engine.init)
+        try container.register(Wheels.self, initializer: Wheels.init)
         return container
     }
     
@@ -27,7 +27,7 @@ struct AsyncAutoregisterTests {
     @Test("Sync initializer resolves dependencies asynchronously")
     func syncInitializer() async throws {
         let container = try makeContainer()
-        try container.autoregister(Car.self, initializer: Car.init)
+        try container.register(Car.self, initializer: Car.init)
         
         _ = try await container.resolve(Car.self)
     }
@@ -35,9 +35,9 @@ struct AsyncAutoregisterTests {
     @Test("Five dependencies")
     func fiveDependencies() async throws {
         let container = try makeContainer()
-        try container.autoregister(Car.self, initializer: Car.init)
-        try container.autoregister(String.self) { "Main garage" }
-        try container.autoregister(Garage.self, initializer: Garage.init)
+        try container.register(Car.self, initializer: Car.init)
+        try container.register(String.self, initializer: { "Main garage" })
+        try container.register(Garage.self, initializer: Garage.init)
         
         let garage = try await container.resolve(Garage.self)
         
@@ -47,7 +47,7 @@ struct AsyncAutoregisterTests {
     @Test("Async initializer")
     func asyncInitializer() async throws {
         let container = try makeContainer()
-        try container.autoregister(Database.self, initializer: Database.init)
+        try container.register(Database.self, initializer: Database.init)
         
         _ = try await container.resolve(Database.self)
     }
@@ -55,7 +55,7 @@ struct AsyncAutoregisterTests {
     @Test("Singleton scope")
     func singletonScope() async throws {
         let container = try makeContainer()
-        try container.autoregister(Car.self, initializer: Car.init).asSingleton()
+        try container.register(Car.self, initializer: Car.init).asSingleton()
         
         let first = try await container.resolve(Car.self)
         let second = try await container.resolve(Car.self)
@@ -66,7 +66,7 @@ struct AsyncAutoregisterTests {
     @Test("Missing dependency throws")
     func missingDependency() async throws {
         let container = AsyncContainer()
-        try container.autoregister(Car.self, initializer: Car.init)
+        try container.register(Car.self, initializer: Car.init)
         
         await #expect(throws: AstrojectError.self) {
             try await container.resolve(Car.self)
@@ -76,8 +76,8 @@ struct AsyncAutoregisterTests {
     @Test("Circular dependency throws")
     func circularDependency() async throws {
         let container = AsyncContainer()
-        try container.autoregister(Chicken.self, initializer: Chicken.init)
-        try container.autoregister(Egg.self, initializer: Egg.init)
+        try container.register(Chicken.self, initializer: Chicken.init)
+        try container.register(Egg.self, initializer: Egg.init)
         
         await #expect(throws: AstrojectError.self) {
             try await container.resolve(Chicken.self)
@@ -94,7 +94,7 @@ struct AsyncAutoregisterTests {
     @Test("Runtime argument")
     func runtimeArgument() async throws {
         let container = try makeContainer()
-        try container.autoregister(Puzzle.self, argumentType: String.self, initializer: Puzzle.init)
+        try container.register(Puzzle.self, argumentType: String.self, initializer: Puzzle.init)
         
         let puzzle = try await container.resolve(Puzzle.self, argument: "puzzle-1")
         
@@ -104,7 +104,7 @@ struct AsyncAutoregisterTests {
     @Test("Async initializer with a runtime argument")
     func asyncRuntimeArgument() async throws {
         let container = try makeContainer()
-        try container.autoregister(AsyncPuzzle.self, argumentType: String.self, initializer: AsyncPuzzle.init)
+        try container.register(AsyncPuzzle.self, argumentType: String.self, initializer: AsyncPuzzle.init)
         
         let puzzle = try await container.resolve(AsyncPuzzle.self, argument: "puzzle-1")
         
