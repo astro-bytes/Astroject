@@ -19,7 +19,8 @@ public protocol Assembly {
 /// Adopted by assemblies that need to `await` before registering, for example to open
 /// a database. `setUp` runs right before the assembly's own `assemble(container:)`.
 public protocol AsyncSetup {
-    func setUp(container: UnifiedContainer) async throws
+    /// Runs on the caller's actor, so a main-actor assembly isn't sent off the main actor.
+    nonisolated(nonsending) func setUp(container: UnifiedContainer) async throws
 }
 
 /// One container for sync and async code: a sync graph with async setup.
