@@ -91,7 +91,7 @@ struct AsyncContainerTests {
         let factory = Factory<Int, Resolver>(.async { _ in 1 })
         let key = RegistrationKey(factory: factory)
         
-        try container.register(Int.self, isOverridable: false, factory: factory)
+        try container.register(productType: Int.self, name: nil, isOverridable: false, factory: factory)
         
         #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
             try container.register(Int.self) { 2 }
@@ -207,7 +207,7 @@ struct AsyncContainerTests {
             let factory: Factory<Int, Resolver> = .init(.async { _ in 1 })
             let key = RegistrationKey(factory: factory)
             
-            try container.register(Int.self, isOverridable: false, factory: factory)
+            try container.register(productType: Int.self, name: nil, isOverridable: false, factory: factory)
             
             #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
                 try container.register(Int.self) { 2 }
@@ -353,7 +353,13 @@ struct AsyncContainerTests {
             try container.register(Int.self, argumentType: Int.self, factory: factory)
             
             #expect(throws: AstrojectError.alreadyRegistered(key: key)) {
-                try container.register(Int.self, argumentType: Int.self, isOverridable: false) { arg in arg }
+                try container.register(
+                    productType: Int.self,
+                    argumentType: Int.self,
+                    name: nil,
+                    isOverridable: false,
+                    factory: factory
+                )
             }
         }
         
