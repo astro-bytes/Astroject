@@ -60,6 +60,14 @@ final class MacroFuelStation {
     }
 }
 
+protocol MacroRepository: AnyObject {}
+protocol MacroCache: AnyObject {}
+
+@Injectable(scope: .singleton, name: "remote", as: MacroRepository.self, MacroCache.self)
+final class MacroRemoteRepository: MacroRepository, MacroCache {
+    init(engine: MacroEngine) {}
+}
+
 @Suite("@Injectable at runtime")
 struct InjectableRuntimeTests {
     func makeContainer() throws -> SyncContainer {
@@ -112,5 +120,18 @@ struct InjectableRuntimeTests {
         try container.register(injectables: [MacroEngine.self, MacroFuelStation.self])
         
         _ = try await container.resolve(MacroFuelStation.self)
+    }
+    
+    @Test("as: forwards each type to the same singleton")
+    func forwardsToSameSingleton() throws {
+        let container = try makeContainer()
+        try container.register(injectables: [MacroRemoteRepository.self])
+        
+        let repository = try container.resolve(MacroRemoteRepository.self, name: "remote")
+        let viaRepository = try container.resolve(MacroRepository.self, name: "remote")
+        let viaCache = try container.resolve(MacroCache.self, name: "remote")
+        
+        #expect(repository === viaRepository)
+        #expect(repository === viaCache)
     }
 }

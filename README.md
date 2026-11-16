@@ -322,7 +322,14 @@ final class PuzzleRepository {
 try container.register(injectables: [APIClient.self, Logger.self, PuzzleRepository.self])
 ```
 
-The macro generates an `Injectable` conformance whose `register(in:)` calls `register(_:name:initializer:)`, records the type's file and line for the registration report, and applies the scope. When a type has more than one initializer, mark the one to use with `@InjectableInit`. A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
+The macro generates an `Injectable` conformance whose `register(in:)` calls `register(_:name:initializer:)`, records the type's file and line for the registration report, and applies the scope. When a type has more than one initializer, mark the one to use with `@InjectableInit`. To also resolve the type by a protocol, list it in `as:`. Each type is forwarded to the same registration, and the compiler checks the conformance:
+
+```swift
+@Injectable(scope: .singleton, as: PuzzleRepositoryProtocol.self)
+final class RemotePuzzleRepository: PuzzleRepositoryProtocol { ... }
+```
+
+ A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
 
 ### Before and After
 

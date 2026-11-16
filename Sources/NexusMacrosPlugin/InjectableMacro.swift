@@ -53,11 +53,16 @@ public struct InjectableMacro: ExtensionMacro {
 
         let access = accessModifier(of: declaration)
         let conformance = protocols.isEmpty ? "" : ": AstrojectNexus.Injectable"
-        let scope = arguments.scopeCall
+        let chain = arguments.scopeCall + arguments.forwardedTypes.map { ".implements(\($0).self)" }.joined()
+        // A conversion the compiler checks, so a missing conformance is a build error
+        // rather than a failed resolve at runtime.
+        let conformanceChecks = arguments.forwardedTypes.map {
+            "_ = { (instance: \(typeName)) -> \($0) in instance }\n"
+        }.joined()
         let decl: DeclSyntax = """
             extension \(raw: typeName)\(raw: conformance) {
                 \(raw: access)static func register(in container: any AstrojectCore.Container) throws {
-                    try container.register(\(raw: callArguments.joined(separator: ", ")))\(raw: scope)
+                    \(raw: conformanceChecks)try container.register(\(raw: callArguments.joined(separator: ", ")))\(raw: chain)
                 }
             }
             """
@@ -99,8 +104,10 @@ public struct InjectableInitMacro: PeerMacro {
 
 // MARK: - Arguments
 
-/// The parsed `scope:` and `name:` arguments of `@Injectable`.
+/// The parsed `scope:`, `name:` and `as:` arguments of `@Injectable`.
 struct InjectableArguments {
+    /// The types listed in `as:`, without `.self`, such as `PuzzleRepositoryProtocol`.
+    var forwardedTypes: [String] = []
     /// The scope method to chain, such as `.asSingleton()`, or empty for the default graph scope.
     var scopeCall = ""
     /// The `name:` expression as written, or `nil` when there is none.
@@ -108,8 +115,13 @@ struct InjectableArguments {
 
     init(_ node: AttributeSyntax) throws {
         guard let list = node.arguments?.as(LabeledExprListSyntax.self) else { return }
+        // Variadic `as:` values after the first one have no label of their own
+        var currentLabel: String?
         for argument in list {
-            switch argument.label?.text {
+            if let label = argument.label?.text {
+                currentLabel = label
+            }
+            switch currentLabel {
             case "scope":
                 guard let member = argument.expression.as(MemberAccessExprSyntax.self) else {
                     throw DiagnosticsError(diagnostics: [
@@ -130,6 +142,15 @@ struct InjectableArguments {
                 if !argument.expression.is(NilLiteralExprSyntax.self) {
                     name = argument.expression.trimmedDescription
                 }
+            case "as":
+                guard let member = argument.expression.as(MemberAccessExprSyntax.self),
+                      member.declName.baseName.tokenKind == .keyword(.self),
+                      let base = member.base else {
+                    throw DiagnosticsError(diagnostics: [
+                        Diagnostic(node: argument.expression, message: InjectableDiagnostic.asNotType)
+                    ])
+                }
+                forwardedTypes.append(base.trimmedDescription)
             default:
                 continue
             }
@@ -276,6 +297,7 @@ enum InjectableDiagnostic: String, DiagnosticMessage {
     case failable
     case scopeNotLiteral
     case injectableInitNotOnInitializer
+    case asNotType
 
     var message: String {
         switch self {
@@ -293,6 +315,8 @@ enum InjectableDiagnostic: String, DiagnosticMessage {
             "scope must be one of .graph, .singleton, .transient or .weak"
         case .injectableInitNotOnInitializer:
             "@InjectableInit can only be applied to an initializer"
+        case .asNotType:
+            "as: takes types, such as PuzzleRepositoryProtocol.self"
         }
     }
 
