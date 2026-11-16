@@ -176,3 +176,7 @@ extension Registration {
         }
     }
 }
+
+extension Registration: LegacyOverridableRegistrable {
+    public var legacyIsOverridable: Bool { isOverridable }
+}

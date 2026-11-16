@@ -374,7 +374,9 @@ extension SyncContainer {
             // If an existing registration is found, check if both the existing registration and
             // the new one are overridable.
             // If the existing one is not overridable, we should not allow the new registration.
-            guard existingRegistration.isOverridable, overridable else {
+            let legacy = existingRegistration as? LegacyOverridableRegistrable
+            let existingIsOverridable = legacy?.legacyIsOverridable ?? true
+            guard existingIsOverridable, overridable else {
                 // Throw an error indicating that a registration already exists and cannot be overridden.
                 throw AstrojectError.alreadyRegistered(key: key)
             }
