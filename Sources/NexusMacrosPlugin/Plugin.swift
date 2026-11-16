@@ -12,6 +12,7 @@ import SwiftSyntaxMacros
 @main
 struct AstrojectNexusMacrosPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
-        NoopMacro.self
+        InjectableMacro.self,
+        InjectableInitMacro.self
     ]
 }

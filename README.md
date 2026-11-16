@@ -307,6 +307,23 @@ The macros live in a separate `Astroject-NexusMacros` product, so apps that only
 .product(name: "Astroject-NexusMacros", package: "Astroject")
 ```
 
+##### `@Injectable`
+
+`@Injectable` registers a class or struct by its initializer, so you don't write the `register` call yourself:
+
+```swift
+import AstrojectNexusMacros
+
+@Injectable(scope: .singleton, name: "primary")   // both optional; the default scope is graph
+final class PuzzleRepository {
+    init(api: APIClient, logger: Logger) { ... }
+}
+
+try container.register(injectables: [APIClient.self, Logger.self, PuzzleRepository.self])
+```
+
+The macro generates an `Injectable` conformance whose `register(in:)` calls `register(_:name:initializer:)`, records the type's file and line for the registration report, and applies the scope. When a type has more than one initializer, mark the one to use with `@InjectableInit`. A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
+
 ### Before and After
 
 ```swift
