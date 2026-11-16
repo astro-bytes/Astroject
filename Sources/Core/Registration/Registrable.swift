@@ -24,6 +24,8 @@ public protocol Registrable<Product> {
     
     /// A boolean value indicating whether this registration can be overridden by another registration for
     /// the same product type.
+    ///
+    /// - Note: Deprecated. Registration is last one wins, and this property is removed in 3.0.
     var isOverridable: Bool { get }
     
     /// The type of argument required to resolve this registration.
