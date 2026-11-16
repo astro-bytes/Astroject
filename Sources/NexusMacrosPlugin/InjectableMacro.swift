@@ -78,7 +78,7 @@ public struct InjectableMacro: ExtensionMacro {
                 typeName: typeName,
                 initializer: initializer,
                 access: access,
-                registration: "try container.register(Factory.self\(nameArgument), "
+                registration: arguments.environmentGuard + "try container.register(Factory.self\(nameArgument), "
                     + "resolveSync: { resolver in Factory(resolver: resolver) }, "
                     + "resolveAsync: { resolver in Factory(resolver: resolver) }\(location))\(chain)"
             )
@@ -91,7 +91,7 @@ public struct InjectableMacro: ExtensionMacro {
                 + "resolveSync: \(syncClosure), resolveAsync: \(asyncClosure)\(location))\(chain)"
             members = """
                     \(access)static func register(in container: any AstrojectCore.Container) throws {
-                        \(conformanceChecks)\(registration)
+                        \(arguments.environmentGuard)\(conformanceChecks)\(registration)
                     }
                 """
         } else {
@@ -100,7 +100,7 @@ public struct InjectableMacro: ExtensionMacro {
                 + "initializer: \(reference)\(location))\(chain)"
             members = """
                     \(access)static func register(in container: any AstrojectCore.Container) throws {
-                        \(conformanceChecks)\(registration)
+                        \(arguments.environmentGuard)\(conformanceChecks)\(registration)
                     }
                 """
         }
@@ -237,6 +237,13 @@ struct InjectableArguments {
     var scopeCall = ""
     /// The `name:` expression as written, or `nil` when there is none.
     var name: String?
+    /// The `environments:` expression as written, such as `[.debug, .test]`, or `nil` when there is none.
+    var environments: String?
+    
+    /// The statement that skips the registration outside `environments`, or empty when there are none.
+    var environmentGuard: String {
+        environments.map { "guard AstrojectCore.AstrojectEnvironment.includes(\($0)) else {\n    return\n}\n" } ?? ""
+    }
 
     init(_ node: AttributeSyntax) throws {
         guard let list = node.arguments?.as(LabeledExprListSyntax.self) else { return }
@@ -266,6 +273,10 @@ struct InjectableArguments {
             case "name":
                 if !argument.expression.is(NilLiteralExprSyntax.self) {
                     name = argument.expression.trimmedDescription
+                }
+            case "environments":
+                if !argument.expression.is(NilLiteralExprSyntax.self) {
+                    environments = argument.expression.trimmedDescription
                 }
             case "as":
                 guard let member = argument.expression.as(MemberAccessExprSyntax.self),
