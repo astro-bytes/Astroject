@@ -359,8 +359,10 @@ public class Assembler {
             try self.assemblies.forEach { try $0.preassemble() }
             
             try self.assemblies.forEach { assembly in
-                try RegistrationSource.$currentAssembly.withValue(String(describing: type(of: assembly))) {
-                    try assembly.assemble(container: self.container)
+                try AstrojectEnvironment.$current.withValue(self.environment) {
+                    try RegistrationSource.$currentAssembly.withValue(String(describing: type(of: assembly))) {
+                        try assembly.assemble(container: self.container)
+                    }
                 }
             }
             

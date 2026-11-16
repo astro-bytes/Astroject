@@ -299,7 +299,7 @@ import AstrojectSync
 import AstrojectNexus
 ```
 
-#### Nexus Macros (coming in 3.0)
+#### Nexus Macros (3.0)
 
 The macros live in a separate `Astroject-NexusMacros` product, so apps that only use the runtime API above never build `swift-syntax`. It accepts any `swift-syntax` 600.x release (Swift 6.0 and later). Use it instead of `Astroject-Nexus`; it brings the runtime along:
 
@@ -391,6 +391,32 @@ try settingsViewController.inject(from: container)
 ```
 
 An `@Inject` property must be a `var` with an optional or implicitly unwrapped type. `inject(from:)` resolves synchronously, so it needs a `SyncContainer`.
+
+##### `environments:`
+
+`@Injectable`, `@Provides` and `@Assembly` all take `environments:`. On `@Assembly` it becomes `static var environments`, so the `Assembler` skips the whole assembly in other environments. On a type or a `@Provides` function, `assemble(container:)` skips just that registration when the assembler's environment isn't listed. Without an environment on the container or assembler, everything is registered.
+
+```swift
+@Injectable(as: PuzzleRepositoryProtocol.self, environments: [.debug, .test])
+final class StubPuzzleRepository: PuzzleRepositoryProtocol { ... }
+
+@Assembly(DebugMenu.self, environments: [.debug])
+struct DebugAssembly {}
+
+let container = try SyncContainer(environment: .release, assemblies: [DataAssembly(), DebugAssembly()])
+```
+
+Environments decide what is registered at runtime. They can't remove code from the binary: `StubPuzzleRepository` and `DebugMenu` are still compiled into a release build. To leave a type out of release builds, wrap it in `#if DEBUG`.
+
+##### Ordering rules
+
+Registration is last one wins, so order decides which registration a key resolves to:
+
+1. Inside an assembly, the listed types register in list order, then the `@Provides` functions, top to bottom.
+2. Across assemblies, `requires:` assemblies run first, then the rest in the order given.
+3. Environments only remove registrations and assemblies. They never reorder the ones that remain.
+
+To see which registrations replaced others and where each one came from, use the registration report described in [Seeing What Was Overridden](#seeing-what-was-overridden). Debug and test assemblers print it automatically.
 
  A struct without an initializer uses its memberwise one. An `async` initializer needs an `AsyncContainer`.
 
@@ -1380,6 +1406,7 @@ Astroject is continually evolving! Here are some exciting features planned for t
 - **✅ Sync Container:** Support for a non async/await version of the container with all the same flexibility as the async/await container. (Completed!)
 - **✅ Assembly System:** Modular dependency configuration with lifecycle hooks and automatic dependency resolution. (Completed!)
 - **✅ Nexus Integration:** The `Astroject-Nexus` sub-library registers objects straight from their initializers, removing factory boilerplate. (Completed!)
+- **✅ Nexus Macros:** `@Injectable`, `@Assembly`, `@Provides`, `@Named`, `@Argument` and `@Inject` in the `Astroject-NexusMacros` product generate registrations and assemblies at compile time. (3.0)
 - **Parent/Child Container Relationships:** Support for hierarchical containers, allowing for more granular scope management and overriding.
 - **Custom Containers:** Support for building custom container objects that can be used in tandem with other public components/protocols.
 - **Interactive Code Examples:** Swift Playgrounds will be created to provide hands-on, executable examples of Astroject's features.
@@ -1391,13 +1418,14 @@ graph TD
     A[✅ Sync Container - Complete]
     B[✅ Assembly System - Complete]
     G[✅ Nexus Integration - Complete]
+    I[✅ Nexus Macros - 3.0]
     C[🧬 Parent/Child Containers]
     D[🧱 Custom Containers]
     E[🎮 Interactive Examples]
     F[📚 DocC Comments]
     H[🧾 Singularity Integration]
 
-    A --> B --> G --> C --> D --> E --> F --> H
+    A --> B --> G --> I --> C --> D --> E --> F --> H
 ```
 
 ## 👋🏼 Contributing

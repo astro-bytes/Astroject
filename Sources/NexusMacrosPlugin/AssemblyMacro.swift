@@ -42,6 +42,13 @@ public struct AssemblyMacro: ExtensionMacro {
                     }
                 """)
         }
+        if let environments = arguments.environments {
+            members.append("""
+                    \(access)static var environments: Set<AstrojectCore.AstrojectEnvironment>? {
+                        \(environments)
+                    }
+                """)
+        }
         // Listed types first, in order, then @Provides functions top to bottom
         let body = arguments.types
             .map { "        try \($0.text).register(in: container)\n" }
@@ -160,8 +167,16 @@ struct Provider {
         
         self.attribute = attribute
         let checks = arguments.forwardedTypes.map { "_ = { (instance: \(product)) -> \($0) in instance }" }
-        self.statements = checks + ["try container.register(\(callArguments.joined(separator: ", ")))\(chain)"]
-        let suffix = arguments.name.map { " \($0)" } ?? ""
+        let statements = checks + ["try container.register(\(callArguments.joined(separator: ", ")))\(chain)"]
+        if let environments = arguments.environments {
+            self.statements = ["if AstrojectCore.AstrojectEnvironment.includes(\(environments)) {"]
+                + statements.map { "    " + $0 }
+                + ["}"]
+        } else {
+            self.statements = statements
+        }
+        // Providers for different environments may replace each other on purpose
+        let suffix = (arguments.name.map { " \($0)" } ?? "") + (arguments.environments.map { " in \($0)" } ?? "")
         self.keys = ([product] + arguments.forwardedTypes).map { $0 + suffix }
     }
 }
@@ -196,6 +211,8 @@ struct AssemblyArguments {
     var types: [TypeEntry] = []
     /// The assemblies listed in `requires:`, written with `.self`.
     var requires: [TypeEntry] = []
+    /// The `environments:` expression as written, such as `[.debug]`, or `nil` when there is none.
+    var environments: String?
     
     init(_ node: AttributeSyntax) throws {
         guard let list = node.arguments?.as(LabeledExprListSyntax.self) else { return }
@@ -212,6 +229,10 @@ struct AssemblyArguments {
                 for element in array.elements {
                     let name = try Self.typeName(element.expression)
                     requires.append(TypeEntry(text: "\(name).self", node: element.expression))
+                }
+            case "environments":
+                if !argument.expression.is(NilLiteralExprSyntax.self) {
+                    environments = argument.expression.trimmedDescription
                 }
             default:
                 continue

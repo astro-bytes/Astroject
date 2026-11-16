@@ -67,6 +67,8 @@
 ///   - scope: How instances are managed. Defaults to `.graph`.
 ///   - name: An optional name for the registration. Forwarded types use the same name.
 ///   - types: Protocols or superclasses to also register the type as.
+///   - environments: The environments to register the type in, or `nil` for all of them.
+///     `assemble(container:)` skips the type when the assembler's environment isn't listed.
 @attached(
     extension,
     conformances: Injectable,
@@ -75,7 +77,8 @@
 public macro Injectable(
     scope: InjectableScope = .graph,
     name: String? = nil,
-    as types: Any.Type...
+    as types: Any.Type...,
+    environments: Set<AstrojectEnvironment>? = nil
 ) = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "InjectableMacro")
 
 /// Marks the initializer `@Injectable` registers, when the type has more than one.
@@ -126,14 +129,17 @@ public macro Inject(name: String? = nil) = #externalMacro(module: "AstrojectNexu
 /// - Parameters:
 ///   - types: The `Injectable` types to register, in order.
 ///   - requires: Assemblies that must run before this one.
+///   - environments: The environments the assembly runs in, or `nil` for all of them.
+///     Becomes `static var environments`.
 @attached(
     extension,
     conformances: AstrojectCore.Assembly,
-    names: named(requiredAssemblies), named(assemble(container:))
+    names: named(requiredAssemblies), named(environments), named(assemble(container:))
 )
 public macro Assembly(
     _ types: any AstrojectNexus.Injectable.Type...,
-    requires: [any AstrojectCore.Assembly.Type] = []
+    requires: [any AstrojectCore.Assembly.Type] = [],
+    environments: Set<AstrojectEnvironment>? = nil
 ) = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "AssemblyMacro")
 
 /// Registers a `static` function's result from inside an `@Assembly`.
@@ -157,9 +163,11 @@ public macro Assembly(
 ///   - scope: How instances are managed. Defaults to `.graph`.
 ///   - name: An optional name for the registration.
 ///   - types: Protocols or superclasses to also register the result as.
+///   - environments: The environments to register the result in, or `nil` for all of them.
 @attached(peer)
 public macro Provides(
     scope: InjectableScope = .graph,
     name: String? = nil,
-    as types: Any.Type...
+    as types: Any.Type...,
+    environments: Set<AstrojectEnvironment>? = nil
 ) = #externalMacro(module: "AstrojectNexusMacrosPlugin", type: "ProvidesMacro")
