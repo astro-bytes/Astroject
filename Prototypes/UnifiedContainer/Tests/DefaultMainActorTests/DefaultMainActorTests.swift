@@ -63,7 +63,8 @@ struct DefaultMainActorTests {
 
     @Test("Providers work for main-actor types with async inits")
     func provider() async throws {
-        let container = try UnifiedContainer(assemblies: [AppAssembly()])
+        // In async code, Swift picks the async initializer, so this needs `await`.
+        let container = try await UnifiedContainer(assemblies: [AppAssembly()])
         let makeSession = try container.main.resolve(AsyncProvider<Session>.self)
         let session = try await makeSession()
         #expect(session.token == "abc")
