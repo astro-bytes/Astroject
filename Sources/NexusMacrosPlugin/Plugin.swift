@@ -15,6 +15,7 @@ struct AstrojectNexusMacrosPlugin: CompilerPlugin {
         InjectableMacro.self,
         InjectableInitMacro.self,
         AssemblyMacro.self,
-        ProvidesMacro.self
+        ProvidesMacro.self,
+        InjectMacro.self
     ]
 }

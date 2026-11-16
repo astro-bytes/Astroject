@@ -33,8 +33,17 @@ public struct InjectableMacro: ExtensionMacro {
             ])
         }
 
-        let arguments = try InjectableArguments(node)
         let typeName = type.trimmedDescription
+        if InjectedProperty.hasAny(in: declaration) {
+            return try injectExtension(
+                of: node,
+                attachedTo: declaration,
+                typeName: typeName,
+                isStruct: isStruct
+            )
+        }
+
+        let arguments = try InjectableArguments(node)
         let initializer = try InitializerChoice.choose(
             in: declaration,
             isStruct: isStruct,
@@ -47,7 +56,10 @@ public struct InjectableMacro: ExtensionMacro {
         }
         let nameArgument = arguments.name.map { ", name: \($0)" } ?? ""
         let access = accessModifier(of: declaration)
-        let conformance = protocols.isEmpty ? "" : ": AstrojectNexus.Injectable"
+        let needsConformance = protocols.contains {
+            ["Injectable", "AstrojectNexus.Injectable"].contains($0.trimmedDescription)
+        }
+        let conformance = needsConformance ? ": AstrojectNexus.Injectable" : ""
         let chain = arguments.scopeCall + arguments.forwardedTypes.map { ".implements(\($0).self)" }.joined()
         // A conversion the compiler checks, so a missing conformance is a build error
         // rather than a failed resolve at runtime.
@@ -96,6 +108,36 @@ public struct InjectableMacro: ExtensionMacro {
         let decl: DeclSyntax = """
             extension \(raw: typeName)\(raw: conformance) {
             \(raw: members)
+            }
+            """
+        guard let extensionDecl = decl.as(ExtensionDeclSyntax.self) else { return [] }
+        return [extensionDecl]
+    }
+
+    /// The extension for a type with `@Inject` properties: an `inject(from:)` that assigns
+    /// each one, and no registration, because the system creates the instance.
+    static func injectExtension(
+        of node: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        typeName: String,
+        isStruct: Bool
+    ) throws -> [ExtensionDeclSyntax] {
+        if let arguments = node.arguments?.as(LabeledExprListSyntax.self), !arguments.isEmpty {
+            throw DiagnosticsError(diagnostics: [
+                Diagnostic(node: node, message: InjectDiagnostic.argumentsWithInject)
+            ])
+        }
+        let properties = InjectedProperty.all(in: declaration)
+        guard !properties.isEmpty else { return [] }
+        let access = accessModifier(of: declaration)
+        let mutating = isStruct ? "mutating " : ""
+        let assignments = properties.map(\.assignment).joined(separator: "\n")
+        let decl: DeclSyntax = """
+            extension \(raw: typeName) {
+                /// Assigns every `@Inject` property from `resolver`.
+                \(raw: access)\(raw: mutating)func inject(from resolver: any AstrojectCore.Resolver) throws {
+                    \(raw: assignments)
+                }
             }
             """
         guard let extensionDecl = decl.as(ExtensionDeclSyntax.self) else { return [] }

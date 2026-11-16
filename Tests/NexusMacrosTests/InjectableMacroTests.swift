@@ -16,7 +16,8 @@ import AstrojectNexusMacrosPlugin
 
 let injectableSpecs: [String: MacroSpec] = [
     "Injectable": MacroSpec(type: InjectableMacro.self, conformances: ["Injectable"]),
-    "InjectableInit": MacroSpec(type: InjectableInitMacro.self)
+    "InjectableInit": MacroSpec(type: InjectableInitMacro.self),
+    "Inject": MacroSpec(type: InjectMacro.self)
 ]
 #endif
 
@@ -473,6 +474,156 @@ final class InjectableMacroTests: XCTestCase {
             diagnostics: [
                 DiagnosticSpec(
                     message: "as: can't be used with @Argument parameters; the type is made through its Factory instead",
+                    line: 1,
+                    column: 1
+                )
+            ],
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testInjectPropertiesGenerateInjectFrom() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable
+            public final class SettingsViewController: UIViewController {
+                @Inject var analytics: AnalyticsService!
+                @Inject(name: "app") var defaults: UserDefaults?
+                @Inject var logger: (any Logger)!
+                var title: String?
+                required init?(coder: NSCoder) {}
+                init() {}
+            }
+            """,
+            expandedSource: """
+            public final class SettingsViewController: UIViewController {
+                var analytics: AnalyticsService!
+                var defaults: UserDefaults?
+                var logger: (any Logger)!
+                var title: String?
+                required init?(coder: NSCoder) {}
+                init() {}
+            }
+
+            extension SettingsViewController {
+                /// Assigns every `@Inject` property from `resolver`.
+                public func inject(from resolver: any AstrojectCore.Resolver) throws {
+                    self.analytics = try resolver.resolve(AnalyticsService.self)
+                    self.defaults = try resolver.resolve(UserDefaults.self, name: "app")
+                    self.logger = try resolver.resolve((any Logger).self)
+                }
+            }
+            """,
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testInjectOnStructIsMutating() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable
+            struct Screen {
+                @Inject var store: Store!
+            }
+            """,
+            expandedSource: """
+            struct Screen {
+                var store: Store!
+            }
+
+            extension Screen {
+                /// Assigns every `@Inject` property from `resolver`.
+                mutating func inject(from resolver: any AstrojectCore.Resolver) throws {
+                    self.store = try resolver.resolve(Store.self)
+                }
+            }
+            """,
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testInjectOnLetIsAnError() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            final class Screen {
+                @Inject let store: Store!
+            }
+            """,
+            expandedSource: """
+            final class Screen {
+                let store: Store!
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Inject requires a 'var', because inject(from:) assigns it after initialization",
+                    line: 2,
+                    column: 13
+                )
+            ],
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testInjectOnNonOptionalIsAnError() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            final class Screen {
+                @Inject var store: Store
+            }
+            """,
+            expandedSource: """
+            final class Screen {
+                var store: Store
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "@Inject requires an optional or implicitly unwrapped type, such as 'AnalyticsService!'",
+                    line: 2,
+                    column: 24
+                )
+            ],
+            macroSpecs: injectableSpecs
+        )
+        #else
+        throw XCTSkip("Macros are only supported when running tests for the host platform")
+        #endif
+    }
+
+    func testInjectableArgumentsWithInjectIsAnError() throws {
+        #if canImport(AstrojectNexusMacrosPlugin)
+        assertMacroExpansion(
+            """
+            @Injectable(scope: .singleton)
+            final class Screen {
+                @Inject var store: Store!
+            }
+            """,
+            expandedSource: """
+            final class Screen {
+                var store: Store!
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(
+                    message: "scope:, name: and as: don't apply to a type with @Inject properties, because it isn't registered",
                     line: 1,
                     column: 1
                 )
