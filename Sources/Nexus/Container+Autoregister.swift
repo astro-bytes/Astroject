@@ -23,6 +23,9 @@ public extension Container {
     /// The container's `ResolutionMode` decides how dependencies are resolved: a `.sync`
     /// container resolves them synchronously, an `.async` container resolves them with `await`.
     ///
+    /// Pass the initializer with the `initializer:` label. A trailing closure calls the
+    /// existing `register(_:block:)` overloads instead.
+    ///
     /// - Parameters:
     ///   - productType: The type of the product to register.
     ///   - name: An optional name for the registration.

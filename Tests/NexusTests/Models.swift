@@ -41,7 +41,7 @@ struct Garage {
     }
 }
 
-final class Database {
+final class FuelStation {
     let engine: Engine
     
     init(engine: Engine) async {

@@ -178,7 +178,7 @@ struct SyncAutoregisterTests {
         let container = SyncContainer()
         
         #expect(throws: AstrojectError.self) {
-            try container.register(Database.self, initializer: Database.init)
+            try container.register(FuelStation.self, initializer: FuelStation.init)
         }
     }
     

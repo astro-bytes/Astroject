@@ -73,20 +73,20 @@ struct OverloadResolutionTests {
     func labeledInitializerAsync() async throws {
         let container = AsyncContainer()
         try container.register(Engine.self, initializer: Engine.init)
-        try container.register(Database.self, initializer: Database.init)
+        try container.register(FuelStation.self, initializer: FuelStation.init)
         
-        _ = try await container.resolve(Database.self)
+        _ = try await container.resolve(FuelStation.self)
     }
     
     @Test("Trailing closure with a resolver picks block: (async)")
     func trailingResolverAsync() async throws {
         let container = AsyncContainer()
         try container.register(Engine.self, initializer: Engine.init)
-        try container.register(Database.self) { resolver in
-            await Database(engine: try await resolver.resolve(Engine.self))
+        try container.register(FuelStation.self) { resolver in
+            await FuelStation(engine: try await resolver.resolve(Engine.self))
         }
         
-        _ = try await container.resolve(Database.self)
+        _ = try await container.resolve(FuelStation.self)
     }
     
     @Test("Trailing closure with a resolver and an argument picks block: (async)")

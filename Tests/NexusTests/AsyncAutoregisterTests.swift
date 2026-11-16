@@ -47,9 +47,9 @@ struct AsyncAutoregisterTests {
     @Test("Async initializer")
     func asyncInitializer() async throws {
         let container = try makeContainer()
-        try container.register(Database.self, initializer: Database.init)
+        try container.register(FuelStation.self, initializer: FuelStation.init)
         
-        _ = try await container.resolve(Database.self)
+        _ = try await container.resolve(FuelStation.self)
     }
     
     @Test("Singleton scope")

@@ -41,6 +41,7 @@ Astroject comes packed with features to streamline your dependency management:
   - ***Registration Overriding:*** Provides fine-grained control over whether an existing registration can be overridden by a new one. You can explicitly protect critical instances from accidental replacement, ensuring predictable behavior in your application.
 - **Thread Safety by Design:** Astroject's core mechanisms are built with concurrency in mind, using serial queues to ensure safe access to registrations and resolution graphs from multiple threads.
 - **Extensible Behaviors & Hooks:** Add custom logic and cross-cutting concerns to your DI process through behaviors that can observe and react to registration events.
+- **Automatic Registration (Nexus):** Register a type by its initializer and let the container resolve every parameter, with the optional `Astroject-Nexus` product.
 - **Modular Assemblies:** Organize your registrations into reusable `Assembly` modules. These can be combined in a master `Assembler` to cleanly inject dependencies into your `Container`. Assemblies also offer pre- and post-assembly hooks for custom setup or teardown.
 
 ## 🚀 Getting Started
@@ -86,6 +87,7 @@ Astroject is organized into several modules for flexibility:
 - **AstrojectCore**: Core protocols and types (Container, Assembly, Registrable, etc.)
 - **AstrojectAsync**: AsyncContainer implementation for async/await workflows
 - **AstrojectSync**: SyncContainer implementation for synchronous workflows
+- **AstrojectNexus**: Optional automatic registration from an initializer (see [Nexus](#-nexus-automatic-registration))
 
 Import the modules you need:
 
@@ -93,6 +95,7 @@ Import the modules you need:
 import AstrojectCore  // Always needed for Assembly, Container protocols
 import AstrojectAsync // When using AsyncContainer
 import AstrojectSync  // When using SyncContainer
+import AstrojectNexus // When registering by initializer
 ```
 
 #### 1.0 Define your dependencies and services
@@ -269,6 +272,128 @@ weakObject = nil // Release strong reference
 // At this point, "WeakObject deinitialized" might print if no other strong references exist.
 print("WeakObject after setting to nil: \(String(describing: weakObject))")
 ```
+
+## ⚡ Nexus: Automatic Registration
+
+Nexus is an opt-in module that registers a type straight from its initializer. Each initializer parameter is resolved from the container by its type, so you no longer write a factory closure that calls `resolve` for every dependency.
+
+### Installing Nexus
+
+Add the `Astroject-Nexus` product next to the container you use:
+
+```swift
+.target(
+    name: "YourTargetName",
+    dependencies: [
+        .product(name: "Astroject-Sync", package: "Astroject"),
+        .product(name: "Astroject-Nexus", package: "Astroject")
+    ]
+)
+```
+
+Then import it where you register:
+
+```swift
+import AstrojectCore
+import AstrojectSync
+import AstrojectNexus
+```
+
+### Before and After
+
+```swift
+final class Logger {
+    init() {}
+}
+
+final class UserRepository {
+    let logger: Logger
+    init(logger: Logger) { self.logger = logger }
+}
+
+final class UserService {
+    let repository: UserRepository
+    let logger: Logger
+    init(repository: UserRepository, logger: Logger) {
+        self.repository = repository
+        self.logger = logger
+    }
+}
+
+let container = SyncContainer()
+
+// Before: a closure that resolves each parameter by hand
+try container.register(Logger.self) { Logger() }
+try container.register(UserRepository.self) { resolver in
+    UserRepository(logger: try resolver.resolve(Logger.self))
+}
+try container.register(UserService.self) { resolver in
+    UserService(
+        repository: try resolver.resolve(UserRepository.self),
+        logger: try resolver.resolve(Logger.self)
+    )
+}
+
+// After: pass the initializer
+try container.register(Logger.self, initializer: Logger.init).asSingleton()
+try container.register(UserRepository.self, initializer: UserRepository.init)
+try container.register(UserService.self, initializer: UserService.init)
+
+let service = try container.resolve(UserService.self)
+```
+
+`register(_:initializer:)` returns the same `Registrable` as any other registration, so scopes (`.asSingleton()`, `.asWeak()`, `.asGraph()`), `implements`, names, `isOverridable`, behaviors and circular dependency detection all work as before. It also works inside an `Assembly`, where only `Container` is known.
+
+The initializer can be any function, not only an `init`:
+
+```swift
+try container.register(UserService.self, initializer: { (repository: UserRepository, logger: Logger) in
+    UserService(repository: repository, logger: logger)
+})
+```
+
+### Async Initializers
+
+With an `AsyncContainer`, both regular and `async` initializers work, and dependencies are resolved with `await`:
+
+```swift
+final class Database {
+    init(logger: Logger) async { /* open a connection */ }
+}
+
+let asyncContainer = AsyncContainer()
+try asyncContainer.register(Logger.self, initializer: Logger.init)
+try asyncContainer.register(Database.self, initializer: Database.init)
+
+let database = try await asyncContainer.resolve(Database.self)
+```
+
+Registering an `async` initializer with a `SyncContainer` throws `AstrojectError.invalidFactory`.
+
+### One Runtime Argument
+
+When a type needs one value that is only known at resolve time, put it first in the initializer and pass its type as `argumentType`:
+
+```swift
+final class PuzzleViewModel {
+    let puzzleID: String
+    let repository: UserRepository
+    init(puzzleID: String, repository: UserRepository) {
+        self.puzzleID = puzzleID
+        self.repository = repository
+    }
+}
+
+try container.register(PuzzleViewModel.self, argumentType: String.self, initializer: PuzzleViewModel.init)
+
+let viewModel = try container.resolve(PuzzleViewModel.self, argument: "puzzle-42")
+```
+
+### Limits
+
+- Every dependency resolves by its type, with no name. For a parameter that needs a named registration, use a `register(_:block:)` closure for that type.
+- Only one runtime argument is supported, and it must be the first parameter. For anything else, use `register(_:argumentType:block:)`.
+- Trailing closures keep calling the existing `block:` overloads. Use the `initializer:` label to get automatic resolution.
 
 ## 📚 Core Concepts
 Astroject's design revolves around a few fundamental components, working together to provide a powerful dependency injection experience:
@@ -1146,25 +1271,25 @@ Astroject is continually evolving! Here are some exciting features planned for t
 
 - **✅ Sync Container:** Support for a non async/await version of the container with all the same flexibility as the async/await container. (Completed!)
 - **✅ Assembly System:** Modular dependency configuration with lifecycle hooks and automatic dependency resolution. (Completed!)
+- **✅ Nexus Integration:** The `Astroject-Nexus` sub-library registers objects straight from their initializers, removing factory boilerplate. (Completed!)
 - **Parent/Child Container Relationships:** Support for hierarchical containers, allowing for more granular scope management and overriding.
 - **Custom Containers:** Support for building custom container objects that can be used in tandem with other public components/protocols.
 - **Interactive Code Examples:** Swift Playgrounds will be created to provide hands-on, executable examples of Astroject's features.
 - **Comprehensive DocC Comments:** Full, detailed documentation for all public APIs will be provided.
-- **Nexus Integration:** A new sub-library, Nexus, is planned to introduce automatic registration of objects, significantly reducing boilerplate. (Completion date TBD)
 - **Singularity Integration:** Another upcoming sub-library, Singularity, will enable registration of objects directly from resource files. (Completion date TBD)
  
 ```mermaid
 graph TD
     A[✅ Sync Container - Complete]
     B[✅ Assembly System - Complete]
+    G[✅ Nexus Integration - Complete]
     C[🧬 Parent/Child Containers]
     D[🧱 Custom Containers]
     E[🎮 Interactive Examples]
     F[📚 DocC Comments]
-    G[⚡ Nexus Integration]
     H[🧾 Singularity Integration]
 
-    A --> B --> C --> D --> E --> F --> G --> H
+    A --> B --> G --> C --> D --> E --> F --> H
 ```
 
 ## 👋🏼 Contributing
