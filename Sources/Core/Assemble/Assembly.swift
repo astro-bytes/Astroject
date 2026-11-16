@@ -35,6 +35,14 @@ public protocol Assembly {
     /// Default implementation returns an empty array.
     static var requiredAssemblies: [Assembly.Type] { get }
     
+    /// The environments this assembly runs in, or `nil` to run in every environment.
+    ///
+    /// When the `Assembler` has an environment, it skips assemblies whose `environments`
+    /// don't contain it. Skipping only removes assemblies; it never changes the order the
+    /// remaining ones run in. When the `Assembler` has no environment, every assembly runs.
+    /// Default implementation returns `nil`.
+    static var environments: Set<AstrojectEnvironment>? { get }
+    
     // MARK: - Lifecycle Hooks
     
     /// Called before any dependencies are registered.
@@ -63,6 +71,9 @@ public protocol Assembly {
 public extension Assembly {
     /// Default implementation returns an empty set, meaning no required assemblies.
     static var requiredAssemblies: [Assembly.Type] { [] }
+    
+    /// Default implementation: runs in every environment.
+    static var environments: Set<AstrojectEnvironment>? { nil }
     
     /// Default implementation of `preassemble()`, which does nothing.
     func preassemble() throws {}

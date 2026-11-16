@@ -432,11 +432,26 @@ print("Overridden Int value (should be 99): \(try await container.resolve(Int.se
 
 Because the last registration wins, the order assemblies run in decides which registration survives. Every assembly runs after the assemblies in its `requiredAssemblies`; otherwise assemblies run in the order you add them. To have a test or mocks assembly replace your app's registrations, list the app assembly in its `requiredAssemblies`.
 
+#### Environments
+
+Pass the environment the app is running in, and declare `environments` on assemblies that should only run in some of them. Assemblies that leave the environment out are skipped; the rest keep their order. Without an environment, every assembly runs.
+
+```swift
+struct StubsAssembly: Assembly {
+    static var environments: Set<AstrojectEnvironment>? { [.test, .custom("preview")] }
+    func assemble(container: Container) throws { /* stubs */ }
+}
+
+let container = try SyncContainer(environment: .release, assemblies: [AppAssembly(), StubsAssembly()])
+```
+
+Astroject can't tell a unit test run from a debug build, so the app chooses the environment, for example with `#if DEBUG` or a launch argument. An assembly that runs in the environment can't require one that doesn't; that throws `Assembler.Error.requiredAssemblyOutsideEnvironment`.
+
 #### Seeing What Was Overridden
 
 Every container keeps a record of each registration it receives: the key, the assembly that made it, and the file and line it came from. `container.registrationReport()` returns that record, with every registration for each key in order and the one that wins.
 
-In debug builds, `Assembler` writes the keys that were registered more than once to the console after `assemble()`, through `os.Logger` with the subsystem `Astroject`:
+In the `.debug` and `.test` environments (and in debug builds when no environment is set), `Assembler` writes the keys that were registered more than once to the console after `assemble()`, through `os.Logger` with the subsystem `Astroject`:
 
 ```text
 Astroject: 42 keys registered, 1 overridden
