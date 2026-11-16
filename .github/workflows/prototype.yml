@@ -1,0 +1,45 @@
+name: Prototype
+
+on:
+  pull_request:
+    paths:
+      - "Prototypes/**"
+      - ".github/workflows/prototype.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: Unified container prototype (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Show toolchain
+        run: swift --version
+      - name: Run tests
+        run: swift test --package-path Prototypes/UnifiedContainer -Xswiftc -warnings-as-errors
+      - name: Check code that must not compile
+        run: Prototypes/CompileChecks/check.sh
+
+  linux:
+    name: Unified container prototype (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.2
+    steps:
+      - uses: actions/checkout@v5
+      - name: Show toolchain
+        run: swift --version
+      - name: Run tests
+        run: swift test --package-path Prototypes/UnifiedContainer -Xswiftc -warnings-as-errors
+      - name: Check code that must not compile
+        run: Prototypes/CompileChecks/check.sh
