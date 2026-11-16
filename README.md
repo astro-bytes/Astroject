@@ -299,6 +299,14 @@ import AstrojectSync
 import AstrojectNexus
 ```
 
+#### Nexus Macros (coming in 3.0)
+
+The macros live in a separate `Astroject-NexusMacros` product, so apps that only use the runtime API above never build `swift-syntax`. It accepts any `swift-syntax` 600.x release (Swift 6.0 and later). Use it instead of `Astroject-Nexus`; it brings the runtime along:
+
+```swift
+.product(name: "Astroject-NexusMacros", package: "Astroject")
+```
+
 ### Before and After
 
 ```swift
