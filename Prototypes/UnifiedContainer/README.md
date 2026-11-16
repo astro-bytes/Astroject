@@ -25,7 +25,7 @@ Arguments, graph scope, weak and disposable singletons, behaviors, forwarding, t
 
 ## Results (Swift 6.2.4, Xcode 26.3 on macOS and `swift:6.2` on Linux)
 
-All 21 tests pass with strict concurrency and warnings as errors.
+All 26 tests pass with strict concurrency and warnings as errors.
 
 1. **The design holds up.** Async setup, providers (transient and lazy singleton), actors, `@MainActor` view models and 200 concurrent resolves all work, and every error depends only on how a type was registered.
 2. **The container is checked `Sendable`.** Its only stored property is a `Mutex`. `Registration` and `ProviderSource` are still `@unchecked Sendable`, because they hold the user's factory closures, which aren't `@Sendable`. Requiring `@Sendable` factories would remove that, but it would also break factories that capture non-`Sendable` state.
@@ -34,4 +34,6 @@ All 21 tests pass with strict concurrency and warnings as errors.
 5. **Default main-actor isolation needs Swift 6.2 features.** In those apps assemblies are main-actor types. The async initializer and `AsyncSetup.setUp` had to be `nonisolated(nonsending)` (run on the caller's actor), or the compiler reports sending main-actor assemblies off the main actor as a data race. Plain `register` closures and `registerMainActor` worked without changes.
 6. **A lazy async singleton must be `Sendable`.** `registerProvider(...).asSingleton()` is only available for `Sendable` products, because one instance goes to many tasks. The compiler enforces it.
 
-Not tested yet: resolving from a background thread a sync factory that was written in a module with default main-actor isolation.
+7. **Plain `register` closures in default main-actor apps run off the main actor without any error.** This is a real data race, not a crash. In a module with default main-actor isolation, `register(String.self) { _ in sharedSettings.theme }` compiles as a main-actor closure, so it may read main-actor state. Resolved from `Task.detached`, it ran on a background thread and returned the value, on both macOS and Linux, with no trap and no warning (`BackgroundResolveTests`). The hole is `Registration`'s `@unchecked Sendable`: the compiler trusts it, and Swift adds no runtime isolation check for these closures. `registerMainActor` is safe (it throws `mainActorRequired` off the main actor), and so is a `@Sendable` factory building a `nonisolated` type (20 concurrent resolves, one singleton).
+
+   The likely fix is to require `@Sendable` on `register` factories, so the same code becomes a compile error and main-actor types have to go through `registerMainActor`. That isn't in the prototype yet.
